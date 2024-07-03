@@ -20,6 +20,16 @@ To get started with Markketplace, follow these simple steps:
 git clone git@github.com:calimania/markketplace.git
 ```
 
+Use docker-compose to build the local environment.
+
+Use docker-compose to start the API and admin server.
+
+```bash
+
+docker-compose build markketplace
+docker-compose up markketplace
+```
+
 ## Docs
 
 Find some documentation in markdown in the `docs` folder.
