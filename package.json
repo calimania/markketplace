@@ -1,0 +1,37 @@
+{
+  "name": "markketplace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A Marketplace built with strapi",
+  "scripts": {
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "build": "strapi build",
+    "strapi": "strapi",
+    "deploy": "strapi deploy"
+  },
+  "dependencies": {
+    "@strapi/plugin-cloud": "4.25.1",
+    "@strapi/plugin-i18n": "4.25.1",
+    "@strapi/plugin-users-permissions": "4.25.1",
+    "@strapi/strapi": "4.25.1",
+    "esbuild": "0.16.17",
+    "pg": "^8.12.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "5.3.4",
+    "stripe": "^16.1.0",
+    "styled-components": "5.3.3"
+  },
+  "author": {
+    "name": "calimania"
+  },
+  "strapi": {
+    "uuid": "d945c243-b70c-4ef4-83b0-45bdf201fb89"
+  },
+  "engines": {
+    "node": ">=18.0.0 <=20.x.x",
+    "npm": ">=6.0.0"
+  },
+  "license": "TSL"
+}

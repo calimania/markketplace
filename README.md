@@ -2,7 +2,7 @@
 
 ![markketplace logo](https://github.com/calimania/markketplace/assets/1588753/e25b8673-69b3-4559-964c-922c7939acdf)
 
-Welcome to Markketplace, a cutting-edge project built on top of Medusa, designed to revolutionize the way marketplaces are created and deployed.
+Welcome to Markketplace, a cutting-edge project built on top of Strapi, designed to revolutionize the way marketplaces are created and deployed.
 
 Our platform offers a suite of marketplace components that are not only easy to deploy but also scalable to meet the needs of any community.
 
