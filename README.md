@@ -22,7 +22,7 @@ git clone git@github.com:calimania/markketplace.git
 
 Use docker-compose to build the local environment.
 
-Use docker-compose to start the API and admin server.
+Use docker-compose to start the API and admin
 
 ```bash
 

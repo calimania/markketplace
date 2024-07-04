@@ -1,12 +1,10 @@
 /**
  *
  * PluginIcon
- *
+ * https://design-system.strapi.io/?path=/story/foundations-icons-icons--all
  */
+import { Store } from '@strapi/icons';
 
-import React from 'react';
-import { Puzzle } from '@strapi/icons';
-
-const PluginIcon = () => <Puzzle />;
+const PluginIcon = () => <Store />;
 
 export default PluginIcon;

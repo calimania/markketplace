@@ -6,7 +6,8 @@
 import pluginId from '../../pluginId';
 import { Box } from '@strapi/design-system';
 // https://design-system.strapi.io/?path=/docs/foundations-icons-icons--docs
-
+// https://docs.strapi.io/dev-docs/api/plugins/admin-panel-api
+// https://strapi.io/blog/how-to-build-an-e-commerce-store-with-nuxt-js-and-strapi
 
 const HomePage = () => {
   return (
