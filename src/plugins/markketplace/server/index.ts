@@ -1,3 +1,4 @@
+// STRIPE API PLUGIN https://strapi.io/blog/how-to-build-an-e-commerce-store-with-nuxt-js-and-strapi
 import register from './register';
 import bootstrap from './bootstrap';
 import destroy from './destroy';
