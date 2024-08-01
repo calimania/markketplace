@@ -6,7 +6,8 @@
   "scripts": {
     "develop": "strapi develop",
     "start": "strapi start",
-    "build": "strapi build",
+    "build:plugin": "npm run build --prefix src/plugins/markketplace",
+    "build": "yarn run build:plugin && strapi build",
     "strapi": "strapi",
     "deploy": "strapi deploy"
   },
