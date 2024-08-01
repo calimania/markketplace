@@ -1,7 +1,7 @@
 {
   "name": "docs",
-  "version": "0.0.0",
-  "description": "This is the description of the plugin.",
+  "version": "0.1.0",
+  "description": "Mr Markketplace custom routes and pages",
   "strapi": {
     "name": "markketplace",
     "description": "Additional features by Calima Markketplace",
@@ -32,11 +32,11 @@
     "styled-components": "^5.2.1"
   },
   "author": {
-    "name": "A Strapi developer"
+    "name": "Calima Markketplace"
   },
   "maintainers": [
     {
-      "name": "A Strapi developer"
+      "name": "Daveed Silva"
     }
   ],
   "engines": {
@@ -47,5 +47,5 @@
     "develop": "tsc -p tsconfig.server.json -w",
     "build": "tsc -p tsconfig.server.json"
   },
-  "license": "MIT"
+  "license": "SEE LICENSE IN LICENSE"
 }
