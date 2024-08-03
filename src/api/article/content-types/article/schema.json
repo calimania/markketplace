@@ -4,7 +4,8 @@
   "info": {
     "singularName": "article",
     "pluralName": "articles",
-    "displayName": "Article"
+    "displayName": "Article",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
@@ -23,11 +24,18 @@
       "target": "admin::user"
     },
     "cover": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images"
-      ],
-      "type": "media",
-      "multiple": false
+      ]
+    },
+    "stores": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::store.store",
+      "inversedBy": "articles"
     }
   }
 }

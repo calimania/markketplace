@@ -794,6 +794,7 @@ export interface ApiArticleArticle extends Schema.CollectionType {
     singularName: 'article';
     pluralName: 'articles';
     displayName: 'Article';
+    description: '';
   };
   options: {
     draftAndPublish: true;
@@ -807,6 +808,11 @@ export interface ApiArticleArticle extends Schema.CollectionType {
       'admin::user'
     >;
     cover: Attribute.Media<'images'>;
+    stores: Attribute.Relation<
+      'api::article.article',
+      'manyToMany',
+      'api::store.store'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -979,6 +985,18 @@ export interface ApiProductProduct extends Schema.CollectionType {
           localized: true;
         };
       }>;
+    Thumbnail: Attribute.Media<'images'> &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    Slides: Attribute.Media<'images', true> &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1076,6 +1094,17 @@ export interface ApiStoreStore extends Schema.CollectionType {
           localized: true;
         };
       }>;
+    addresses: Attribute.Component<'common.links', true> &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    articles: Attribute.Relation<
+      'api::store.store',
+      'manyToMany',
+      'api::article.article'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
