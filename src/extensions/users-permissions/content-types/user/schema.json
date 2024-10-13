@@ -67,6 +67,12 @@
     },
     "uuid": {
       "type": "uid"
+    },
+    "stores": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::store.store",
+      "mappedBy": "users"
     }
   }
 }

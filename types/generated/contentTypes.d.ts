@@ -771,6 +771,11 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'plugin::users-permissions.role'
     >;
     uuid: Attribute.UID;
+    stores: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'manyToMany',
+      'api::store.store'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -802,19 +807,19 @@ export interface ApiArticleArticle extends Schema.CollectionType {
   attributes: {
     Title: Attribute.String;
     Content: Attribute.Blocks;
-    creator: Attribute.Relation<
+    Creator: Attribute.Relation<
       'api::article.article',
       'oneToOne',
-      'admin::user'
+      'plugin::users-permissions.user'
     >;
     cover: Attribute.Media<'images'>;
-    stores: Attribute.Relation<
+    store: Attribute.Relation<
       'api::article.article',
-      'manyToMany',
+      'manyToOne',
       'api::store.store'
     >;
     Tags: Attribute.Component<'common.tag', true>;
-    SEO: Attribute.Component<'common.seo', true>;
+    SEO: Attribute.Component<'common.seo'>;
     category: Attribute.Relation<
       'api::article.article',
       'manyToOne',
@@ -955,10 +960,10 @@ export interface ApiInboxInbox extends Schema.CollectionType {
       'oneToOne',
       'api::inbox.inbox'
     >;
-    admin_user: Attribute.Relation<
+    user: Attribute.Relation<
       'api::inbox.inbox',
       'oneToOne',
-      'admin::user'
+      'plugin::users-permissions.user'
     >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
@@ -1002,7 +1007,11 @@ export interface ApiOrderOrder extends Schema.CollectionType {
     Shipping_Address: Attribute.Component<'common.links'>;
     Details: Attribute.Component<'common.product-snapshop', true>;
     uuid: Attribute.UID & Attribute.Required;
-    buyer: Attribute.Relation<'api::order.order', 'oneToOne', 'admin::user'>;
+    buyer: Attribute.Relation<
+      'api::order.order',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
     Payment_attempts: Attribute.Component<'common.payment-attempts', true>;
     shipments: Attribute.Relation<
       'api::order.order',
@@ -1080,7 +1089,13 @@ export interface ApiPagePage extends Schema.CollectionType {
       Attribute.SetMinMaxLength<{
         maxLength: 40;
       }>;
-    SEO: Attribute.Component<'common.seo', true> &
+    SEO: Attribute.Component<'common.seo'> &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    menuOrder: Attribute.Integer &
       Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -1186,7 +1201,7 @@ export interface ApiProductProduct extends Schema.CollectionType {
           localized: true;
         };
       }>;
-    SEO: Attribute.Component<'common.seo', true> &
+    SEO: Attribute.Component<'common.seo'> &
       Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -1204,6 +1219,11 @@ export interface ApiProductProduct extends Schema.CollectionType {
           localized: true;
         };
       }>;
+    creator: Attribute.Relation<
+      'api::product.product',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1258,6 +1278,16 @@ export interface ApiShipmentShipment extends Schema.CollectionType {
       'api::store.store'
     >;
     TrackingLink: Attribute.String;
+    buyer: Attribute.Relation<
+      'api::shipment.shipment',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    fulfilled_by: Attribute.Relation<
+      'api::shipment.shipment',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1349,11 +1379,6 @@ export interface ApiStoreStore extends Schema.CollectionType {
           localized: true;
         };
       }>;
-    articles: Attribute.Relation<
-      'api::store.store',
-      'manyToMany',
-      'api::article.article'
-    >;
     Favicon: Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &
       Attribute.SetPluginOptions<{
         i18n: {
@@ -1388,6 +1413,22 @@ export interface ApiStoreStore extends Schema.CollectionType {
           localized: true;
         };
       }>;
+    SEO: Attribute.Component<'common.seo'> &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    articles: Attribute.Relation<
+      'api::store.store',
+      'oneToMany',
+      'api::article.article'
+    >;
+    users: Attribute.Relation<
+      'api::store.store',
+      'manyToMany',
+      'plugin::users-permissions.user'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

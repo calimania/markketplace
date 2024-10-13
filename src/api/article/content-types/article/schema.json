@@ -18,10 +18,10 @@
     "Content": {
       "type": "blocks"
     },
-    "creator": {
+    "Creator": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "admin::user"
+      "target": "plugin::users-permissions.user"
     },
     "cover": {
       "type": "media",
@@ -31,9 +31,9 @@
         "images"
       ]
     },
-    "stores": {
+    "store": {
       "type": "relation",
-      "relation": "manyToMany",
+      "relation": "manyToOne",
       "target": "api::store.store",
       "inversedBy": "articles"
     },
@@ -44,7 +44,7 @@
     },
     "SEO": {
       "type": "component",
-      "repeatable": true,
+      "repeatable": false,
       "component": "common.seo"
     },
     "category": {
