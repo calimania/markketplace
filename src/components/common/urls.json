@@ -1,0 +1,17 @@
+{
+  "collectionName": "components_common_urls",
+  "info": {
+    "displayName": "URLS",
+    "icon": "scissors",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Label": {
+      "type": "string"
+    },
+    "URL": {
+      "type": "string"
+    }
+  }
+}

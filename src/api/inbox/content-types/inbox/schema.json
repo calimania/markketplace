@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "inboxes",
+  "info": {
+    "singularName": "inbox",
+    "pluralName": "inboxes",
+    "displayName": "Inbox",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true
+    },
+    "Message": {
+      "type": "text"
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "store": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store.store"
+    },
+    "Archived": {
+      "type": "boolean"
+    },
+    "parentMessageId": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::inbox.inbox"
+    },
+    "admin_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "admin::user"
+    }
+  }
+}

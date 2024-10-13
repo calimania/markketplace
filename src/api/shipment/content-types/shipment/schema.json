@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "shipments",
+  "info": {
+    "singularName": "shipment",
+    "pluralName": "shipments",
+    "displayName": "Shipment",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "uuid": {
+      "type": "uid"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "shipments"
+    },
+    "TrackingCode": {
+      "type": "string"
+    },
+    "Status": {
+      "type": "string"
+    },
+    "Carrier": {
+      "type": "string"
+    },
+    "ShippedDate": {
+      "type": "date"
+    },
+    "EstimatedDeliveryDate": {
+      "type": "date"
+    },
+    "ShippingCost": {
+      "type": "decimal"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store.store"
+    },
+    "TrackingLink": {
+      "type": "string"
+    }
+  }
+}

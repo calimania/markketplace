@@ -1,0 +1,51 @@
+{
+  "collectionName": "components_common_seos",
+  "info": {
+    "displayName": "SEO",
+    "icon": "restaurant",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "metaTitle": {
+      "type": "string"
+    },
+    "metaDescription": {
+      "type": "string"
+    },
+    "metaKeywords": {
+      "type": "string"
+    },
+    "socialImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "metaUrl": {
+      "type": "string"
+    },
+    "metaAuthor": {
+      "type": "string"
+    },
+    "excludeFromSearch": {
+      "type": "boolean",
+      "default": false
+    },
+    "Cover": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": false
+    }
+  }
+}

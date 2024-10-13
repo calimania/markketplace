@@ -63,14 +63,6 @@
       },
       "type": "richtext"
     },
-    "Links": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
-      "type": "json"
-    },
     "Logo": {
       "type": "media",
       "multiple": false,
@@ -118,6 +110,61 @@
       "relation": "manyToMany",
       "target": "api::article.article",
       "mappedBy": "stores"
+    },
+    "Favicon": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::category.category",
+      "mappedBy": "store"
+    },
+    "pages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::page.page",
+      "mappedBy": "store"
+    },
+    "URLS": {
+      "displayName": "URLS",
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "common.urls"
+    },
+    "STRIPE_CUSTOMER_ID": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "uuid": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "uid"
     }
   }
 }

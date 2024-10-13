@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_common_payment_attempts",
+  "info": {
+    "displayName": "Payment_attempts",
+    "icon": "scissors"
+  },
+  "options": {},
+  "attributes": {
+    "Timestampt": {
+      "type": "datetime"
+    },
+    "Status": {
+      "type": "enumeration",
+      "enum": [
+        "Succeeded",
+        "Incomplete",
+        "Failed",
+        "Uncaptured",
+        "Canceled",
+        "Refunded"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    }
+  }
+}

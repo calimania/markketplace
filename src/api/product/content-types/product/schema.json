@@ -72,14 +72,6 @@
       },
       "type": "richtext"
     },
-    "seo": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
-      "type": "json"
-    },
     "SKU": {
       "pluginOptions": {
         "i18n": {
@@ -88,20 +80,13 @@
       },
       "type": "string"
     },
-    "pricing_options": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
-      "type": "json"
-    },
     "Thumbnail": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
       "allowedTypes": [
         "images"
       ],
-      "type": "media",
-      "multiple": false,
       "pluginOptions": {
         "i18n": {
           "localized": true
@@ -109,16 +94,57 @@
       }
     },
     "Slides": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
       "allowedTypes": [
         "images"
       ],
-      "type": "media",
-      "multiple": true,
       "pluginOptions": {
         "i18n": {
           "localized": true
         }
       }
+    },
+    "slug": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "uid",
+      "targetField": "Name"
+    },
+    "SEO": {
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "common.seo"
+    },
+    "Tag": {
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "common.tag"
+    },
+    "PRICES": {
+      "displayName": "Prices",
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "common.prices"
     }
   }
 }
