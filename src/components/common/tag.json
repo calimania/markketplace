@@ -1,0 +1,39 @@
+{
+  "collectionName": "components_common_tags",
+  "info": {
+    "displayName": "Tag",
+    "icon": "book"
+  },
+  "options": {},
+  "attributes": {
+    "Label": {
+      "type": "string"
+    },
+    "Color": {
+      "type": "enumeration",
+      "enum": [
+        "Tangerine",
+        "Royal Blue",
+        "Magenta",
+        "Sunset Orange",
+        "Amber",
+        "Sky Blue",
+        "Fuchsia",
+        "Burnt Sienna",
+        "Gold",
+        "Ocean Blue",
+        "Hot Pink",
+        "Teal",
+        "Coral",
+        "Purple",
+        "Spring Green",
+        "Goldenrod",
+        "Indigo",
+        "Pink",
+        "Blue Violet",
+        "Firebrick"
+      ],
+      "default": "Magenta"
+    }
+  }
+}

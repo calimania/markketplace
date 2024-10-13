@@ -4,15 +4,67 @@
   "info": {
     "singularName": "order",
     "pluralName": "orders",
-    "displayName": "Order"
+    "displayName": "Order",
+    "description": ""
   },
   "options": {
     "draftAndPublish": true
   },
   "pluginOptions": {},
   "attributes": {
-    "Item": {
-      "type": "json"
+    "store": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store.store"
+    },
+    "Amount": {
+      "type": "decimal"
+    },
+    "Currency": {
+      "type": "string"
+    },
+    "Status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "complete",
+        "refunded"
+      ]
+    },
+    "STRIPE_PAYMENT_ID": {
+      "type": "string"
+    },
+    "Shipping_Address": {
+      "type": "component",
+      "repeatable": false,
+      "component": "common.links"
+    },
+    "Details": {
+      "displayName": "PRODUCT_SNAPSHOP",
+      "type": "component",
+      "repeatable": true,
+      "component": "common.product-snapshop"
+    },
+    "uuid": {
+      "type": "uid",
+      "required": true
+    },
+    "buyer": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "admin::user"
+    },
+    "Payment_attempts": {
+      "displayName": "Payment_attempts",
+      "type": "component",
+      "repeatable": true,
+      "component": "common.payment-attempts"
+    },
+    "shipments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::shipment.shipment",
+      "mappedBy": "order"
     }
   }
 }

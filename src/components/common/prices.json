@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_common_prices",
+  "info": {
+    "displayName": "Prices",
+    "icon": "music",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "Name": {
+      "type": "string"
+    },
+    "Price": {
+      "type": "decimal"
+    },
+    "STRIPE_ID": {
+      "type": "string"
+    },
+    "Currency": {
+      "type": "string"
+    }
+  }
+}

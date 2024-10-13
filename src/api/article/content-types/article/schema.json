@@ -36,6 +36,22 @@
       "relation": "manyToMany",
       "target": "api::store.store",
       "inversedBy": "articles"
+    },
+    "Tags": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.tag"
+    },
+    "SEO": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.seo"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "articles"
     }
   }
 }
