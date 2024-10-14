@@ -181,6 +181,12 @@
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
       "inversedBy": "stores"
+    },
+    "subscribers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::subscriber.subscriber",
+      "mappedBy": "stores"
     }
   }
 }

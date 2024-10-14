@@ -18,6 +18,20 @@
     },
     "active": {
       "type": "boolean"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "stores": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::store.store",
+      "inversedBy": "subscribers"
+    },
+    "EmailVerified": {
+      "type": "datetime"
     }
   }
 }

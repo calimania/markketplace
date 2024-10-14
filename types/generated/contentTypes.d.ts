@@ -1429,6 +1429,11 @@ export interface ApiStoreStore extends Schema.CollectionType {
       'manyToMany',
       'plugin::users-permissions.user'
     >;
+    subscribers: Attribute.Relation<
+      'api::store.store',
+      'manyToMany',
+      'api::subscriber.subscriber'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1467,6 +1472,17 @@ export interface ApiSubscriberSubscriber extends Schema.CollectionType {
   attributes: {
     Email: Attribute.Email & Attribute.Required;
     active: Attribute.Boolean;
+    users_permissions_user: Attribute.Relation<
+      'api::subscriber.subscriber',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    stores: Attribute.Relation<
+      'api::subscriber.subscriber',
+      'manyToMany',
+      'api::store.store'
+    >;
+    EmailVerified: Attribute.DateTime;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
