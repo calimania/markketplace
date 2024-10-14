@@ -965,6 +965,7 @@ export interface ApiInboxInbox extends Schema.CollectionType {
       'oneToOne',
       'plugin::users-permissions.user'
     >;
+    SEO: Attribute.Component<'common.seo'>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;

@@ -144,7 +144,6 @@ export interface CommonSeo extends Schema.Component {
     metaUrl: Attribute.String;
     metaAuthor: Attribute.String;
     excludeFromSearch: Attribute.Boolean & Attribute.DefaultTo<false>;
-    Cover: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
   };
 }
 
