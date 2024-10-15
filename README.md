@@ -77,6 +77,14 @@ At Markketplace, we prioritize security and privacy. Our platform is built with 
 
 We are excited to welcome new users and collaborators to Markketplace. If you're interested in joining our pilot program or want to learn more about our professional packages, please reach out to us at hola[at]caliman.org.
 
+## Middleware
+
+Route middleware to simplify queries
+
+## Type definitions
+
+Generate type definitions with `npx strapi ts:generate-types`
+
 # 🚀 Getting started with Strapi
 
 Strapi comes with a full featured [Command Line Interface](https://docs.strapi.io/dev-docs/cli) (CLI) which lets you scaffold and manage your project in seconds.
