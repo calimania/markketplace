@@ -12,11 +12,11 @@
     "deploy": "strapi deploy"
   },
   "dependencies": {
-    "@strapi/plugin-cloud": "4.25.1",
-    "@strapi/plugin-i18n": "4.25.1",
-    "@strapi/plugin-users-permissions": "4.25.1",
+    "@strapi/plugin-cloud": "4.25.14",
+    "@strapi/plugin-i18n": "4.25.14",
+    "@strapi/plugin-users-permissions": "4.25.14",
     "@strapi/provider-email-sendgrid": "^5.0.6",
-    "@strapi/strapi": "4.25.1",
+    "@strapi/strapi": "4.25.14",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
     "pg": "^8.12.0",
