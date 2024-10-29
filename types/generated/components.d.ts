@@ -1,17 +1,15 @@
-import type { Schema, Attribute } from '@strapi/strapi';
+import type { Schema, Struct } from '@strapi/strapi';
 
-export interface CommonLinks extends Schema.Component {
+export interface CommonLinks extends Struct.ComponentSchema {
   collectionName: 'components_common_links';
   info: {
+    description: '';
     displayName: 'Address';
     icon: 'earth';
-    description: '';
   };
   attributes: {
-    street: Attribute.String;
-    street_2: Attribute.String;
-    city: Attribute.String;
-    state: Attribute.Enumeration<
+    city: Schema.Attribute.String;
+    state: Schema.Attribute.Enumeration<
       [
         'Alabama',
         'Alaska',
@@ -62,100 +60,100 @@ export interface CommonLinks extends Schema.Component {
         'Washington',
         'West Virginia',
         'Wisconsin',
-        'Wyoming'
+        'Wyoming',
       ]
     >;
-    zipcode: Attribute.String &
-      Attribute.SetMinMaxLength<{
-        minLength: 5;
+    street: Schema.Attribute.String;
+    street_2: Schema.Attribute.String;
+    zipcode: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
         maxLength: 10;
+        minLength: 5;
       }>;
   };
 }
 
-export interface CommonPaymentAttempts extends Schema.Component {
+export interface CommonPaymentAttempts extends Struct.ComponentSchema {
   collectionName: 'components_common_payment_attempts';
   info: {
     displayName: 'Payment_attempts';
     icon: 'scissors';
   };
   attributes: {
-    Timestampt: Attribute.DateTime;
-    Status: Attribute.Enumeration<
+    reason: Schema.Attribute.String;
+    Status: Schema.Attribute.Enumeration<
       [
         'Succeeded',
         'Incomplete',
         'Failed',
         'Uncaptured',
         'Canceled',
-        'Refunded'
+        'Refunded',
       ]
     >;
-    reason: Attribute.String;
+    Timestampt: Schema.Attribute.DateTime;
   };
 }
 
-export interface CommonPrices extends Schema.Component {
+export interface CommonPrices extends Struct.ComponentSchema {
   collectionName: 'components_common_prices';
   info: {
+    description: '';
     displayName: 'Prices';
     icon: 'music';
-    description: '';
   };
   attributes: {
-    Name: Attribute.String;
-    Price: Attribute.Decimal;
-    STRIPE_ID: Attribute.String;
-    Currency: Attribute.String;
+    Currency: Schema.Attribute.String;
+    Name: Schema.Attribute.String;
+    Price: Schema.Attribute.Decimal;
+    STRIPE_ID: Schema.Attribute.String;
   };
 }
 
-export interface CommonProductSnapshop extends Schema.Component {
+export interface CommonProductSnapshop extends Struct.ComponentSchema {
   collectionName: 'components_common_product_snapshops';
   info: {
     displayName: 'PRODUCT_SNAPSHOP';
     icon: 'clock';
   };
   attributes: {
-    Name: Attribute.String;
-    product: Attribute.Relation<
-      'common.product-snapshop',
-      'oneToOne',
-      'api::product.product'
-    >;
-    Quantity: Attribute.Integer;
-    Price: Attribute.Decimal;
-    Short_description: Attribute.String;
+    Name: Schema.Attribute.String;
+    Price: Schema.Attribute.Decimal;
+    product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
+    Quantity: Schema.Attribute.Integer;
+    Short_description: Schema.Attribute.String;
   };
 }
 
-export interface CommonSeo extends Schema.Component {
+export interface CommonSeo extends Struct.ComponentSchema {
   collectionName: 'components_common_seos';
   info: {
+    description: '';
     displayName: 'SEO';
     icon: 'restaurant';
-    description: '';
   };
   attributes: {
-    metaTitle: Attribute.String;
-    metaDescription: Attribute.String;
-    metaKeywords: Attribute.String;
-    socialImage: Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
-    metaUrl: Attribute.String;
-    metaAuthor: Attribute.String;
-    excludeFromSearch: Attribute.Boolean & Attribute.DefaultTo<false>;
+    excludeFromSearch: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    metaAuthor: Schema.Attribute.String;
+    metaDescription: Schema.Attribute.String;
+    metaKeywords: Schema.Attribute.String;
+    metaTitle: Schema.Attribute.String;
+    metaUrl: Schema.Attribute.String;
+    socialImage: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios'
+    >;
   };
 }
 
-export interface CommonTag extends Schema.Component {
+export interface CommonTag extends Struct.ComponentSchema {
   collectionName: 'components_common_tags';
   info: {
     displayName: 'Tag';
     icon: 'book';
   };
   attributes: {
-    Label: Attribute.String;
-    Color: Attribute.Enumeration<
+    Color: Schema.Attribute.Enumeration<
       [
         'Tangerine',
         'Royal Blue',
@@ -176,29 +174,30 @@ export interface CommonTag extends Schema.Component {
         'Indigo',
         'Pink',
         'Blue Violet',
-        'Firebrick'
+        'Firebrick',
       ]
     > &
-      Attribute.DefaultTo<'Magenta'>;
+      Schema.Attribute.DefaultTo<'Magenta'>;
+    Label: Schema.Attribute.String;
   };
 }
 
-export interface CommonUrls extends Schema.Component {
+export interface CommonUrls extends Struct.ComponentSchema {
   collectionName: 'components_common_urls';
   info: {
+    description: '';
     displayName: 'URLS';
     icon: 'scissors';
-    description: '';
   };
   attributes: {
-    Label: Attribute.String;
-    URL: Attribute.String;
+    Label: Schema.Attribute.String;
+    URL: Schema.Attribute.String;
   };
 }
 
-declare module '@strapi/types' {
-  export module Shared {
-    export interface Components {
+declare module '@strapi/strapi' {
+  export module Public {
+    export interface ComponentSchemas {
       'common.links': CommonLinks;
       'common.payment-attempts': CommonPaymentAttempts;
       'common.prices': CommonPrices;
