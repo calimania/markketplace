@@ -866,7 +866,7 @@ export interface ApiCategoryCategory extends Schema.CollectionType {
       'api::store.store'
     >;
     Name: Attribute.String & Attribute.Required;
-    slug: Attribute.String & Attribute.Required & Attribute.Unique;
+    slug: Attribute.String & Attribute.Required;
     SEO: Attribute.Component<'common.seo'>;
     Description: Attribute.String;
     Active: Attribute.Boolean & Attribute.DefaultTo<true>;
