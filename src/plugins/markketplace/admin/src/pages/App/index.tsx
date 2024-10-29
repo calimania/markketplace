@@ -8,9 +8,9 @@
  * to perform additioal custom actions for their business.
  */
 import { Switch, Route } from 'react-router-dom';
-import { AnErrorOccurred } from '@strapi/helper-plugin';
 import pluginId from '../../pluginId';
 import HomePage from '../HomePage';
+import { Page } from "@strapi/strapi/admin";
 
 const App = () => {
   return (

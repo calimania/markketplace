@@ -12,20 +12,19 @@
     "deploy": "strapi deploy"
   },
   "dependencies": {
-    "@strapi/plugin-cloud": "4.25.14",
-    "@strapi/plugin-i18n": "4.25.14",
-    "@strapi/plugin-users-permissions": "4.25.14",
+    "@strapi/plugin-cloud": "5.1.1",
+    "@strapi/plugin-users-permissions": "5.1.1",
     "@strapi/provider-email-sendgrid": "^5.0.6",
-    "@strapi/strapi": "4.25.14",
+    "@strapi/strapi": "5.1.1",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
     "pg": "^8.12.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "react-router-dom": "5.3.4",
+    "react-router-dom": "^6.0.0",
     "strapi-provider-upload-do": "^3.6.9",
     "stripe": "^16.1.0",
-    "styled-components": "5.3.3"
+    "styled-components": "^6.0.0"
   },
   "author": {
     "name": "calimania"
