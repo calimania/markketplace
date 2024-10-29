@@ -3,6 +3,9 @@ export default ({ env }) => ({
     enabled: true,
     resolve: './src/plugins/markketplace'
   },
+  'get-strapi-schema': {
+    enabled: true,
+  },
   upload: {
     config: {
       provider: "strapi-provider-upload-do",
