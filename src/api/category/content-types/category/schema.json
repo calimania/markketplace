@@ -30,7 +30,7 @@
     },
     "slug": {
       "type": "string",
-      "unique": true,
+      "unique": false,
       "required": true
     },
     "SEO": {

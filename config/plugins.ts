@@ -1,7 +1,11 @@
 export default ({ env }) => ({
-  'markketplace': {
+  // Development is currently done in this repo and can be abstracted into plugins for easier sharing
+  // 'markketplace': {
+  //   enabled: true,
+  //   resolve: './src/plugins/markketplace'
+  // },
+  'get-strapi-schema': {
     enabled: true,
-    resolve: './src/plugins/markketplace'
   },
   upload: {
     config: {
