@@ -19,7 +19,6 @@
     "@strapi/strapi": "4.25.1",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
-    "get-strapi-schema": "^0.0.3",
     "pg": "^8.12.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
