@@ -59,7 +59,7 @@
         }
       },
       "type": "string",
-      "unique": true,
+      "unique": false,
       "required": true,
       "maxLength": 40
     },
