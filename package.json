@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "description": "A Marketplace built with strapi",
   "scripts": {
+    "dev": "strapi develop",
     "develop": "strapi develop",
     "start": "strapi start",
     "build:plugin": "echo 'skipping plugin npm run build --prefix src/plugins/markketplace'",
