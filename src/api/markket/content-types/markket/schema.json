@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "markkets",
+  "info": {
+    "singularName": "markket",
+    "pluralName": "markkets",
+    "displayName": "markket",
+    "description": "Instance of a markket - usage records"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Key": {
+      "type": "string",
+      "required": true
+    },
+    "Content": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "SEO": {
+      "type": "component",
+      "repeatable": false,
+      "component": "common.seo"
+    }
+  }
+}
