@@ -13,5 +13,14 @@ module.exports = {
         middlewares: [],
       },
     },
+    {
+      method: 'POST',
+      path: '/markket',
+      handler: 'markket.create',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    }
   ],
 };

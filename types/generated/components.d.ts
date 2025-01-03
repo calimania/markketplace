@@ -137,6 +137,7 @@ export interface CommonSeo extends Struct.ComponentSchema {
     excludeFromSearch: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
     metaAuthor: Schema.Attribute.String;
+    metaDate: Schema.Attribute.DateTime;
     metaDescription: Schema.Attribute.String;
     metaKeywords: Schema.Attribute.String;
     metaTitle: Schema.Attribute.String;

@@ -4,7 +4,7 @@
   "info": {
     "singularName": "markket",
     "pluralName": "markkets",
-    "displayName": "markket",
+    "displayName": "Markket",
     "description": "Instance of a markket - usage records"
   },
   "options": {
@@ -17,17 +17,12 @@
       "required": true
     },
     "Content": {
+      "type": "json",
+      "required": true
+    },
+    "user_key_or_id": {
       "type": "string",
-      "required": true
-    },
-    "email": {
-      "type": "email",
-      "required": true
-    },
-    "SEO": {
-      "type": "component",
-      "repeatable": false,
-      "component": "common.seo"
+      "required": false
     }
   }
 }

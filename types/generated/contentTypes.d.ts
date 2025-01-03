@@ -520,7 +520,7 @@ export interface ApiMarkketMarkket extends Struct.CollectionTypeSchema {
   collectionName: 'markkets';
   info: {
     description: 'Instance of a markket - usage records';
-    displayName: 'markket';
+    displayName: 'Markket';
     pluralName: 'markkets';
     singularName: 'markket';
   };
@@ -528,11 +528,10 @@ export interface ApiMarkketMarkket extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
-    Content: Schema.Attribute.String & Schema.Attribute.Required;
+    Content: Schema.Attribute.JSON & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    email: Schema.Attribute.Email & Schema.Attribute.Required;
     Key: Schema.Attribute.String & Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -541,10 +540,10 @@ export interface ApiMarkketMarkket extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
-    SEO: Schema.Attribute.Component<'common.seo', false>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    user_key_or_id: Schema.Attribute.String;
   };
 }
 
