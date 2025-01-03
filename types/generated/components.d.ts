@@ -104,6 +104,7 @@ export interface CommonPrices extends Struct.ComponentSchema {
   };
   attributes: {
     Currency: Schema.Attribute.String;
+    Description: Schema.Attribute.Text;
     Name: Schema.Attribute.String;
     Price: Schema.Attribute.Decimal;
     STRIPE_ID: Schema.Attribute.String;

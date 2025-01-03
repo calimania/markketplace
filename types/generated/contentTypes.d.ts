@@ -653,6 +653,12 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+    amountSold: Schema.Attribute.Integer &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     attributes: Schema.Attribute.RichText &
       Schema.Attribute.SetPluginOptions<{
         i18n: {

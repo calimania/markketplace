@@ -1,18 +1,15 @@
- Markketplace
+ ## Markketplace
 
-![markketplace logo](https://github.com/calimania/markketplace/assets/1588753/e25b8673-69b3-4559-964c-922c7939acdf)
+![markketplace logo](https://markketplace.nyc3.digitaloceanspaces.com/uploads/1a82697eaeeb5b376d6983f452d1bf3d.png)
 
-Welcome to Markketplace, a cutting-edge project built on top of Strapi, designed to revolutionize the way marketplaces are created and deployed.
+Welcome to Markket.place, a community to support businesses online & AFK.
 
-Our platform offers a suite of marketplace components that are not only easy to deploy but also scalable to meet the needs of any community.
+This repo offers database structure & the admin dashboard for a server instance
 
-Whether you're starting from our store or planning to grow into your own instances, Markketplace is here to support your journey.
-
-Create your own templates and storefronts to extend functionality and develop functionality unique to your needs.
+Easy to use REST APIs, compatible with multiple free templates & hosting services
 
 ## Getting Started
 
-To get started with Markketplace, follow these simple steps:
 
 1. **Clone the repository:**
 
@@ -38,7 +35,9 @@ It will move into our website and online documentation.
 
 [./docs](./docs/)
 
-Announcement in our [Blog Post](https://caliman.org/2024/markketplace/)
+Announcement in our [Blog](https://www.markket. place/blog/2024-what-is-markketplace)
+
+[markket.place](https://markket.place)
 
 ## Install dependencies:
 
@@ -86,9 +85,9 @@ Strapi comes with a full featured [Command Line Interface](https://docs.strapi.i
 Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-develop)
 
 ```
-npm run develop
-# or
 yarn develop
+# or
+npm run develop
 ```
 
 ### `start`

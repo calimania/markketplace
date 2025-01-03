@@ -56,6 +56,14 @@
       },
       "type": "integer"
     },
+    "amountSold": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "integer"
+    },
     "active": {
       "pluginOptions": {
         "i18n": {

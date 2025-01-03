@@ -1,8 +1,8 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.1.0",
-  "description": "A Marketplace built with strapi",
+  "version": "0.1.8",
+  "description": "A Markket.place powered by strapi",
   "scripts": {
     "dev": "strapi develop",
     "develop": "strapi develop",
@@ -13,10 +13,10 @@
     "deploy": "strapi deploy"
   },
   "dependencies": {
-    "@strapi/plugin-cloud": "5.5.0",
-    "@strapi/plugin-users-permissions": "5.5.0",
+    "@strapi/plugin-cloud": "5.6.0",
+    "@strapi/plugin-users-permissions": "5.6.0",
     "@strapi/provider-email-sendgrid": "^5.0.6",
-    "@strapi/strapi": "5.5.0",
+    "@strapi/strapi": "5.6.0",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
     "get-strapi-schema": "^0.0.3",
@@ -38,5 +38,5 @@
     "node": ">=18.0.0 <=20.x.x",
     "npm": ">=6.0.0"
   },
-  "license": "TSL"
+  "license": "SEE LICENSE IN LICENSE"
 }
