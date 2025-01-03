@@ -30,6 +30,9 @@
     "metaUrl": {
       "type": "string"
     },
+    "metaDate": {
+      "type": "datetime"
+    },
     "metaAuthor": {
       "type": "string"
     },

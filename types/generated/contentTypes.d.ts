@@ -516,6 +516,37 @@ export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiMarkketMarkket extends Struct.CollectionTypeSchema {
+  collectionName: 'markkets';
+  info: {
+    description: 'Instance of a markket - usage records';
+    displayName: 'Markket';
+    pluralName: 'markkets';
+    singularName: 'markket';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    Content: Schema.Attribute.JSON & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    Key: Schema.Attribute.String & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::markket.markket'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user_key_or_id: Schema.Attribute.String;
+  };
+}
+
 export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   collectionName: 'orders';
   info: {
@@ -1473,6 +1504,7 @@ declare module '@strapi/strapi' {
       'api::category.category': ApiCategoryCategory;
       'api::extension.extension': ApiExtensionExtension;
       'api::inbox.inbox': ApiInboxInbox;
+      'api::markket.markket': ApiMarkketMarkket;
       'api::order.order': ApiOrderOrder;
       'api::page.page': ApiPagePage;
       'api::product.product': ApiProductProduct;
