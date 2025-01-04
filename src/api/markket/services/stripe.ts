@@ -9,7 +9,7 @@ const stripeTest = require('stripe')(STRIPE_SECRET_TEST_KEY);
  * @param prices
  * @returns
  */
-export const createPaymentLinkWithPriceIds = async (prices: { id: string, quantity: number }[]) => {
+export const createPaymentLinkWithPriceIds = async (prices: { id: string, quantity: number }[], include_shipping?: boolean) => {
   const line_items = [];
   const custom_price: any = prices.find((price: any) => price.product);
   const set_price: any = prices.find((price: any) => price.price);
@@ -44,7 +44,7 @@ export const createPaymentLinkWithPriceIds = async (prices: { id: string, quanti
 
   console.log('create.stripe.payment.link', { line_items });
 
-  const paymentLink = await stripeTest.paymentLinks.create({
+  const stripe_options = {
     line_items: line_items.splice(0, 20) || [],
     after_completion: {
       type: 'redirect',
@@ -52,16 +52,21 @@ export const createPaymentLinkWithPriceIds = async (prices: { id: string, quanti
         url: 'https://markket.place/receipt?session_id={CHECKOUT_SESSION_ID}',
       },
     },
-    // @TODO: toggle asking for address
-    shipping_address_collection: {
-      allowed_countries: ['US'],
-    },
     // @TODO: toggle automatic payouts & charging on behalf of connected account
     // on_behalf_of: 'connected_acct_id',
     // transfer_data: {
     //   destination: 'connected_acct_id',
     // },
-  });
+  };
+
+  if (include_shipping) {
+    // @ts-expect-error
+    stripe_options.shipping_address_collection = {
+      allowed_countries: ['US'],
+    };
+  }
+
+  const paymentLink = await stripeTest.paymentLinks.create(stripe_options);
 
   return paymentLink;
 };

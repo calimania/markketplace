@@ -34,7 +34,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
 
     let link = null;
     if (body?.action === 'stripe.link') {
-      link = await createPaymentLinkWithPriceIds(body?.prices || []);
+      link = await createPaymentLinkWithPriceIds(body?.prices || [], true);
       message = 'stripe link created';
     }
 
