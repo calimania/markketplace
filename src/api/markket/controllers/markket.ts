@@ -5,7 +5,7 @@ import { version } from '../../../../package.json';
 const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
 
-import { createPaymentLinkWithPriceIds } from '../services/stripe';
+import { createPaymentLinkWithPriceIds, getSessionById } from '../services/stripe';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
@@ -26,8 +26,10 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     });
   },
   async create(ctx: any) {
-    const body = JSON.parse(ctx.request.body);
-    let message = 'action completed';
+    console.info('markket.create');
+    const body = ctx.request?.body || {};
+    let message = 'action started';
+
     console.log(`markket.create:${body.action}`, { body });
 
     let link = null;
@@ -36,21 +38,37 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       message = 'stripe link created';
     }
 
-    if (body?.action === 'stripe.webhook') {
-      // @TODO Store transaction record & send pertinent notifications
+    if (body?.action === 'stripe.receipt' && body?.session_id) {
+      link = await getSessionById(body?.session_id);
+      message = 'stripe session retrieved';
     }
 
-    // Storing record of transaction
+    if (body?.action === 'stripe.webhook') {
+      // @TODO Store transaction record & send pertinent notifications
+      // await strapi.plugins['email'].services.email.send({
+      //   to: 'valid email address',
+      //   from: 'your verified email address', //e.g. single sender verification in SendGrid
+      //   cc: 'valid email address',
+      //   bcc: 'valid email address',
+      //   replyTo: 'valid email address',
+      //   subject: 'The Strapi Email plugin worked successfully',
+      //   text: 'Hello world!',
+      //   html: 'Hello world!',
+      // });
+    }
+
+    // Create a markket transaction record
     await strapi.service(modelId).create({
       locale: 'en',
       data: {
         Key: `markket.create.${body?.action || 'default'}`,
         Content: {
-          link,
-          produt: body?.product,
+          link: link || '',
+          product: body?.product,
           total: body?.total,
         },
-        user_key_or_id: "", // @TODO: Review authorization, token or related user
+        // @TODO: Review authorization, token or related user
+        user_key_or_id: "",
       }
     });
 
@@ -58,7 +76,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       message: `action ${body?.action} completed`,
       data: {
         info: message,
-        link,
+        link: link || '',
       },
     });
   },
