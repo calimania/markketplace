@@ -39,19 +39,27 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     console.log(`markket.create:${body.action || 'default'}`);
 
     if (body?.action === 'stripe.link') {
-      link = await createPaymentLinkWithPriceIds(body?.prices || [], !!body?.includes_shipping, !!body?.stripe_test);
+      const response = await createPaymentLinkWithPriceIds(body?.prices || [], !!body?.includes_shipping, !!body?.stripe_test);
+      link = {
+        response,
+        body,
+      };
       message = 'stripe link created';
     }
 
     if (body?.action === 'stripe.receipt' && body?.session_id) {
-      link = await getSessionById(body?.session_id, body?.session_id?.includes('cs_test'));
+      const response = await getSessionById(body?.session_id, body?.session_id?.includes('cs_test'));
+      link = {
+        response,
+        body,
+      };
       message = 'stripe session retrieved';
     }
 
     if (body?.action == 'stripe:checkout.session.completed') {
       // @TODO: Created Order record
-      const sendEmail = await sendOrderNotification({ strapi, order: body });
-      link = { body, sendEmail };
+      const response = await sendOrderNotification({ strapi, order: body });
+      link = { body, response };
     }
 
     // Create a markket transaction record
