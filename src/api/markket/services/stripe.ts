@@ -1,7 +1,7 @@
-// const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_SECRET_TEST_KEY = process.env.STRIPE_SECRET_TEST_KEY;
 
-// const stripe = require('stripe')(STRIPE_SECRET_KEY);
+const stripe = require('stripe')(STRIPE_SECRET_KEY);
 const stripeTest = require('stripe')(STRIPE_SECRET_TEST_KEY);
 
 /**
@@ -9,13 +9,15 @@ const stripeTest = require('stripe')(STRIPE_SECRET_TEST_KEY);
  * @param prices
  * @returns
  */
-export const createPaymentLinkWithPriceIds = async (prices: { id: string, quantity: number }[], include_shipping?: boolean) => {
+export const createPaymentLinkWithPriceIds = async (prices: { id: string, quantity: number }[], include_shipping: boolean, stripe_test: boolean) => {
   const line_items = [];
   const custom_price: any = prices.find((price: any) => price.product);
   const set_price: any = prices.find((price: any) => price.price);
 
+  const client = stripe_test ? stripeTest : stripe;
+
   if (custom_price?.product) {
-    const new_price = await stripeTest.prices.create({
+    const new_price = await client.prices.create({
       currency: 'usd',
       unit_amount: (custom_price?.unit_amount * 100) || 0,
       product: custom_price?.product,
@@ -66,28 +68,22 @@ export const createPaymentLinkWithPriceIds = async (prices: { id: string, quanti
     };
   }
 
-  const paymentLink = await stripeTest.paymentLinks.create(stripe_options);
+  const paymentLink = await client.paymentLinks.create(stripe_options);
 
   return paymentLink;
 };
 
 
-export const getSessionById = async (session_id: string) => {
+export const getSessionById = async (session_id: string, stripe_test) => {
   if (!session_id) {
     return null;
   }
 
-  let session;
-  console.log('session.receipt', { session_id });
-  if (session_id.includes('cs_test')) {
-    session = await stripeTest.checkout.sessions.retrieve(
-      session_id,
-    );
-  } else {
-    // session = await stripe.checkout.sessions.retrieve(
-    //   session_id,
-    // );
-  }
+  const client = stripe_test ? stripeTest : stripe;
+
+  const session = await client.checkout.sessions.retrieve(
+    session_id,
+  );
 
   return session;
 };

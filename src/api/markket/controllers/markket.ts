@@ -31,6 +31,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     const body = ctx.request?.body || {};
     let message = 'action started';
     let link = body;
+
     if (body?.id?.startsWith('evt_')) {
       body.action = `stripe:${body.type}`;
     }
@@ -38,12 +39,12 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     console.log(`markket.create:${body.action || 'default'}`);
 
     if (body?.action === 'stripe.link') {
-      link = await createPaymentLinkWithPriceIds(body?.prices || [], true);
+      link = await createPaymentLinkWithPriceIds(body?.prices || [], !!body?.includes_shipping, !!body?.stripe_test);
       message = 'stripe link created';
     }
 
     if (body?.action === 'stripe.receipt' && body?.session_id) {
-      link = await getSessionById(body?.session_id);
+      link = await getSessionById(body?.session_id, body?.session_id?.includes('cs_test'));
       message = 'stripe session retrieved';
     }
 
