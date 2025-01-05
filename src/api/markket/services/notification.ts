@@ -2,12 +2,11 @@ const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || '';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 
 const OrderNotificationHTml = (order: any) => {
-
+  // <p>Order Amount: ${((order?.data?.object?.total_amount || 0) / 100)}</p>
   return `
     <h1>Order Confirmation</h1>
     <p>Thank you for your order!</p>
     <p>Order ID: ${order?.data?.object?.id}</p>
-    <p>Order Amount: ${((order?.data?.object?.total_amount || 0) / 100)}</p>
     <p>
       <a href="https://markket.place/receipt?session_id=${order?.data?.object?.id}">
         View Receipt
