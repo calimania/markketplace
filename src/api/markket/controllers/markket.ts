@@ -6,6 +6,7 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
 
 import { createPaymentLinkWithPriceIds, getSessionById } from '../services/stripe';
+import { sendOrderNotification } from '../services/notification';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
@@ -29,10 +30,13 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     console.info('markket.create');
     const body = ctx.request?.body || {};
     let message = 'action started';
+    let link = body;
+    if (body?.id?.startsWith('evt_')) {
+      body.action = `stripe:${body.type}`;
+    }
 
-    console.log(`markket.create:${body.action}`, { body });
+    console.log(`markket.create:${body.action || 'default'}`);
 
-    let link = null;
     if (body?.action === 'stripe.link') {
       link = await createPaymentLinkWithPriceIds(body?.prices || [], true);
       message = 'stripe link created';
@@ -43,18 +47,10 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       message = 'stripe session retrieved';
     }
 
-    if (body?.action === 'stripe.webhook') {
-      // @TODO Store transaction record & send pertinent notifications
-      // await strapi.plugins['email'].services.email.send({
-      //   to: 'valid email address',
-      //   from: 'your verified email address', //e.g. single sender verification in SendGrid
-      //   cc: 'valid email address',
-      //   bcc: 'valid email address',
-      //   replyTo: 'valid email address',
-      //   subject: 'The Strapi Email plugin worked successfully',
-      //   text: 'Hello world!',
-      //   html: 'Hello world!',
-      // });
+    if (body?.action == 'stripe:checkout.session.completed') {
+      // @TODO: Created Order record
+      const sendEmail = await sendOrderNotification({ strapi, order: body });
+      link = { body, sendEmail };
     }
 
     // Create a markket transaction record
