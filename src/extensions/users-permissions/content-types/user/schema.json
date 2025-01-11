@@ -73,6 +73,12 @@
       "relation": "manyToMany",
       "target": "api::store.store",
       "mappedBy": "users"
+    },
+    "rsvps": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::rsvp.rsvp",
+      "mappedBy": "users"
     }
   }
 }
