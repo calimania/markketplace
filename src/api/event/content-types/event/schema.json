@@ -29,7 +29,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::store.store",
-      "inversedBy": "products"
+      "inversedBy": "events"
     },
     "usd_price": {
       "pluginOptions": {
