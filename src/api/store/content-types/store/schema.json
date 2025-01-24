@@ -55,6 +55,12 @@
       "target": "api::product.product",
       "mappedBy": "stores"
     },
+    "events": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::event.event",
+      "mappedBy": "stores"
+    },
     "Description": {
       "pluginOptions": {
         "i18n": {
