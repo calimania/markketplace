@@ -60,9 +60,12 @@ Copy the .env.template file to a new file named .env and fill in your environmen
 
 ## Start the development server:
 
+```bash
+
+turbo dev
 ```
-docker-compose up -d local-server
-```
+
+Visit in [localhost:1337](http://localhost:1337)
 
 ## Grow With Us
 

@@ -399,6 +399,7 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
     SEO: Schema.Attribute.Component<'common.seo', false>;
+    slug: Schema.Attribute.String;
     store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     Tags: Schema.Attribute.Component<'common.tag', true>;
     Title: Schema.Attribute.String;
