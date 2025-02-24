@@ -31,6 +31,10 @@
         "images"
       ]
     },
+    "slug": {
+      "type": "string",
+      "unique": false
+    },
     "store": {
       "type": "relation",
       "relation": "manyToOne",
