@@ -79,6 +79,25 @@
       "relation": "oneToMany",
       "target": "api::rsvp.rsvp",
       "mappedBy": "users"
+    },
+    "bio": {
+      "type": "text",
+      "maxLength": 500,
+      "configurable": false
+    },
+    "avatar": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ],
+      "configurable": false
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 2,
+      "configurable": false
     }
   }
 }
