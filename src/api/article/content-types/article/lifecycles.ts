@@ -3,7 +3,8 @@ const slugify = (str: string) => {
     .toLowerCase()
     .trim()
     .replace(/ /g, '-')
-    .replace(/[^\w-]+/g, '');
+    .replace(/[^\w-]+/g, '')
+    .replace(/-+/g, '-');
 };
 
 const formatDate = (date: Date) => {
