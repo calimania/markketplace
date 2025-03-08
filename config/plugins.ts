@@ -9,6 +9,7 @@ export default ({ env }) => ({
   },
   upload: {
     config: {
+      sizeLimit: 4.2 * 1024 * 1024, // 4.20mb in bytes
       provider: "strapi-provider-upload-do",
       providerOptions: {
         key: env('DO_SPACE_ACCESS_KEY'),
