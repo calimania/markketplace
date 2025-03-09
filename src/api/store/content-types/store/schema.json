@@ -85,6 +85,19 @@
         }
       }
     },
+    "Cover": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ],
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
     "Slides": {
       "type": "media",
       "multiple": true,

@@ -1033,6 +1033,12 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::category.category'
     >;
+    Cover: Schema.Attribute.Media<'images'> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
