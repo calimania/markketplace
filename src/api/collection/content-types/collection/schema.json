@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "collections",
+  "info": {
+    "singularName": "collection",
+    "pluralName": "collections",
+    "displayName": "Collection",
+    "description": "Curated collections of items for easy galleries"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "slug": {
+      "type": "string",
+      "targetField": "title",
+      "required": true
+    },
+    "description": {
+      "type": "richtext",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "cover": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": ["images"],
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "SEO": {
+      "type": "component",
+      "repeatable": false,
+      "component": "common.seo",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "items": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::collection-item.collection-item",
+      "inversedBy": "collections"
+    },
+    "pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::page.page",
+      "inversedBy": "collections"
+    }
+  }
+}
