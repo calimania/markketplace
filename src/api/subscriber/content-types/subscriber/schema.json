@@ -27,8 +27,7 @@
     "stores": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::store.store",
-      "inversedBy": "subscribers"
+      "target": "api::store.store"
     },
     "EmailVerified": {
       "type": "datetime"

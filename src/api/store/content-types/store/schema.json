@@ -49,18 +49,6 @@
       "relation": "oneToMany",
       "target": "admin::user"
     },
-    "products": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::product.product",
-      "mappedBy": "stores"
-    },
-    "events": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::event.event",
-      "mappedBy": "stores"
-    },
     "Description": {
       "pluginOptions": {
         "i18n": {
@@ -140,19 +128,6 @@
         }
       }
     },
-    "categories": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::category.category",
-      "mappedBy": "store"
-    },
-    "pages": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::page.page",
-      "label": "Pages",
-      "mappedBy": "store"
-    },
     "URLS": {
       "displayName": "URLS",
       "type": "component",
@@ -190,23 +165,11 @@
       },
       "component": "common.seo"
     },
-    "articles": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::article.article",
-      "mappedBy": "store"
-    },
     "users": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
       "inversedBy": "stores"
-    },
-    "subscribers": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::subscriber.subscriber",
-      "mappedBy": "stores"
     }
   }
 }
