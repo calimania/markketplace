@@ -201,11 +201,11 @@
       "target": "plugin::users-permissions.user",
       "inversedBy": "stores"
     },
-    "collections": {
+    "store_collections": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::collection.collection",
-      "mappedBy": "store"
+      "mappedBy": "page_store"
     },
     "subscribers": {
       "type": "relation",
