@@ -29,6 +29,12 @@
       "relation": "manyToMany",
       "target": "api::page.page",
       "label": "Pages"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store",
+      "inversedBy": "albums"
     }
   }
 }

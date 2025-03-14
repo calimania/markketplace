@@ -392,6 +392,7 @@ export interface ApiAlbumAlbum extends Struct.CollectionTypeSchema {
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::album.album'>;
     pages: Schema.Attribute.Relation<'manyToMany', 'api::page.page'>;
     publishedAt: Schema.Attribute.DateTime;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     title: Schema.Attribute.String;
     tracks: Schema.Attribute.Relation<'manyToMany', 'api::album.track'>;
     updatedAt: Schema.Attribute.DateTime;
@@ -1095,6 +1096,7 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
         };
       }>;
     admin_users: Schema.Attribute.Relation<'oneToMany', 'admin::user'>;
+    albums: Schema.Attribute.Relation<'oneToMany', 'api::album.album'>;
     articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
     categories: Schema.Attribute.Relation<
       'oneToMany',

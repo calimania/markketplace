@@ -150,6 +150,14 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::page.page",
+      "label": "Pages",
+      "mappedBy": "store"
+    },
+    "albums": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::album.album",
+      "label": "Albums",
       "mappedBy": "store"
     },
     "URLS": {
