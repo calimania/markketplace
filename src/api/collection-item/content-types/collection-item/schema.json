@@ -72,7 +72,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::collection.collection",
-      "mappedBy": "items"
+      "inversedBy": "items"
     }
   }
 }

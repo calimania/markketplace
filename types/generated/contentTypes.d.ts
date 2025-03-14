@@ -548,7 +548,7 @@ export interface ApiCollectionCollection extends Struct.CollectionTypeSchema {
     displayType: Schema.Attribute.Enumeration<['grid', 'list', 'carousel']> &
       Schema.Attribute.DefaultTo<'grid'>;
     items: Schema.Attribute.Relation<
-      'manyToOne',
+      'manyToMany',
       'api::collection-item.collection-item'
     >;
     locale: Schema.Attribute.String;
