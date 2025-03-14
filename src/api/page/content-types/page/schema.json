@@ -47,10 +47,10 @@
       "target": "api::store.store",
       "inversedBy": "pages"
     },
-    "lists": {
+    "galleries": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::list.list",
+      "target": "api::gallery.gallery",
       "inversedBy": "pages"
     },
     "creator": {

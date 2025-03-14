@@ -1,10 +1,10 @@
 {
   "kind": "collectionType",
-  "collectionName": "lists",
+  "collectionName": "galleries",
   "info": {
-    "singularName": "list",
-    "pluralName": "lists",
-    "displayName": "List",
+    "singularName": "gallery",
+    "pluralName": "galleries",
+    "displayName": "Galleries",
     "description": "Curated lists of items for easy galleries"
   },
   "options": {
@@ -64,7 +64,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::store.store",
-      "inversedBy": "lists"
+      "inversedBy": "galleries"
     },
     "displayType": {
       "type": "enumeration",
@@ -78,14 +78,14 @@
     "items": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::list.list-item",
-      "inversedBy": "lists"
+      "target": "api::gallery.item",
+      "inversedBy": "galleries"
     },
     "pages": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::page.page",
-      "inversedBy": "lists"
+      "inversedBy": "galleries"
     }
   }
 }
