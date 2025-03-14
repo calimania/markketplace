@@ -545,8 +545,10 @@ export interface ApiCollectionCollection extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+    displayType: Schema.Attribute.Enumeration<['grid', 'list', 'carousel']> &
+      Schema.Attribute.DefaultTo<'grid'>;
     items: Schema.Attribute.Relation<
-      'manyToMany',
+      'manyToOne',
       'api::collection-item.collection-item'
     >;
     locale: Schema.Attribute.String;
@@ -563,6 +565,7 @@ export interface ApiCollectionCollection extends Struct.CollectionTypeSchema {
         };
       }>;
     slug: Schema.Attribute.String & Schema.Attribute.Required;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetPluginOptions<{
@@ -1168,6 +1171,10 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
     categories: Schema.Attribute.Relation<
       'oneToMany',
       'api::category.category'
+    >;
+    collections: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::collection.collection'
     >;
     Cover: Schema.Attribute.Media<'images'> &
       Schema.Attribute.SetPluginOptions<{
