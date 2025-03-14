@@ -15,8 +15,33 @@
     }
   },
   "attributes": {
-    "title": {
+    "slug": {
       "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "description": {
+      "type": "blocks",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "SEO": {
+      "type": "component",
+      "component": "common.seo"
+    },
+    "cover": {
+      "type": "media",
+      "multiple": false
     },
     "tracks": {
       "type": "relation",

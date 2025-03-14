@@ -37,7 +37,21 @@
 //     if (!user) {
 //       throw new Error('User not authenticated');
 //     }
+// in strapi v5 we must use the documents api instead of the entityService
+// strapi.documents.use((ctx, next) => {
+//   if (ctx.uid !== "api::my-content-type.my-content-type") {
+//     return next();
+//   }
 
+//   if (ctx.action === 'findOne') {
+//     // customization
+//     ctx.params.filters = { ...params.filters, deletedAt: { $notNull: true } }
+//     const res = await next();
+//     // do something with the response if you want
+//     return res;
+//   }
+//   return next();
+// });
 //     try {
 //       // Check store count
 //       const { count: userStores } = await strapi.entityService.count(MODEL_ID, {
