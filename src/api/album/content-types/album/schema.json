@@ -58,8 +58,7 @@
     "store": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::store.store",
-      "inversedBy": "albums"
+      "target": "api::store.store"
     }
   }
 }
