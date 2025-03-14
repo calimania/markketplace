@@ -1181,7 +1181,7 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    lists: Schema.Attribute.Relation<'manyToOne', 'api::list.list'>;
+    lists: Schema.Attribute.Relation<'oneToMany', 'api::list.list'>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::store.store'>;
     Logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &

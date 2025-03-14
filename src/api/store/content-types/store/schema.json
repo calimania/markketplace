@@ -203,9 +203,9 @@
     },
     "lists": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "oneToMany",
       "target": "api::list.list",
-      "inversedBy": "store"
+      "mappedBy": "store"
     },
     "subscribers": {
       "type": "relation",
