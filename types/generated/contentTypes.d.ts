@@ -556,6 +556,7 @@ export interface ApiCollectionCollection extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::collection.collection'
     >;
+    page_store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     pages: Schema.Attribute.Relation<'manyToMany', 'api::page.page'>;
     publishedAt: Schema.Attribute.DateTime;
     SEO: Schema.Attribute.Component<'common.seo', false> &
@@ -565,7 +566,6 @@ export interface ApiCollectionCollection extends Struct.CollectionTypeSchema {
         };
       }>;
     slug: Schema.Attribute.String & Schema.Attribute.Required;
-    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetPluginOptions<{
@@ -1172,10 +1172,6 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::category.category'
     >;
-    collections: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::collection.collection'
-    >;
     Cover: Schema.Attribute.Media<'images'> &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
@@ -1232,6 +1228,10 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+    store_collections: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::collection.collection'
+    >;
     STRIPE_CUSTOMER_ID: Schema.Attribute.String &
       Schema.Attribute.SetPluginOptions<{
         i18n: {

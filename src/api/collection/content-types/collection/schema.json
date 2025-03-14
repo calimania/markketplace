@@ -58,11 +58,11 @@
         }
       }
     },
-    "store": {
+    "page_store": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::store.store",
-      "inversedBy": "collections"
+      "inversedBy": "store_collections"
     },
     "displayType": {
       "type": "enumeration",
