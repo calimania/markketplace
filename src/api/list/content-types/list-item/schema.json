@@ -1,11 +1,11 @@
 {
   "kind": "collectionType",
-  "collectionName": "collection_items",
+  "collectionName": "list_items",
   "info": {
-    "singularName": "collection-item",
-    "pluralName": "collection-items",
-    "displayName": "Collection Item",
-    "description": "Items that can be added to collections"
+    "singularName": "list-item",
+    "pluralName": "list-items",
+    "displayName": "List Item",
+    "description": "Items that can be added to lists"
   },
   "options": {
     "draftAndPublish": true
@@ -68,10 +68,10 @@
         }
       }
     },
-    "collections": {
+    "lists": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::collection.collection",
+      "target": "api::list.list",
       "inversedBy": "items"
     }
   }

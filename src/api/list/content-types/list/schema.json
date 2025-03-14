@@ -1,11 +1,11 @@
 {
   "kind": "collectionType",
-  "collectionName": "collections",
+  "collectionName": "lists",
   "info": {
-    "singularName": "collection",
-    "pluralName": "collections",
-    "displayName": "Collection",
-    "description": "Curated collections of items for easy galleries"
+    "singularName": "list",
+    "pluralName": "lists",
+    "displayName": "List",
+    "description": "Curated lists of items for easy galleries"
   },
   "options": {
     "draftAndPublish": true
@@ -41,7 +41,9 @@
     "cover": {
       "type": "media",
       "multiple": false,
-      "allowedTypes": ["images"],
+      "allowedTypes": [
+        "images"
+      ],
       "pluginOptions": {
         "i18n": {
           "localized": true
@@ -58,11 +60,11 @@
         }
       }
     },
-    "page_store": {
+    "store": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::store.store",
-      "inversedBy": "store_collections"
+      "inversedBy": "lists"
     },
     "displayType": {
       "type": "enumeration",
@@ -76,14 +78,14 @@
     "items": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::collection-item.collection-item",
-      "inversedBy": "collections"
+      "target": "api::list.list-item",
+      "inversedBy": "lists"
     },
     "pages": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::page.page",
-      "inversedBy": "collections"
+      "inversedBy": "lists"
     }
   }
 }
