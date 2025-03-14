@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "track",
+  "info": {
+    "singularName": "track",
+    "pluralName": "tracks",
+    "displayName": "Album Track"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "slug": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "description": {
+      "type": "blocks",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "SEO": {
+      "type": "component",
+      "component": "common.seo"
+    },
+    "media": {
+      "type": "media",
+      "multiple": true
+    },
+    "albums": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::album.album",
+      "label": "Albums",
+      "inversedBy": "tracks"
+    }
+  }
+}
