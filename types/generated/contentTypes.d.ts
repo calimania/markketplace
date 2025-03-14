@@ -1137,11 +1137,6 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
         };
       }>;
     admin_users: Schema.Attribute.Relation<'oneToMany', 'admin::user'>;
-    articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
-    categories: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::category.category'
-    >;
     Cover: Schema.Attribute.Media<'images'> &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
@@ -1157,7 +1152,6 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    events: Schema.Attribute.Relation<'manyToMany', 'api::event.event'>;
     Favicon: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
@@ -1172,8 +1166,6 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    pages: Schema.Attribute.Relation<'oneToMany', 'api::page.page'>;
-    products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
     SEO: Schema.Attribute.Component<'common.seo', false> &
       Schema.Attribute.SetPluginOptions<{
@@ -1204,10 +1196,6 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    subscribers: Schema.Attribute.Relation<
-      'manyToMany',
-      'api::subscriber.subscriber'
-    >;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetPluginOptions<{
