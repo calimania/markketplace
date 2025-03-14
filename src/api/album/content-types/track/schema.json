@@ -15,9 +15,6 @@
     }
   },
   "attributes": {
-    "slug": {
-      "type": "string"
-    },
     "title": {
       "type": "string",
       "required": true,
@@ -27,7 +24,18 @@
         }
       }
     },
+    "slug": {
+      "type": "string"
+    },
     "description": {
+      "type": "text",
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "content": {
       "type": "blocks",
       "pluginOptions": {
         "i18n": {
@@ -53,13 +61,6 @@
     "media": {
       "type": "media",
       "multiple": true
-    },
-    "albums": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::album.album",
-      "label": "Albums",
-      "inversedBy": "tracks"
     }
   }
 }
