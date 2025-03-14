@@ -203,9 +203,9 @@
     },
     "lists": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "manyToMany",
       "target": "api::list.list",
-      "mappedBy": "store"
+      "mappedBy": "stores"
     },
     "subscribers": {
       "type": "relation",
