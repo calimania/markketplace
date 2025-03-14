@@ -201,12 +201,6 @@
       "target": "plugin::users-permissions.user",
       "inversedBy": "stores"
     },
-    "galleries": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::gallery.gallery",
-      "mappedBy": "stores"
-    },
     "subscribers": {
       "type": "relation",
       "relation": "manyToMany",

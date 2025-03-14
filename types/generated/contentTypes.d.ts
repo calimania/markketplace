@@ -597,131 +597,6 @@ export interface ApiExtensionExtension extends Struct.SingleTypeSchema {
   };
 }
 
-export interface ApiGalleryGallery extends Struct.CollectionTypeSchema {
-  collectionName: 'galleries';
-  info: {
-    description: 'Curated lists of items for easy galleries';
-    displayName: 'Galleries';
-    pluralName: 'galleries';
-    singularName: 'gallery';
-  };
-  options: {
-    draftAndPublish: true;
-  };
-  pluginOptions: {
-    i18n: {
-      localized: true;
-    };
-  };
-  attributes: {
-    cover: Schema.Attribute.Media<'images'> &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    description: Schema.Attribute.RichText &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    displayType: Schema.Attribute.Enumeration<['grid', 'list', 'carousel']> &
-      Schema.Attribute.DefaultTo<'grid'>;
-    items: Schema.Attribute.Relation<'manyToMany', 'api::gallery.item'>;
-    locale: Schema.Attribute.String;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::gallery.gallery'
-    >;
-    pages: Schema.Attribute.Relation<'manyToMany', 'api::page.page'>;
-    publishedAt: Schema.Attribute.DateTime;
-    SEO: Schema.Attribute.Component<'common.seo', false> &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    slug: Schema.Attribute.String & Schema.Attribute.Required;
-    stores: Schema.Attribute.Relation<'manyToMany', 'api::store.store'>;
-    title: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-  };
-}
-
-export interface ApiGalleryItem extends Struct.CollectionTypeSchema {
-  collectionName: 'items';
-  info: {
-    description: 'Items that can be added to galleries';
-    displayName: 'Gallery Items';
-    pluralName: 'items';
-    singularName: 'item';
-  };
-  options: {
-    draftAndPublish: true;
-  };
-  pluginOptions: {
-    i18n: {
-      localized: true;
-    };
-  };
-  attributes: {
-    bio: Schema.Attribute.RichText &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    galleries: Schema.Attribute.Relation<'manyToMany', 'api::gallery.gallery'>;
-    locale: Schema.Attribute.String;
-    localizations: Schema.Attribute.Relation<'oneToMany', 'api::gallery.item'>;
-    media: Schema.Attribute.Media<'images' | 'files' | 'videos', true> &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    publishedAt: Schema.Attribute.DateTime;
-    SEO: Schema.Attribute.Component<'common.seo', false> &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    slug: Schema.Attribute.String & Schema.Attribute.Required;
-    title: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    URLS: Schema.Attribute.Component<'common.urls', true> &
-      Schema.Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-  };
-}
-
 export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
   collectionName: 'inboxes';
   info: {
@@ -864,7 +739,6 @@ export interface ApiPagePage extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     creator: Schema.Attribute.Relation<'oneToOne', 'admin::user'>;
-    galleries: Schema.Attribute.Relation<'manyToMany', 'api::gallery.gallery'>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::page.page'>;
     menuOrder: Schema.Attribute.Integer &
@@ -1181,7 +1055,6 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    galleries: Schema.Attribute.Relation<'manyToMany', 'api::gallery.gallery'>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::store.store'>;
     Logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &
@@ -1815,8 +1688,6 @@ declare module '@strapi/strapi' {
       'api::category.category': ApiCategoryCategory;
       'api::event.event': ApiEventEvent;
       'api::extension.extension': ApiExtensionExtension;
-      'api::gallery.gallery': ApiGalleryGallery;
-      'api::gallery.item': ApiGalleryItem;
       'api::inbox.inbox': ApiInboxInbox;
       'api::markket.markket': ApiMarkketMarkket;
       'api::order.order': ApiOrderOrder;
