@@ -633,6 +633,31 @@ export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiListList extends Struct.CollectionTypeSchema {
+  collectionName: 'lists';
+  info: {
+    displayName: 'list';
+    pluralName: 'lists';
+    singularName: 'list';
+  };
+  options: {
+    comment: '';
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::list.list'> &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiMarkketMarkket extends Struct.CollectionTypeSchema {
   collectionName: 'markkets';
   info: {
@@ -1689,6 +1714,7 @@ declare module '@strapi/strapi' {
       'api::event.event': ApiEventEvent;
       'api::extension.extension': ApiExtensionExtension;
       'api::inbox.inbox': ApiInboxInbox;
+      'api::list.list': ApiListList;
       'api::markket.markket': ApiMarkketMarkket;
       'api::order.order': ApiOrderOrder;
       'api::page.page': ApiPagePage;

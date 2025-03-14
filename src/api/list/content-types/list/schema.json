@@ -1,0 +1,14 @@
+
+{
+  "kind": "collectionType",
+  "collectionName": "lists",
+  "info": {
+    "singularName": "list",
+    "pluralName": "lists",
+    "displayName": "list"
+  },
+  "options": {
+    "comment": ""
+  },
+  "attributes": {}
+}
