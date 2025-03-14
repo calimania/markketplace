@@ -47,6 +47,12 @@
       "target": "api::store.store",
       "inversedBy": "pages"
     },
+    "lists": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::list.list",
+      "inversedBy": "pages"
+    },
     "creator": {
       "type": "relation",
       "relation": "oneToOne",

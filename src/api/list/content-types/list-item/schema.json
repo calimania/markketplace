@@ -1,11 +1,11 @@
 {
   "kind": "collectionType",
-  "collectionName": "lists",
+  "collectionName": "list_items",
   "info": {
-    "singularName": "list",
-    "pluralName": "lists",
-    "displayName": "List",
-    "description": "Curated lists of items for easy galleries"
+    "singularName": "list-item",
+    "pluralName": "list-items",
+    "displayName": "List Item",
+    "description": "Items that can be added to lists"
   },
   "options": {
     "draftAndPublish": true
@@ -30,7 +30,7 @@
       "targetField": "title",
       "required": true
     },
-    "description": {
+    "bio": {
       "type": "richtext",
       "pluginOptions": {
         "i18n": {
@@ -38,12 +38,20 @@
         }
       }
     },
-    "cover": {
+    "media": {
       "type": "media",
-      "multiple": false,
-      "allowedTypes": [
-        "images"
-      ],
+      "multiple": true,
+      "allowedTypes": ["images", "files", "videos"],
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      }
+    },
+    "URLS": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.urls",
       "pluginOptions": {
         "i18n": {
           "localized": true
@@ -60,32 +68,11 @@
         }
       }
     },
-    "store": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::store.store",
-      "inversedBy": "lists"
-    },
-    "displayType": {
-      "type": "enumeration",
-      "enum": [
-        "grid",
-        "list",
-        "carousel"
-      ],
-      "default": "grid"
-    },
-    "items": {
+    "lists": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::list.list-item",
-      "inversedBy": "lists"
-    },
-    "pages": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::page.page",
-      "inversedBy": "lists"
+      "target": "api::list.list",
+      "inversedBy": "items"
     }
   }
 }

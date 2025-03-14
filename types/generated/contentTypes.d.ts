@@ -636,25 +636,125 @@ export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
 export interface ApiListList extends Struct.CollectionTypeSchema {
   collectionName: 'lists';
   info: {
-    displayName: 'list';
+    description: 'Curated lists of items for easy galleries';
+    displayName: 'List';
     pluralName: 'lists';
     singularName: 'list';
   };
   options: {
-    comment: '';
-    draftAndPublish: false;
+    draftAndPublish: true;
+  };
+  pluginOptions: {
+    i18n: {
+      localized: true;
+    };
   };
   attributes: {
+    cover: Schema.Attribute.Media<'images'> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<'oneToMany', 'api::list.list'> &
-      Schema.Attribute.Private;
+    description: Schema.Attribute.RichText &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    displayType: Schema.Attribute.Enumeration<['grid', 'list', 'carousel']> &
+      Schema.Attribute.DefaultTo<'grid'>;
+    items: Schema.Attribute.Relation<'manyToMany', 'api::list.list-item'>;
+    locale: Schema.Attribute.String;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::list.list'>;
+    pages: Schema.Attribute.Relation<'manyToMany', 'api::page.page'>;
     publishedAt: Schema.Attribute.DateTime;
+    SEO: Schema.Attribute.Component<'common.seo', false> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    slug: Schema.Attribute.String & Schema.Attribute.Required;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
+    title: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiListListItem extends Struct.CollectionTypeSchema {
+  collectionName: 'list_items';
+  info: {
+    description: 'Items that can be added to lists';
+    displayName: 'List Item';
+    pluralName: 'list-items';
+    singularName: 'list-item';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  pluginOptions: {
+    i18n: {
+      localized: true;
+    };
+  };
+  attributes: {
+    bio: Schema.Attribute.RichText &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    lists: Schema.Attribute.Relation<'manyToMany', 'api::list.list'>;
+    locale: Schema.Attribute.String;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::list.list-item'
+    >;
+    media: Schema.Attribute.Media<'images' | 'files' | 'videos', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    publishedAt: Schema.Attribute.DateTime;
+    SEO: Schema.Attribute.Component<'common.seo', false> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    slug: Schema.Attribute.String & Schema.Attribute.Required;
+    title: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    URLS: Schema.Attribute.Component<'common.urls', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
   };
 }
 
@@ -764,6 +864,7 @@ export interface ApiPagePage extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     creator: Schema.Attribute.Relation<'oneToOne', 'admin::user'>;
+    lists: Schema.Attribute.Relation<'manyToMany', 'api::list.list'>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::page.page'>;
     menuOrder: Schema.Attribute.Integer &
@@ -1080,6 +1181,7 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+    lists: Schema.Attribute.Relation<'manyToOne', 'api::list.list'>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::store.store'>;
     Logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &
@@ -1715,6 +1817,7 @@ declare module '@strapi/strapi' {
       'api::extension.extension': ApiExtensionExtension;
       'api::inbox.inbox': ApiInboxInbox;
       'api::list.list': ApiListList;
+      'api::list.list-item': ApiListListItem;
       'api::markket.markket': ApiMarkketMarkket;
       'api::order.order': ApiOrderOrder;
       'api::page.page': ApiPagePage;
