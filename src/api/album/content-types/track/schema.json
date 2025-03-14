@@ -39,6 +39,17 @@
       "type": "component",
       "component": "common.seo"
     },
+    "urls": {
+      "displayName": "Urls",
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "common.urls"
+    },
     "media": {
       "type": "media",
       "multiple": true
