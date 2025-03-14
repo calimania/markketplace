@@ -153,13 +153,6 @@
       "label": "Pages",
       "mappedBy": "store"
     },
-    "albums": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::album.album",
-      "label": "Albums",
-      "mappedBy": "store"
-    },
     "URLS": {
       "displayName": "URLS",
       "type": "component",

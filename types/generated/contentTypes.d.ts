@@ -1127,7 +1127,6 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
         };
       }>;
     admin_users: Schema.Attribute.Relation<'oneToMany', 'admin::user'>;
-    albums: Schema.Attribute.Relation<'oneToMany', 'api::album.album'>;
     articles: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
     categories: Schema.Attribute.Relation<
       'oneToMany',
