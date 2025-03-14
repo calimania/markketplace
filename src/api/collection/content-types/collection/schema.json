@@ -58,9 +58,24 @@
         }
       }
     },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store",
+      "inversedBy": "collections"
+    },
+    "displayType": {
+      "type": "enumeration",
+      "enum": [
+        "grid",
+        "list",
+        "carousel"
+      ],
+      "default": "grid"
+    },
     "items": {
       "type": "relation",
-      "relation": "manyToMany",
+      "relation": "manyToOne",
       "target": "api::collection-item.collection-item",
       "inversedBy": "collections"
     },
