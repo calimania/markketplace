@@ -679,7 +679,7 @@ export interface ApiListList extends Struct.CollectionTypeSchema {
         };
       }>;
     slug: Schema.Attribute.String & Schema.Attribute.Required;
-    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
+    stores: Schema.Attribute.Relation<'manyToMany', 'api::store.store'>;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetPluginOptions<{
@@ -1181,7 +1181,7 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    lists: Schema.Attribute.Relation<'oneToMany', 'api::list.list'>;
+    lists: Schema.Attribute.Relation<'manyToMany', 'api::list.list'>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::store.store'>;
     Logo: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &

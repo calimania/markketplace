@@ -60,9 +60,9 @@
         }
       }
     },
-    "store": {
+    "stores": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "manyToMany",
       "target": "api::store.store",
       "inversedBy": "lists"
     },
