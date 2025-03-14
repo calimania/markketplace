@@ -73,12 +73,6 @@
       },
       "component": "common.seo"
     },
-    "collections": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::collection.collection",
-      "mappedBy": "page"
-    },
     "menuOrder": {
       "pluginOptions": {
         "i18n": {
