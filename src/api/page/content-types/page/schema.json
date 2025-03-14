@@ -47,12 +47,6 @@
       "target": "api::store.store",
       "inversedBy": "pages"
     },
-    "galleries": {
-      "type": "relation",
-      "relation": "manyToMany",
-      "target": "api::gallery.gallery",
-      "inversedBy": "pages"
-    },
     "creator": {
       "type": "relation",
       "relation": "oneToOne",
