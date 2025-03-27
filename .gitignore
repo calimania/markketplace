@@ -114,6 +114,8 @@ build
 .strapi-updater.json
 .strapi-cloud.json
 
+.env.local
+
 .yarn
 
 *.draft.*
