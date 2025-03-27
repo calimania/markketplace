@@ -458,6 +458,7 @@ export interface ApiAlbumTrack extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     SEO: Schema.Attribute.Component<'common.seo', false>;
     slug: Schema.Attribute.String;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     title: Schema.Attribute.String &
       Schema.Attribute.Required &
       Schema.Attribute.SetPluginOptions<{

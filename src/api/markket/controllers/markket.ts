@@ -5,7 +5,7 @@ import { version } from '../../../../package.json';
 const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
 
-import { createPaymentLinkWithPriceIds, getSessionById } from '../services/stripe';
+import { createPaymentLinkWithPriceIds, getSessionById, getAccount } from '../services/stripe';
 import { sendOrderNotification } from '../services/notification';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -39,12 +39,28 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     console.log(`markket.create:${body.action || 'default'}`);
 
     if (body?.action === 'stripe.link') {
-      const response = await createPaymentLinkWithPriceIds(body?.prices || [], !!body?.includes_shipping, !!body?.stripe_test);
+      const response = await createPaymentLinkWithPriceIds({
+        prices: body?.prices || [],
+        include_shipping: !!body?.includes_shipping,
+        stripe_test: !!body?.stripe_test,
+        store_id: body?.store_id,
+        redirect_to_url: body?.redirect_to_url,
+      });
       link = {
         response,
         body,
       };
       message = 'stripe link created';
+    }
+
+    if (body?.action === 'stripe.account') {
+      const response = await getAccount(body?.store_id);
+      return ctx.send({
+        message: 'stripe account retrieved',
+        data: {
+          info: response,
+        },
+      });
     }
 
     if (body?.action === 'stripe.receipt' && body?.session_id) {
