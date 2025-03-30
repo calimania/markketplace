@@ -40,11 +40,6 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "plugin::users-permissions.user"
-    },
-    "SEO": {
-      "type": "component",
-      "repeatable": false,
-      "component": "common.seo"
     }
   }
 }

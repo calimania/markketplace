@@ -1,0 +1,5 @@
+/**
+ * forms service
+ */
+
+export default () => ({});

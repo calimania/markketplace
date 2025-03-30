@@ -1,0 +1,41 @@
+
+{
+  "kind": "collectionType",
+  "collectionName": "form",
+  "info": {
+    "singularName": "forms",
+    "pluralName": "form",
+    "displayName": "Forms "
+  },
+  "options": {
+    "comment": ""
+  },
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true
+    },
+    "Message": {
+      "type": "text"
+    },
+    "structure": {
+      "type": "json",
+      "required": true
+    },
+    "SEO": {
+      "type": "component",
+      "repeatable": false,
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "component": "common.seo"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
+    }
+  }
+}
