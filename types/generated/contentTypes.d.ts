@@ -706,6 +706,72 @@ export interface ApiExtensionExtension extends Struct.SingleTypeSchema {
   };
 }
 
+export interface ApiFormsFormResponse extends Struct.CollectionTypeSchema {
+  collectionName: 'form_responses';
+  info: {
+    displayName: 'Form Responses';
+    pluralName: 'form-responses';
+    singularName: 'form-response';
+  };
+  options: {
+    comment: '';
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    form: Schema.Attribute.Relation<'oneToOne', 'api::forms.forms'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::forms.form-response'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    response: Schema.Attribute.JSON & Schema.Attribute.Required;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiFormsForms extends Struct.CollectionTypeSchema {
+  collectionName: 'form';
+  info: {
+    displayName: 'Forms ';
+    pluralName: 'form';
+    singularName: 'forms';
+  };
+  options: {
+    comment: '';
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::forms.forms'> &
+      Schema.Attribute.Private;
+    Message: Schema.Attribute.Text;
+    Name: Schema.Attribute.String & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    SEO: Schema.Attribute.Component<'common.seo', false> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
+    structure: Schema.Attribute.JSON & Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
   collectionName: 'inboxes';
   info: {
@@ -730,7 +796,6 @@ export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
     Name: Schema.Attribute.String & Schema.Attribute.Required;
     parentMessageId: Schema.Attribute.Relation<'oneToOne', 'api::inbox.inbox'>;
     publishedAt: Schema.Attribute.DateTime;
-    SEO: Schema.Attribute.Component<'common.seo', false>;
     store: Schema.Attribute.Relation<'oneToOne', 'api::store.store'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1788,6 +1853,8 @@ declare module '@strapi/strapi' {
       'api::category.category': ApiCategoryCategory;
       'api::event.event': ApiEventEvent;
       'api::extension.extension': ApiExtensionExtension;
+      'api::forms.form-response': ApiFormsFormResponse;
+      'api::forms.forms': ApiFormsForms;
       'api::inbox.inbox': ApiInboxInbox;
       'api::markket.markket': ApiMarkketMarkket;
       'api::order.order': ApiOrderOrder;

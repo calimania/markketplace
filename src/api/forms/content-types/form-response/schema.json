@@ -1,0 +1,29 @@
+
+{
+  "kind": "collectionType",
+  "collectionName": "form_responses",
+  "info": {
+    "singularName": "form-response",
+    "pluralName": "form-responses",
+    "displayName": "Form Responses"
+  },
+  "options": {
+    "comment": ""
+  },
+  "attributes": {
+    "form": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::forms.forms"
+    },
+    "response": {
+      "type": "json",
+      "required": true
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
+    }
+  }
+}
