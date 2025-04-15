@@ -45,6 +45,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         stripe_test: !!body?.stripe_test,
         store_id: body?.store_id,
         redirect_to_url: body?.redirect_to_url,
+        total: body?.total,
       });
       link = {
         response,
