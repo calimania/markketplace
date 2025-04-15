@@ -128,14 +128,15 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
 
   if (connected_account_id) {
     // @TODO = confirm total price with stripe API
+    // @TODO = adjust fees with ENV vars
     // This basic calculation uses the total provided by the client to calculate the application fee,
     // process can be tweaked, to support different pricing tiers
     // currently charging $0.33 + 1% of the transaction, with a maximum of $33
     const connected_account_data = await client.accounts.retrieve(connected_account_id);
     let application_fee = 0;
     if (connected_account_data?.charges_enabled) {
-      const max_application_fee = 33;
-      application_fee = (((total && total > 10) ? total : 10) || 10) / 100;
+      const max_application_fee = 333;
+      application_fee = (((total && total > 10) ? total : 10) || 10) * 0.0133;
       stripe_options.application_fee_amount = Math.round((application_fee <= max_application_fee ? application_fee : max_application_fee) * 100) + 33;
       stripe_options.transfer_data = {
         destination: connected_account_id
