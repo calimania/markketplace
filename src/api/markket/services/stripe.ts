@@ -12,7 +12,27 @@ type PaymentLinkOptions = {
   stripe_test: boolean;
   store_id?: string;
   redirect_to_url?: string;
+  total?: number;
 };
+
+type StripeLinkOptions = {
+  line_items: any[];
+  after_completion: {
+    type: string;
+    redirect: {
+      url: string;
+    };
+  };
+  application_fee_amount?: number;
+
+  transfer_data?: {
+    destination: string;
+  };
+  shipping_address_collection?: {
+    allowed_countries: string[];
+  };
+  on_behalf_of?: string;
+}
 
 export const getAccount = async (store_id: string) => {
   if (!store_id) {
@@ -48,7 +68,7 @@ export const getAccount = async (store_id: string) => {
  * @param prices
  * @returns
  */
-export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, stripe_test, store_id, redirect_to_url }: PaymentLinkOptions) => {
+export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, stripe_test, store_id, redirect_to_url, total }: PaymentLinkOptions) => {
   const line_items = [];
   const custom_price: any = prices.find((price: any) => price.product);
   const set_price: any = prices.find((price: any) => price.price);
@@ -103,46 +123,43 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
       redirect: {
         url,
       },
-    }
-  } as {
-    line_items: [];
-    after_completion: {
-      type: string;
-      redirect: {
-        url: string;
-      };
-    };
-    payment_intent_data?: {
-      transfer_data?: {
-        destination: string;
-      };
-    };
-    shipping_address_collection?: {
-      allowed_countries: string[];
-    };
-    on_behalf_of?: string;
-  };
+    },
+  } as StripeLinkOptions;
 
   if (connected_account_id) {
-    stripe_options.payment_intent_data = {
-      transfer_data: { destination: connected_account_id },
-    };
-    stripe_options.on_behalf_of = connected_account_id;
-  }
+    // @TODO = confirm total price with stripe API
+    // This basic calculation uses the total provided by the client to calculate the application fee,
+    // process can be tweaked, to support different pricing tiers
+    // currently charging $0.33 + 1% of the transaction, with a maximum of $33
+    const connected_account_data = await client.accounts.retrieve(connected_account_id);
+    let application_fee = 0;
+    if (connected_account_data?.charges_enabled) {
+      const max_application_fee = 33;
+      application_fee = (((total && total > 10) ? total : 10) || 10) / 100;
+      stripe_options.application_fee_amount = Math.round((application_fee <= max_application_fee ? application_fee : max_application_fee) * 100) + 33;
+      stripe_options.transfer_data = {
+        destination: connected_account_id
+      };
+    }
 
-  console.log('create.stripe.payment.link', { connected_account_id, store });
+    console.log(`Stripe:Connect:link:${connected_account_id}`,
+      {
+        total, application_fee, enabled: connected_account_data?.charges_enabled
+      })
+  }
 
   if (include_shipping) {
     stripe_options.shipping_address_collection = {
-      allowed_countries: ['US'],
+      allowed_countries: ['US', 'CO'],
     };
   }
+
+  console.log('create.stripe.payment.link', { include_shipping, connect: connected_account_id, store: store.documentId });
 
   const paymentLink = await client.paymentLinks.create(stripe_options as Stripe.PaymentLinkCreateParams);
 
   return paymentLink;
 };
-
 
 export const getSessionById = async (session_id: string, stripe_test) => {
   if (!session_id) {
