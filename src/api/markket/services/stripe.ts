@@ -155,7 +155,7 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
     };
   }
 
-  console.log('create.stripe.payment.link', { include_shipping, connect: connected_account_id, store: store.documentId });
+  console.log('create.stripe.payment.link', { include_shipping, connect: connected_account_id, store: store?.documentId });
 
   const paymentLink = await client.paymentLinks.create(stripe_options as Stripe.PaymentLinkCreateParams);
 
