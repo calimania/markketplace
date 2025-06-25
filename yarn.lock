@@ -2246,34 +2246,6 @@
     semver "7.5.4"
     umzug "3.8.1"
 
-"@strapi/design-system@2.0.0-rc.14":
-  version "2.0.0-rc.14"
-  resolved "https://registry.npmjs.org/@strapi/design-system/-/design-system-2.0.0-rc.14.tgz"
-  integrity sha512-zOtArGfAQmKO5qqRE0IlONfjR1JL2VL/KjV3hE++KSybOZgfhbdckN4svpNtJ6i2Pv+glm7nHdu9h6AHRBuujQ==
-  dependencies:
-    "@codemirror/lang-json" "6.0.1"
-    "@floating-ui/react-dom" "2.1.0"
-    "@internationalized/date" "3.5.4"
-    "@internationalized/number" "3.5.3"
-    "@radix-ui/react-accordion" "1.1.2"
-    "@radix-ui/react-alert-dialog" "1.0.5"
-    "@radix-ui/react-avatar" "1.0.4"
-    "@radix-ui/react-checkbox" "1.0.4"
-    "@radix-ui/react-dialog" "1.0.5"
-    "@radix-ui/react-dismissable-layer" "1.0.5"
-    "@radix-ui/react-dropdown-menu" "2.0.6"
-    "@radix-ui/react-focus-scope" "1.0.4"
-    "@radix-ui/react-popover" "1.0.7"
-    "@radix-ui/react-progress" "1.0.3"
-    "@radix-ui/react-radio-group" "1.1.3"
-    "@radix-ui/react-scroll-area" "1.0.5"
-    "@radix-ui/react-switch" "1.0.3"
-    "@radix-ui/react-tabs" "1.0.4"
-    "@radix-ui/react-tooltip" "1.0.7"
-    "@strapi/ui-primitives" "2.0.0-rc.14"
-    "@uiw/react-codemirror" "4.22.2"
-    react-remove-scroll "2.5.10"
-
 "@strapi/design-system@2.0.0-rc.26", "@strapi/design-system@^2.0.0-rc.9":
   version "2.0.0-rc.26"
   resolved "https://registry.npmjs.org/@strapi/design-system/-/design-system-2.0.0-rc.26.tgz"
@@ -2350,11 +2322,6 @@
     react-redux "8.1.3"
     yup "0.32.9"
 
-"@strapi/icons@2.0.0-rc.14":
-  version "2.0.0-rc.14"
-  resolved "https://registry.npmjs.org/@strapi/icons/-/icons-2.0.0-rc.14.tgz"
-  integrity sha512-6kamFHcsoFpffp96HmFGgpM8FDezwb86sJ4c3Ydp7+eTgtEsHd8yLekAQhpaWXd2ZsHwRDbLLR0Tu1orgvRVYg==
-
 "@strapi/icons@2.0.0-rc.26", "@strapi/icons@^2.0.0-rc.9":
   version "2.0.0-rc.26"
   resolved "https://registry.npmjs.org/@strapi/icons/-/icons-2.0.0-rc.26.tgz"
@@ -2379,30 +2346,30 @@
     qs "6.11.1"
     sift "16.0.1"
 
-"@strapi/plugin-cloud@5.6.0":
-  version "5.6.0"
-  resolved "https://registry.npmjs.org/@strapi/plugin-cloud/-/plugin-cloud-5.6.0.tgz"
-  integrity sha512-Wdj5n1gp2vw/2G2CE/qizL8AFtlowMb1Qd/r2I1isP939SdZp9COeA+tJfovN5Y9/YMETfp6RGfubj2buO83CQ==
+"@strapi/plugin-cloud@5.16.0":
+  version "5.16.0"
+  resolved "https://registry.yarnpkg.com/@strapi/plugin-cloud/-/plugin-cloud-5.16.0.tgz#2dc145d36584255071f8ba6ab07fcd971aff8b5b"
+  integrity sha512-geEGNFNgnWn0wZpGCQW971gIO/qVgtvJvmTcSL37s5W08Yx80VR46U2Tu7wcDH15jlqxqQf7/L8SQrKl0J8bYA==
   dependencies:
-    "@strapi/design-system" "2.0.0-rc.14"
-    "@strapi/icons" "2.0.0-rc.14"
+    "@strapi/design-system" "2.0.0-rc.26"
+    "@strapi/icons" "2.0.0-rc.26"
     react-intl "6.6.2"
 
-"@strapi/plugin-users-permissions@5.6.0":
-  version "5.6.0"
-  resolved "https://registry.npmjs.org/@strapi/plugin-users-permissions/-/plugin-users-permissions-5.6.0.tgz"
-  integrity sha512-U07IQayrVSPmFQMUDoiMS0kjXbqFN3c+l3JmF0LCmIKP9GwqA81vOi+JeuBhlKu+Qcb+cJV0wz0R05+B2C9EDw==
+"@strapi/plugin-users-permissions@5.16.0":
+  version "5.16.0"
+  resolved "https://registry.yarnpkg.com/@strapi/plugin-users-permissions/-/plugin-users-permissions-5.16.0.tgz#bf16f2221d2f964c03d217777b545391bbfc370e"
+  integrity sha512-MhEFgT/zpPORFLJApAWMXkWEJT6XY3JbwpVr5xASWhcQa2kwkp5KzX3gxBZnfj/uwQl844N9IzTEm2nCJQHnhw==
   dependencies:
-    "@strapi/design-system" "2.0.0-rc.14"
-    "@strapi/icons" "2.0.0-rc.14"
-    "@strapi/utils" "5.6.0"
+    "@strapi/design-system" "2.0.0-rc.26"
+    "@strapi/icons" "2.0.0-rc.26"
+    "@strapi/utils" "5.16.0"
     bcryptjs "2.4.3"
     formik "2.4.5"
-    grant-koa "5.4.8"
+    grant "^5.4.8"
     immer "9.0.21"
     jsonwebtoken "9.0.0"
     jwk-to-pem "2.0.5"
-    koa "2.15.2"
+    koa "2.16.1"
     koa2-ratelimit "^1.1.3"
     lodash "4.17.21"
     prop-types "^15.8.1"
@@ -2413,13 +2380,13 @@
     url-join "4.0.1"
     yup "0.32.9"
 
-"@strapi/provider-email-sendgrid@^5.0.6":
-  version "5.6.0"
-  resolved "https://registry.npmjs.org/@strapi/provider-email-sendgrid/-/provider-email-sendgrid-5.6.0.tgz"
-  integrity sha512-25UfyqqCYmAe2R/QxZPfMbMppoFSKPO2xwMNbAZDYY3BEt6tTbOqOhNfM9Lc4tF91D64XrNy6bj+DpbsODYCIw==
+"@strapi/provider-email-sendgrid@5.16.0":
+  version "5.16.0"
+  resolved "https://registry.yarnpkg.com/@strapi/provider-email-sendgrid/-/provider-email-sendgrid-5.16.0.tgz#48bd7575f8a504e3c54da897ec9d507e6785a259"
+  integrity sha512-LrLnHE09UqjA0/JA8n1W2zlOylHvnA/SP1REFRR9VGVBENyJIMUa6KI3x2zY1FPUxHAJDi8dmcTFFHTu3D01wA==
   dependencies:
     "@sendgrid/mail" "8.1.3"
-    "@strapi/utils" "5.6.0"
+    "@strapi/utils" "5.16.0"
 
 "@strapi/provider-email-sendmail@5.16.0":
   version "5.16.0"
@@ -2454,9 +2421,9 @@
     react-redux "8.1.3"
     yup "0.32.9"
 
-"@strapi/strapi@^5.16.0":
+"@strapi/strapi@5.16.0":
   version "5.16.0"
-  resolved "https://registry.npmjs.org/@strapi/strapi/-/strapi-5.16.0.tgz"
+  resolved "https://registry.yarnpkg.com/@strapi/strapi/-/strapi-5.16.0.tgz#ce35abe75f07bb3a4f8492564dd9a6e5742ee73f"
   integrity sha512-xb5rpLLEOA/vxK0lWJZabWlVAK/mzVfIQosSqU3lF6DmOvUQ2i0lGkVv6el2ZnlY7WZsIc/IldOL+GDb+4VaVg==
   dependencies:
     "@pmmmwh/react-refresh-webpack-plugin" "0.5.15"
@@ -2555,33 +2522,6 @@
     prettier "3.3.3"
     typescript "5.4.4"
 
-"@strapi/ui-primitives@2.0.0-rc.14":
-  version "2.0.0-rc.14"
-  resolved "https://registry.npmjs.org/@strapi/ui-primitives/-/ui-primitives-2.0.0-rc.14.tgz"
-  integrity sha512-lCl370AKFJXjEJmZHW9r8m8gXwgQs+K2WqND2sykL3+1VNjawDhThnRtYqYxheCf10vW8aS0Zd1CduLZ6EoEjg==
-  dependencies:
-    "@radix-ui/number" "1.0.1"
-    "@radix-ui/primitive" "1.0.1"
-    "@radix-ui/react-collection" "1.0.3"
-    "@radix-ui/react-compose-refs" "1.0.1"
-    "@radix-ui/react-context" "1.0.1"
-    "@radix-ui/react-direction" "1.0.1"
-    "@radix-ui/react-dismissable-layer" "1.0.5"
-    "@radix-ui/react-focus-guards" "1.0.1"
-    "@radix-ui/react-focus-scope" "1.0.4"
-    "@radix-ui/react-id" "1.0.1"
-    "@radix-ui/react-popper" "1.1.3"
-    "@radix-ui/react-portal" "1.0.4"
-    "@radix-ui/react-primitive" "1.0.3"
-    "@radix-ui/react-slot" "1.0.2"
-    "@radix-ui/react-use-callback-ref" "1.0.1"
-    "@radix-ui/react-use-controllable-state" "1.0.1"
-    "@radix-ui/react-use-layout-effect" "1.0.1"
-    "@radix-ui/react-use-previous" "1.0.1"
-    "@radix-ui/react-visually-hidden" "1.0.3"
-    aria-hidden "1.2.4"
-    react-remove-scroll "2.5.10"
-
 "@strapi/ui-primitives@2.0.0-rc.26":
   version "2.0.0-rc.26"
   resolved "https://registry.npmjs.org/@strapi/ui-primitives/-/ui-primitives-2.0.0-rc.26.tgz"
@@ -2654,22 +2594,6 @@
     preferred-pm "3.1.2"
     yup "0.32.9"
     zod "3.24.2"
-
-"@strapi/utils@5.6.0":
-  version "5.6.0"
-  resolved "https://registry.npmjs.org/@strapi/utils/-/utils-5.6.0.tgz"
-  integrity sha512-Q7JwRnbRLtNgLIgWrOI+LQzkdsr68+Eo7/aRccvdp4tD/wDDG8hOJlffT6R8JsgecuA16DLu9Rl0uPj9vRf4XA==
-  dependencies:
-    "@sindresorhus/slugify" "1.1.0"
-    date-fns "2.30.0"
-    execa "5.1.1"
-    http-errors "2.0.0"
-    lodash "4.17.21"
-    node-machine-id "1.1.12"
-    p-map "4.0.0"
-    preferred-pm "3.1.2"
-    yup "0.32.9"
-    zod "^3.22.4"
 
 "@swc/core-darwin-arm64@1.10.4":
   version "1.10.4"
@@ -5754,13 +5678,6 @@ graceful-fs@^4.1.2, graceful-fs@^4.1.5, graceful-fs@^4.1.6, graceful-fs@^4.2.0, 
   resolved "https://registry.npmjs.org/graceful-fs/-/graceful-fs-4.2.11.tgz"
   integrity sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==
 
-grant-koa@5.4.8:
-  version "5.4.8"
-  resolved "https://registry.npmjs.org/grant-koa/-/grant-koa-5.4.8.tgz"
-  integrity sha512-Kw8np9AL3Z3mZuvoSUklHJpTe3xx7iLBDauRyIwwbDLRr/5Ll6APmOFHixXj+Vw+LGEnreTxO35CyhAf9oBUMA==
-  dependencies:
-    grant "^5.4.8"
-
 grant@^5.4.8:
   version "5.4.23"
   resolved "https://registry.npmjs.org/grant/-/grant-5.4.23.tgz"
@@ -6841,35 +6758,6 @@ koa2-ratelimit@^1.1.3:
   version "1.1.3"
   resolved "https://registry.npmjs.org/koa2-ratelimit/-/koa2-ratelimit-1.1.3.tgz"
   integrity sha512-gdrIw6m/D7pmScScL4dz50qLbRR3UGqvO1Vuy2dc7hVIuFAl1OVTnu6WFyEJ5GbfyLZFaCMWzRw6t4krvzvUTg==
-
-koa@2.15.2:
-  version "2.15.2"
-  resolved "https://registry.npmjs.org/koa/-/koa-2.15.2.tgz"
-  integrity sha512-MXTeZH3M6AJ8ukW2QZ8wqO3Dcdfh2WRRmjCBkEP+NhKNCiqlO5RDqHmSnsyNrbRJrdjyvIGSJho4vQiWgQJSVA==
-  dependencies:
-    accepts "^1.3.5"
-    cache-content-type "^1.0.0"
-    content-disposition "~0.5.2"
-    content-type "^1.0.4"
-    cookies "~0.9.0"
-    debug "^4.3.2"
-    delegates "^1.0.0"
-    depd "^2.0.0"
-    destroy "^1.0.4"
-    encodeurl "^1.0.2"
-    escape-html "^1.0.3"
-    fresh "~0.5.2"
-    http-assert "^1.3.0"
-    http-errors "^1.6.3"
-    is-generator-function "^1.0.7"
-    koa-compose "^4.1.0"
-    koa-convert "^2.0.0"
-    on-finished "^2.3.0"
-    only "~0.0.2"
-    parseurl "^1.3.2"
-    statuses "^1.5.0"
-    type-is "^1.6.16"
-    vary "^1.1.2"
 
 koa@2.16.1:
   version "2.16.1"
@@ -10615,7 +10503,7 @@ yup@0.32.9:
     property-expr "^2.0.4"
     toposort "^2.0.2"
 
-zod@3.24.2, zod@^3.19.1, zod@^3.22.4, zod@^3.23.8:
+zod@3.24.2, zod@^3.19.1, zod@^3.23.8:
   version "3.24.2"
   resolved "https://registry.npmjs.org/zod/-/zod-3.24.2.tgz"
   integrity sha512-lY7CDW43ECgW9u1TcT3IoXHflywfVqDYze4waEz812jR/bZ8FHDsl7pFQoSZTz5N+2NqRXs8GBwnAwo3ZNxqhQ==

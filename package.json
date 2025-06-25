@@ -13,10 +13,10 @@
     "deploy": "strapi deploy"
   },
   "dependencies": {
-    "@strapi/plugin-cloud": "5.6.0",
-    "@strapi/plugin-users-permissions": "5.6.0",
-    "@strapi/provider-email-sendgrid": "^5.0.6",
-    "@strapi/strapi": "^5.16.0",
+    "@strapi/plugin-cloud": "5.16.0",
+    "@strapi/plugin-users-permissions": "5.16.0",
+    "@strapi/provider-email-sendgrid": "5.16.0",
+    "@strapi/strapi": "5.16.0",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
     "get-strapi-schema": "^0.0.3",
@@ -36,7 +36,7 @@
   },
   "engines": {
     "node": ">=18.0.0 <=20.x.x",
-    "npm": ">=6.0.0"
+    "npm": ">=9.0.0"
   },
   "license": "SEE LICENSE IN LICENSE",
   "packageManager": "yarn@1.22.22",
