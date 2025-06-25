@@ -1,6 +1,6 @@
 const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || '';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
-import { OrderNotificationHTml, RSVPNotificationHTml } from './template';
+import { OrderNotificationHTml, RSVPNotificationHTml } from './email.template';
 
 
 export const sendRSVPNotification = async ({ strapi, rsvp, event }) => {
