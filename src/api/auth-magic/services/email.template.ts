@@ -6,11 +6,13 @@ import { emailLayout } from '../../markket/services/notification/email.template'
  */
 export const MagicLinkHTML = (email: string, url: string) => {
   const content = `
-    <div class="event-details" style="background:#fffbe7;border:2.5px solid #ff00cf;padding:22px 14px 16px 14px;border-radius:12px;text-align:center;">
+    <div style="background:#fffbe7;border:2.5px solid #ff00cf;padding:22px 14px 16px 14px;border-radius:12px;">
       <h3 style="font-size:1.3rem;color:#ff00cf;font-weight:900;margin-bottom:16px;letter-spacing:1px;">
         Bienvenido a Markkët
       </h3>
-      <p style="font-size:1.1rem;margin-bottom:14px;">Hey <span style="color:#0057ad;font-weight:700;">${email}</span>!</p>
+      <p style="font-size:1.1rem;margin-bottom:14px;">
+        Hey <span style="color:#0057ad;font-weight:700;">${email}</span>!
+      </p>
       <a href="${url}" style="display:inline-block;background:#ff00cf;color:#fff;font-weight:900;padding:13px 26px;border-radius:8px;text-decoration:none;font-size:1.1rem;margin-bottom:16px;box-shadow:0 2px 8px #ff00cf33;letter-spacing:1px;">
         Continue
       </a>
@@ -28,13 +30,14 @@ export const MagicLinkHTML = (email: string, url: string) => {
  */
 export const AccountCreatedHTML = (email: string) => {
   const content = `
-    <div class="event-details" style="background:#fffbe7;border:2.5px solid #fbda0d;padding:22px 14px 16px 14px;border-radius:12px;text-align:center;">
+    <div style="background:#fffbe7;border:2.5px solid #fbda0d;padding:22px 14px 16px 14px;border-radius:12px;text-align:left;">
       <h3 style="font-size:1.3rem;color:#0057ad;font-weight:900;margin-bottom:16px;letter-spacing:1px;">
-        Welcome to Markkët!
+        Your account is ready!
       </h3>
       <p style="font-size:1.1rem;margin-bottom:14px;">Hi <span style="color:#ff00cf;font-weight:700;">${email}</span>!</p>
       <p style="color:#222;font-size:1rem;margin-bottom:0;">
-        Your account is ready!
+        Markketplace lets artists & professionals sell online, visit the
+          <a href="https://de.markket.place/stores">mall</a> for inspo.
       </p>
     </div>
   `;

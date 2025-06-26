@@ -6,9 +6,12 @@ export default ({ strapi }) => ({
     if (!email) return ctx.badRequest('Email required');
 
     const code = await strapi.service('api::auth-magic.auth-magic').generateCode(email);
-    await strapi.service('api::auth-magic.auth-magic').sendMagicLink(email, code,);
 
-    ctx.send({ ok: true, url: baseUrl || '' });
+    // @TODO: Allow more URLs via ENV_VAR
+    const url = (baseUrl == 'http://localhost:4020') ? baseUrl : '';
+    await strapi.service('api::auth-magic.auth-magic').sendMagicLink(email, code, url);
+
+    ctx.send({ ok: true, url });
   },
 
   async verify(ctx) {
@@ -24,11 +27,16 @@ export default ({ strapi }) => ({
     const email = magic?.email;
 
     if (!user && email) {
-      user = await strapi.query('plugin::users-permissions.user').create({
-        data: { email, username: email }
+      const role = await strapi.db.query('plugin::users-permissions.role').findOne({
+        where: { name: 'Store Owners' },
       });
 
-     await strapi.service('api::auth-magic.auth-magic').welcomeEmail(email);
+      user = await strapi.query('plugin::users-permissions.user').create({
+        data: { email, username: email, confirmed: true, role: role.id }
+      });
+
+      console.info('new:user', { id: user.id, role: role.id });
+      await strapi.service('api::auth-magic.auth-magic').welcomeEmail(email);
     }
 
     const jwt = strapi.plugin('users-permissions').service('jwt').issue({ id: user.id });

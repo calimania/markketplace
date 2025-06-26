@@ -42,7 +42,14 @@ export default ({ strapi }) => ({
     return magic;
   },
   async welcomeEmail  (email: string) {
-    AccountCreatedHTML(email);
+
+    await strapi.plugin('email').service('email').send({
+      to: email,
+      subject: 'Welcome to Markkët',
+      text: `Welcome to Markkët`,
+      html: AccountCreatedHTML(email),
+    });
+
     return {};
   }
 });

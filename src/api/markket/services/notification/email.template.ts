@@ -13,15 +13,14 @@ export const emailLayout = ({ content, title }: EmailLayout) => {
       <title>${title} - Markkët</title>
       <style>
         body { font-family: 'Inter', Arial, sans-serif; background: #fffbe7; color: #222; margin:0; }
-        .email-container { margin:32px auto; background:#fff; border-radius:14px; box-shadow:0 2px 16px #ff00cf22; max-width:480px; border:3px solid #fbda0d; }
+        .email-container { margin:32px 16px; background:#fff; border-radius:14px; box-shadow:0 2px 16px #ff00cf22; max-width: 666px; }
         .header { background:#fff; padding:18px 20px 0 20px; text-align:left; }
         .logo { color:#ff00cf; font-size:2rem; font-weight:900; letter-spacing:2px; margin:0; }
         .divider { height:4px; background:linear-gradient(90deg,#fbda0d 60%,#ff00cf 100%); margin:8px 0; }
         .content { padding:24px 20px 12px 20px; }
         .title { font-size:1.3rem; font-weight:900; color:#0057ad; margin-bottom:16px; letter-spacing:1px; }
-        .footer { padding:10px 12px; text-align:center; border-top:2px solid #fbda0d; background:#fffbe7; font-size:12px; color:#666; }
-        .footer a { color:#0057ad; font-weight:700; }
-        @media (max-width:600px) { .content { padding:12px 4px; } }
+        .footer { padding:10px 12px; text-align:left;  margin-top: 8px; border-bottom: 2px solid #fbda0d; font-size:12px; color:#666;}
+        .footer a { color:#0057ad; }
       </style>
     </head>
     <body>
