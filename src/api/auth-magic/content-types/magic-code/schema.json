@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "magic_codes",
+  "info": {
+    "singularName": "magic-code",
+    "pluralName": "magic-codes",
+    "displayName": "Magic Code"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "email": { "type": "email", "required": true },
+    "code": { "type": "string", "required": true },
+    "expiresAt": { "type": "datetime", "required": true },
+    "used": { "type": "boolean", "default": false }
+  }
+}

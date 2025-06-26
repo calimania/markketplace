@@ -522,6 +522,37 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAuthMagicMagicCode extends Struct.CollectionTypeSchema {
+  collectionName: 'magic_codes';
+  info: {
+    displayName: 'Magic Code';
+    pluralName: 'magic-codes';
+    singularName: 'magic-code';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    code: Schema.Attribute.String & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    expiresAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::auth-magic.magic-code'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    used: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+  };
+}
+
 export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   collectionName: 'categories';
   info: {
@@ -1854,6 +1885,7 @@ declare module '@strapi/strapi' {
       'api::album.album': ApiAlbumAlbum;
       'api::album.track': ApiAlbumTrack;
       'api::article.article': ApiArticleArticle;
+      'api::auth-magic.magic-code': ApiAuthMagicMagicCode;
       'api::category.category': ApiCategoryCategory;
       'api::event.event': ApiEventEvent;
       'api::extension.extension': ApiExtensionExtension;
