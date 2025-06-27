@@ -19,6 +19,9 @@ export const MagicLinkHTML = (email: string, url: string) => {
       <p style="margin-top:18px;color:#666;font-size:0.95rem;">
         Valid for 15 minutes. If you didn't request this, you can ignore this email.
       </p>
+      <p style="margin-top:18px;color:#666;font-size:0.95rem;">
+        ${url}
+      </p>
     </div>
   `;
   const title = 'Your Magic Login Link';
