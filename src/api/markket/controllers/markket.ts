@@ -70,7 +70,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           store: body.store_id,
           Amount: body.total,
           Currency: 'USD',
-          Status: 'pending',
+          Status: 'open',
           Shipping_Address: {},
           STRIPE_PAYMENT_ID: response?.id,
           Details: prices.map((price: any) => {
