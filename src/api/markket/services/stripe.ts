@@ -113,7 +113,6 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
   }
 
   console.log('create.stripe.payment.link', { line_items: line_items.length });
-
   const url = `${redirect_to_url || 'https://markket.place/receipt'}?session_id={CHECKOUT_SESSION_ID}`;
 
   const stripe_options = {
@@ -131,7 +130,7 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
     // @TODO = adjust fees with ENV vars
     // This basic calculation uses the total provided by the client to calculate the application fee,
     // process can be tweaked, to support different pricing tiers
-    // currently charging $0.33 + 1% of the transaction, with a maximum of $33
+    // currently charging $0.33 + 3.3% of the transaction, with a maximum of $99.99
     const connected_account_data = await client.accounts.retrieve(connected_account_id);
     let application_fee = 0;
 
@@ -153,13 +152,15 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
 
     console.log(`Stripe:Connect:link:${connected_account_id}`,
       {
-        total, application_fee, enabled: connected_account_data?.charges_enabled
+        total,
+        application_fee,
+        enabled: connected_account_data?.charges_enabled
       })
   }
 
   if (include_shipping) {
     stripe_options.shipping_address_collection = {
-      allowed_countries: ['US', 'CO'],
+      allowed_countries: ['US', 'CO', 'MX', 'SV', 'IL'],
     };
   }
 

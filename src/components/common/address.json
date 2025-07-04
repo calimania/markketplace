@@ -1,0 +1,38 @@
+{
+  "collectionName": "components_common_address",
+  "info": {
+    "displayName": "Address",
+    "icon": "earth",
+    "description": ""
+  },
+  "options": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "street": {
+      "type": "string"
+    },
+    "street_2": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "zipcode": {
+      "type": "string",
+      "regex": "^\\d{5}(-\\d{4})?$",
+      "minLength": 5,
+      "maxLength": 10
+    }
+  }
+}
