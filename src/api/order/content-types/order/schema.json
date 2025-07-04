@@ -26,9 +26,14 @@
     "Status": {
       "type": "enumeration",
       "enum": [
+        "open",
         "pending",
         "complete",
-        "refunded"
+        "refunded",
+        "shipped",
+        "invalid",
+        "suspicious",
+        "refuted"
       ]
     },
     "STRIPE_PAYMENT_ID": {

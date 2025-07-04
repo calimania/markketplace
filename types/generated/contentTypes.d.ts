@@ -905,7 +905,18 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     shipments: Schema.Attribute.Relation<'oneToMany', 'api::shipment.shipment'>;
     Shipping_Address: Schema.Attribute.Component<'common.address', false>;
-    Status: Schema.Attribute.Enumeration<['pending', 'complete', 'refunded']>;
+    Status: Schema.Attribute.Enumeration<
+      [
+        'open',
+        'pending',
+        'complete',
+        'refunded',
+        'shipped',
+        'invalid',
+        'suspicious',
+        'refuted',
+      ]
+    >;
     store: Schema.Attribute.Relation<'oneToOne', 'api::store.store'>;
     STRIPE_PAYMENT_ID: Schema.Attribute.String;
     updatedAt: Schema.Attribute.DateTime;
