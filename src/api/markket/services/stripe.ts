@@ -134,10 +134,18 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
     // currently charging $0.33 + 1% of the transaction, with a maximum of $33
     const connected_account_data = await client.accounts.retrieve(connected_account_id);
     let application_fee = 0;
+
     if (connected_account_data?.charges_enabled) {
-      const max_application_fee = 333;
-      application_fee = (((total && total > 10) ? total : 10) || 10) * 0.0133;
-      stripe_options.application_fee_amount = Math.round((application_fee <= max_application_fee ? application_fee : max_application_fee) * 100) + 33;
+      // Changes via ENV_VAR for enterprise & self-hosted markketplaces - and currency
+      // For stripe alternatives, provide extensions under separate url_paths
+      const max_application_fee = 9999; // $99.99 in cents
+      const percent_fee = 0.033; // 3.3%
+      const base_fee = 33; // $0.33 in cents
+
+      let application_fee = Math.round((total || 0) * percent_fee * 100) + base_fee;
+      if (application_fee > max_application_fee) application_fee = max_application_fee;
+      stripe_options.application_fee_amount = application_fee;
+
       stripe_options.transfer_data = {
         destination: connected_account_id
       };
