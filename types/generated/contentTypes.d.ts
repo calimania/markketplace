@@ -904,7 +904,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     shipments: Schema.Attribute.Relation<'oneToMany', 'api::shipment.shipment'>;
-    Shipping_Address: Schema.Attribute.Component<'common.links', false>;
+    Shipping_Address: Schema.Attribute.Component<'common.address', false>;
     Status: Schema.Attribute.Enumeration<['pending', 'complete', 'refunded']>;
     store: Schema.Attribute.Relation<'oneToOne', 'api::store.store'>;
     STRIPE_PAYMENT_ID: Schema.Attribute.String;
@@ -1231,7 +1231,7 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
         };
       }> &
       Schema.Attribute.DefaultTo<false>;
-    addresses: Schema.Attribute.Component<'common.links', true> &
+    addresses: Schema.Attribute.Component<'common.address', true> &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;

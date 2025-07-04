@@ -37,7 +37,7 @@
     "Shipping_Address": {
       "type": "component",
       "repeatable": false,
-      "component": "common.links"
+      "component": "common.address"
     },
     "Details": {
       "displayName": "PRODUCT_SNAPSHOP",

@@ -113,7 +113,6 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
   }
 
   console.log('create.stripe.payment.link', { line_items: line_items.length });
-
   const url = `${redirect_to_url || 'https://markket.place/receipt'}?session_id={CHECKOUT_SESSION_ID}`;
 
   const stripe_options = {
@@ -131,13 +130,21 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
     // @TODO = adjust fees with ENV vars
     // This basic calculation uses the total provided by the client to calculate the application fee,
     // process can be tweaked, to support different pricing tiers
-    // currently charging $0.33 + 1% of the transaction, with a maximum of $33
+    // currently charging $0.33 + 3.3% of the transaction, with a maximum of $99.99
     const connected_account_data = await client.accounts.retrieve(connected_account_id);
     let application_fee = 0;
+
     if (connected_account_data?.charges_enabled) {
-      const max_application_fee = 333;
-      application_fee = (((total && total > 10) ? total : 10) || 10) * 0.0133;
-      stripe_options.application_fee_amount = Math.round((application_fee <= max_application_fee ? application_fee : max_application_fee) * 100) + 33;
+      // Changes via ENV_VAR for enterprise & self-hosted markketplaces - and currency
+      // For stripe alternatives, provide extensions under separate url_paths
+      const max_application_fee = 9999; // $99.99 in cents
+      const percent_fee = 0.033; // 3.3%
+      const base_fee = 33; // $0.33 in cents
+
+      let application_fee = Math.round((total || 0) * percent_fee * 100) + base_fee;
+      if (application_fee > max_application_fee) application_fee = max_application_fee;
+      stripe_options.application_fee_amount = application_fee;
+
       stripe_options.transfer_data = {
         destination: connected_account_id
       };
@@ -145,13 +152,15 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
 
     console.log(`Stripe:Connect:link:${connected_account_id}`,
       {
-        total, application_fee, enabled: connected_account_data?.charges_enabled
+        total,
+        application_fee,
+        enabled: connected_account_data?.charges_enabled
       })
   }
 
   if (include_shipping) {
     stripe_options.shipping_address_collection = {
-      allowed_countries: ['US', 'CO'],
+      allowed_countries: ['US', 'CO', 'MX', 'SV', 'IL'],
     };
   }
 

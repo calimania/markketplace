@@ -1,5 +1,15 @@
 /**
  * markket controller
+ *
+ * Interfaces with our data & other extensions to augment functionality
+ *
+ * Features:
+ *  - Activity log
+ *  - Stripe webhooks
+ *  - Stripe payment links
+ *  - Stripe connect actions
+ *
+ * @TODO: Abstract model creation to utilities
  */
 import { version } from '../../../../package.json';
 const { createCoreController } = require('@strapi/strapi').factories;
@@ -39,19 +49,93 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     console.log(`markket.create:${body.action || 'default'}`);
 
     if (body?.action === 'stripe.link') {
+      const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
+
       const response = await createPaymentLinkWithPriceIds({
         prices: body?.prices || [],
-        include_shipping: !!body?.includes_shipping,
-        stripe_test: !!body?.stripe_test,
-        store_id: body?.store_id,
-        redirect_to_url: body?.redirect_to_url,
-        total: body?.total,
+        include_shipping: !!includes_shipping,
+        stripe_test: !!stripe_test,
+        store_id,
+        redirect_to_url,
+        total,
       });
+
       link = {
         response,
         body,
       };
-      message = 'stripe link created';
+
+      const order = await strapi.service('api::order.order').create({
+        data: {
+          store: body.store_id,
+          Amount: body.total,
+          Currency: 'USD',
+          Status: 'pending',
+          Shipping_Address: {},
+          STRIPE_PAYMENT_ID: response?.id,
+          Details: prices.map((price: any) => {
+            return {
+              Price: parseInt(price?.unit_amount || '0', 10),
+              product,
+              Quantity: parseInt(price.quantity || '0', 10),
+              Name: price?.Name,
+            }
+          })
+        }
+      });
+      message = 'stripe link & order created';
+    }
+
+    if (body?.action == 'stripe:checkout.session.completed') {
+      const session = body.data?.object as any;
+      const paymentLinkId = session.payment_link;
+      const shipping = session.shipping || session.customer_details?.address;
+      const buyer_email = session.customer_details?.email || body.customer_email;
+
+      if (paymentLinkId) {
+        const order = await strapi.db.query('api::order.order').findOne({
+          where: { STRIPE_PAYMENT_ID: paymentLinkId }
+        });
+
+        if (order) {
+          console.log(`updating:order:${order.documentId}`);
+          const prevAttempts = Array.isArray(order.Payment_attempts) ? order.Payment_attempts : [];
+          const newAttempt = {
+            Timestampt: new Date(),
+            buyer_email: buyer_email,
+            Status: 'Succeeded',
+            reason: '',
+          };
+
+          let shippingData = order.Shipping_Address;
+          if (!shippingData && shipping) {
+            shippingData = {
+              street: shipping.address?.line1 || shipping.line1,
+              street_2: shipping.address?.line2 || shipping.line2,
+              city: shipping.address?.city || shipping.city,
+              state: shipping.address?.state || shipping.state,
+              zipcode: shipping.address?.postal_code || shipping.postal_code,
+              country: shipping.address?.country || shipping.country,
+              name: shipping.name || session.customer_details?.name,
+              email: buyer_email,
+            };
+          }
+
+          const update = await strapi.service('api::order.order').update(order.documentId, {
+            data: {
+              Status: 'complete',
+              Payment_attempts: [
+                ...prevAttempts,
+                newAttempt
+              ],
+              Shipping_Address: shippingData || order.Shipping_Address,
+            }
+          });
+        }
+      }
+
+      const response = await sendOrderNotification({ strapi, order: body });
+      link = { body, response };
     }
 
     if (body?.action === 'stripe.account') {
@@ -71,12 +155,6 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         body,
       };
       message = 'stripe session retrieved';
-    }
-
-    if (body?.action == 'stripe:checkout.session.completed') {
-      // @TODO: Created Order record
-      const response = await sendOrderNotification({ strapi, order: body });
-      link = { body, response };
     }
 
     // Create a markket transaction record

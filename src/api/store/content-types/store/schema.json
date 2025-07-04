@@ -110,7 +110,7 @@
           "localized": true
         }
       },
-      "component": "common.links"
+      "component": "common.address"
     },
     "Favicon": {
       "type": "media",

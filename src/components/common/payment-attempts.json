@@ -9,6 +9,9 @@
     "Timestampt": {
       "type": "datetime"
     },
+    "buyer_email": {
+      "type": "string"
+    },
     "Status": {
       "type": "enumeration",
       "enum": [

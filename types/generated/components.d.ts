@@ -1,7 +1,7 @@
 import type { Schema, Struct } from '@strapi/strapi';
 
-export interface CommonLinks extends Struct.ComponentSchema {
-  collectionName: 'components_common_links';
+export interface CommonAddress extends Struct.ComponentSchema {
+  collectionName: 'components_common_address';
   info: {
     description: '';
     displayName: 'Address';
@@ -9,60 +9,10 @@ export interface CommonLinks extends Struct.ComponentSchema {
   };
   attributes: {
     city: Schema.Attribute.String;
-    state: Schema.Attribute.Enumeration<
-      [
-        'Alabama',
-        'Alaska',
-        'Arizona',
-        'Arkansas',
-        'California',
-        'Colorado',
-        'Connecticut',
-        'Delaware',
-        'Florida',
-        'Georgia',
-        'Hawaii',
-        'Idaho',
-        'Illinois',
-        'Indiana',
-        'Iowa',
-        'Kansas',
-        'Kentucky',
-        'Louisiana',
-        'Maine',
-        'Maryland',
-        'Massachusetts',
-        'Michigan',
-        'Minnesota',
-        'Mississippi',
-        'Missouri',
-        'Montana',
-        'Nebraska',
-        'Nevada',
-        'New Hampshire',
-        'New Jersey',
-        'New Mexico',
-        'New York',
-        'North Carolina',
-        'North Dakota',
-        'Ohio',
-        'Oklahoma',
-        'Oregon',
-        'Pennsylvania',
-        'Rhode Island',
-        'South Carolina',
-        'South Dakota',
-        'Tennessee',
-        'Texas',
-        'Utah',
-        'Vermont',
-        'Virginia',
-        'Washington',
-        'West Virginia',
-        'Wisconsin',
-        'Wyoming',
-      ]
-    >;
+    country: Schema.Attribute.String;
+    email: Schema.Attribute.String;
+    name: Schema.Attribute.String;
+    state: Schema.Attribute.String;
     street: Schema.Attribute.String;
     street_2: Schema.Attribute.String;
     zipcode: Schema.Attribute.String &
@@ -80,6 +30,7 @@ export interface CommonPaymentAttempts extends Struct.ComponentSchema {
     icon: 'scissors';
   };
   attributes: {
+    buyer_email: Schema.Attribute.String;
     reason: Schema.Attribute.String;
     Status: Schema.Attribute.Enumeration<
       [
@@ -200,7 +151,7 @@ export interface CommonUrls extends Struct.ComponentSchema {
 declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
-      'common.links': CommonLinks;
+      'common.address': CommonAddress;
       'common.payment-attempts': CommonPaymentAttempts;
       'common.prices': CommonPrices;
       'common.product-snapshop': CommonProductSnapshop;
