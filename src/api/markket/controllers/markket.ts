@@ -16,7 +16,7 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
 
 import { createPaymentLinkWithPriceIds, getSessionById, getAccount } from '../services/stripe';
-import { sendOrderNotification } from '../services/notification';
+import { sendOrderNotification, notifyStoreOfPurchase } from '../services/notification';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
@@ -91,50 +91,59 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       const paymentLinkId = session.payment_link;
       const shipping = session.shipping || session.customer_details?.address;
       const buyer_email = session.customer_details?.email || body.customer_email;
+      const storeUsers = [];
 
-      if (paymentLinkId) {
-        const order = await strapi.db.query('api::order.order').findOne({
-          where: { STRIPE_PAYMENT_ID: paymentLinkId }
-        });
+      const order = paymentLinkId && await strapi.db.query('api::order.order').findOne({
+        where: { STRIPE_PAYMENT_ID: paymentLinkId },
+        populate: ['store.users']
+      });
 
-        if (order) {
-          console.log(`updating:order:${order.documentId}`);
-          const prevAttempts = Array.isArray(order.Payment_attempts) ? order.Payment_attempts : [];
-          const newAttempt = {
-            Timestampt: new Date(),
-            buyer_email: buyer_email,
-            Status: 'Succeeded',
-            reason: '',
+      if (order) {
+        console.log(`updating:order:${order.documentId}`);
+        const prevAttempts = Array.isArray(order.Payment_attempts) ? order.Payment_attempts : [];
+        const newAttempt = {
+          Timestampt: new Date(),
+          buyer_email: buyer_email,
+          Status: 'Succeeded',
+          reason: '',
+        };
+
+        let shippingData = order.Shipping_Address;
+        if (!shippingData && shipping) {
+          shippingData = {
+            street: shipping.address?.line1 || shipping.line1,
+            street_2: shipping.address?.line2 || shipping.line2,
+            city: shipping.address?.city || shipping.city,
+            state: shipping.address?.state || shipping.state,
+            zipcode: shipping.address?.postal_code || shipping.postal_code,
+            country: shipping.address?.country || shipping.country,
+            name: shipping.name || session.customer_details?.name,
+            email: buyer_email,
           };
+        }
 
-          let shippingData = order.Shipping_Address;
-          if (!shippingData && shipping) {
-            shippingData = {
-              street: shipping.address?.line1 || shipping.line1,
-              street_2: shipping.address?.line2 || shipping.line2,
-              city: shipping.address?.city || shipping.city,
-              state: shipping.address?.state || shipping.state,
-              zipcode: shipping.address?.postal_code || shipping.postal_code,
-              country: shipping.address?.country || shipping.country,
-              name: shipping.name || session.customer_details?.name,
-              email: buyer_email,
-            };
+        const update = await strapi.service('api::order.order').update(order.documentId, {
+          data: {
+            Status: 'complete',
+            Payment_attempts: [
+              ...prevAttempts,
+              newAttempt
+            ],
+            Shipping_Address: shippingData || order.Shipping_Address,
           }
+        });
+      }
 
-          const update = await strapi.service('api::order.order').update(order.documentId, {
-            data: {
-              Status: 'complete',
-              Payment_attempts: [
-                ...prevAttempts,
-                newAttempt
-              ],
-              Shipping_Address: shippingData || order.Shipping_Address,
-            }
-          });
+      if (order?.store?.documentId) {
+        storeUsers.push(...order?.store?.users);
+        const emails = storeUsers.filter(user => user.confirmed).map(user => user.email);
+
+        if (emails?.length > 0) {
+          await notifyStoreOfPurchase({ strapi, order, emails, store: order?.store as {} });
         }
       }
 
-      const response = await sendOrderNotification({ strapi, order: body });
+      const response = sendOrderNotification({ strapi, order: body });
       link = { body, response };
     }
 

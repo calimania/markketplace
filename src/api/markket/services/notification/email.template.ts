@@ -43,7 +43,7 @@ export const emailLayout = ({ content, title }: EmailLayout) => {
 /**
  * Order Notification Email Template
  *
- * @param order
+ * @param order Stripe order information, contained in the body
  * @returns
  */
 export const OrderNotificationHTml = (order: any) => {
@@ -74,7 +74,7 @@ export const OrderNotificationHTml = (order: any) => {
  * @returns
  */
 export const RSVPNotificationHTml = (event: any) => {
-  // <p>Order Amount: ${((order?.data?.object?.total_amount || 0) / 100)}</p>
+
   const content = `
     <!--<h1>Order Confirmation</h1>
     <p>Thank you for your order!</p>
@@ -91,6 +91,30 @@ export const RSVPNotificationHTml = (event: any) => {
   `;
 
   const title = 'Markkët: RSVP Confirmation';
+
+  return emailLayout({ content, title });
+};
+
+/**
+ * Notifies Store.user[].email about a purchase
+ *
+ * @param order, store
+ * @returns
+ */
+export const OrderStoreNotificationEmailHTML = (order: { documentId: string, Amount: number, }, store: { title: string, documentId: string }) => {
+  console.log({ order });
+
+  const content = `
+    <h2>You must construct additional pylons</h2>
+    <p>A new order has been placed in your store: ${store.title}</p>
+    <p><strong>$${order?.Amount}</strong></p>
+    <p>order id: ${order?.documentId}</p>
+    <p>Visit the Dashboard to view details</p>
+    <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order.documentId}#orders">/dashboard/crm</a>
+    </div>
+  `;
+
+  const title = 'Markkët: Order notification';
 
   return emailLayout({ content, title });
 };
