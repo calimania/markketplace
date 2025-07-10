@@ -8,6 +8,7 @@ export type Store = {
     store_name_override: string;
     welcome_email_text: string;
     dashboard_url: string;
+    domain: string;
   }
 };
 

@@ -8,7 +8,7 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
   const content = `
     <div style="background:#fffbe7;border:2.5px solid #ff00cf;padding:22px 14px 16px 14px;border-radius:12px;">
       <h3 style="font-size:1.3rem;color:#ff00cf;font-weight:900;margin-bottom:16px;letter-spacing:1px;">
-        Bienvenido a Markkët
+        Bienvenido a ${store?.title || 'Markkët'}
       </h3>
       <p style="font-size:1.1rem;margin-bottom:14px;">
         Hey <span style="color:#0057ad;font-weight:700;">${email}</span>!
@@ -24,7 +24,7 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
       </p>
     </div>
   `;
-  const title = 'Your Magic Login Link';
+  const title = `${store?.title || 'Markkët'} Magic Login Link`;
   return emailLayout({ content, title, store });
 };
 
@@ -41,10 +41,10 @@ export const AccountCreatedHTML = (email: string, store: Store) => {
       <p style="color:#222;font-size:1rem;margin-bottom:0;">
       ${store?.settings?.welcome_email_text || 'Markkët helps webmasters'}.
         Visit your
-        <a href="${store?.settings?.dashboard_url || 'Markkët helps webmasters'}">dashboard</a> to explore features.
+        <a href="${store?.settings?.dashboard_url || new URL('/dashboard', store?.settings?.domain || 'https://de.markket.place/').toString() }">dashboard</a> to explore features.
       </p>
     </div>
   `;
-  const title = 'Welcome to Markkët!';
+  const title = `Welcome to ${store?.title || ' Markkët'}!`;
   return emailLayout({ content, title, store });
 };
