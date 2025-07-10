@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import { AccountCreatedHTML , MagicLinkHTML} from './email.template';
 
+/**
+ *
+ */
 export default ({ strapi }) => ({
   async generateCode(email: string) {
     const code = crypto.randomBytes(24).toString('hex');
@@ -11,19 +14,30 @@ export default ({ strapi }) => ({
     return code;
   },
 
-  async sendMagicLink(email: string, code: string, baseUrl?: string) {
+  /**
+   *
+   * @param email
+   * @param code
+   * @param store
+   */
+  async sendMagicLink(email: string, code: string, store: any) {
 
-    // @TODO: dynamic url later - will verify JWT
-    const url = `${baseUrl || 'https://de.markket.place'}/auth/magic?code=${code}`;
+    const url = new URL(`/auth/magic?code=${code}`, store?.settings?.domain || 'https://de.markket.place')?.toString() || '';
+    const subject = `${store?.title || 'Markkët'} Magic Login Link`
 
     await strapi.plugin('email').service('email').send({
       to: email,
-      subject: 'Markkët Magic Login Link',
+      subject,
       text: `Click to login: ${url}`,
-      html: MagicLinkHTML(email, url),
+      html: MagicLinkHTML(email, url, store),
     });
   },
 
+  /**
+   *
+   * @param code
+   * @returns
+   */
   async verifyCode(code: string) {
     const record = await strapi.entityService.findMany('api::auth-magic.magic-code', {
       filters: { code, },
