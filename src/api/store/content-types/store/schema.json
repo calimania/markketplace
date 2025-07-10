@@ -170,6 +170,12 @@
       "relation": "manyToMany",
       "target": "plugin::users-permissions.user",
       "inversedBy": "stores"
+    },
+    "settings": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store.store-setting",
+      "inversedBy": "store"
     }
   }
 }

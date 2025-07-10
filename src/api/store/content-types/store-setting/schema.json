@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "store_settings",
+  "info": {
+    "singularName": "store-setting",
+    "pluralName": "store-settings",
+    "displayName": "Store Settings",
+    "description": "Per-store configuration and advanced settings"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "store": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store.store",
+      "mappedBy": "settings"
+    },
+    "domain": { "type": "string" },
+    "allowed_domains": { "type": "json" },
+    "reply_to_email": { "type": "email" },
+    "support_email": { "type": "email" },
+    "email_theme": {
+      "type": "json"
+    },
+    "email_footer": {
+      "type": "text"
+    },
+    "email_header_message": {
+      "type": "string"
+    },
+    "social_links": {
+      "type": "json"
+    },
+    "branding": { "type": "json" },
+    "store_name_override": { "type": "string" },
+    "default_locale": { "type": "string" },
+    "custom_scripts": { "type": "text" },
+    "feature_flags": { "type": "json" },
+    "notification_settings": { "type": "json" },
+    "meta": { "type": "json" }
+  }
+}
