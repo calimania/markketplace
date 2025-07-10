@@ -1,34 +1,52 @@
 import crypto from 'crypto';
 import { AccountCreatedHTML , MagicLinkHTML} from './email.template';
 
+/**
+ * Creates a unique code to identify a user connection to an email address
+ * Optionally connected to a specific store, for domain validation and custom emails
+ */
 export default ({ strapi }) => ({
-  async generateCode(email: string) {
+  async generateCode(email: string, store_id?: string) {
     const code = crypto.randomBytes(24).toString('hex');
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+
     await strapi.entityService.create('api::auth-magic.magic-code', {
-      data: { email, code, expiresAt }
+      data: { email, code, expiresAt, store: store_id }
     });
+
     return code;
   },
 
-  async sendMagicLink(email: string, code: string, baseUrl?: string) {
+  /**
+   *
+   * @param email
+   * @param code
+   * @param store
+   */
+  async sendMagicLink(email: string, code: string, store: any) {
 
-    // @TODO: dynamic url later - will verify JWT
-    const url = `${baseUrl || 'https://de.markket.place'}/auth/magic?code=${code}`;
+    const url = new URL(`/auth/magic?code=${code}`, store?.settings?.domain || 'https://de.markket.place')?.toString() || '';
+    const subject = `${store?.title || 'Markkët'} Magic Login Link`
 
     await strapi.plugin('email').service('email').send({
       to: email,
-      subject: 'Markkët Magic Login Link',
+      subject,
       text: `Click to login: ${url}`,
-      html: MagicLinkHTML(email, url),
+      html: MagicLinkHTML(email, url, store),
     });
   },
 
+  /**
+   *
+   * @param code
+   * @returns
+   */
   async verifyCode(code: string) {
     const record = await strapi.entityService.findMany('api::auth-magic.magic-code', {
       filters: { code, },
       sort: { createdAt: 'desc' },
-      limit: 1
+      limit: 1,
+      populate: ['store.settings', 'store', 'store.Favicon']
     });
 
     if (!record.length) return null;
@@ -41,13 +59,13 @@ export default ({ strapi }) => ({
 
     return magic;
   },
-  async welcomeEmail  (email: string) {
+  async welcomeEmail(email: string, store: any) {
 
     await strapi.plugin('email').service('email').send({
       to: email,
       subject: 'Welcome to Markkët',
       text: `Welcome to Markkët`,
-      html: AccountCreatedHTML(email),
+      html: AccountCreatedHTML(email, store),
     });
 
     return {};

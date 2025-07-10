@@ -1,10 +1,10 @@
 /** Markket notification.emails includes utilities for design consistency and possible abstraction */
-import { emailLayout } from '../../markket/services/notification/email.template';
+import { emailLayout, Store } from '../../markket/services/notification/email.template';
 
 /**
  * Magic Link Email Template - same code for register or login
  */
-export const MagicLinkHTML = (email: string, url: string) => {
+export const MagicLinkHTML = (email: string, url: string, store: any) => {
   const content = `
     <div style="background:#fffbe7;border:2.5px solid #ff00cf;padding:22px 14px 16px 14px;border-radius:12px;">
       <h3 style="font-size:1.3rem;color:#ff00cf;font-weight:900;margin-bottom:16px;letter-spacing:1px;">
@@ -25,13 +25,13 @@ export const MagicLinkHTML = (email: string, url: string) => {
     </div>
   `;
   const title = 'Your Magic Login Link';
-  return emailLayout({ content, title });
+  return emailLayout({ content, title, store });
 };
 
 /**
  * Account Created Notification - first time users of magic link
  */
-export const AccountCreatedHTML = (email: string) => {
+export const AccountCreatedHTML = (email: string, store: Store) => {
   const content = `
     <div style="background:#fffbe7;border:2.5px solid #fbda0d;padding:22px 14px 16px 14px;border-radius:12px;text-align:left;">
       <h3 style="font-size:1.3rem;color:#0057ad;font-weight:900;margin-bottom:16px;letter-spacing:1px;">
@@ -39,11 +39,12 @@ export const AccountCreatedHTML = (email: string) => {
       </h3>
       <p style="font-size:1.1rem;margin-bottom:14px;">Hi <span style="color:#ff00cf;font-weight:700;">${email}</span>!</p>
       <p style="color:#222;font-size:1rem;margin-bottom:0;">
-        Markketplace lets artists & professionals sell online, visit the
-          <a href="https://de.markket.place/stores">mall</a> for inspo.
+      ${store?.settings?.welcome_email_text || 'Markkët helps webmasters'}.
+        Visit your
+        <a href="${store?.settings?.dashboard_url || 'Markkët helps webmasters'}">dashboard</a> to explore features.
       </p>
     </div>
   `;
   const title = 'Welcome to Markkët!';
-  return emailLayout({ content, title });
+  return emailLayout({ content, title, store });
 };

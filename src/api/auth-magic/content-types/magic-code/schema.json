@@ -13,6 +13,14 @@
     "email": { "type": "email", "required": true },
     "code": { "type": "string", "required": true },
     "expiresAt": { "type": "datetime", "required": true },
-    "used": { "type": "boolean", "default": false }
+    "used": {
+      "type": "boolean",
+      "default": false
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
+    }
   }
 }

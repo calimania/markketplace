@@ -1,17 +1,23 @@
+/**
+ * Auth magic with email link
+ *
+ * Uses store.settings records for email customization and redirect domain
+ */
 export default ({ strapi }) => ({
   async request(ctx) {
-    const { email, baseUrl } = ctx.request.body;
-
+    const { email, store_id } = ctx.request.body;
 
     if (!email) return ctx.badRequest('Email required');
 
-    const code = await strapi.service('api::auth-magic.auth-magic').generateCode(email);
+    const code = await strapi.service('api::auth-magic.auth-magic').generateCode(email, store_id);
 
-    // @TODO: Allow more URLs via ENV_VAR
-    const url = (baseUrl == 'http://localhost:4020') ? baseUrl : '';
-    await strapi.service('api::auth-magic.auth-magic').sendMagicLink(email, code, url);
+    const store = await strapi.service('api::store.store').findOne(store_id, {
+      populate: ['Favicon', 'settings']
+    });
 
-    ctx.send({ ok: true, url });
+    await strapi.service('api::auth-magic.auth-magic').sendMagicLink(email, code, store);
+
+    ctx.send({ ok: true, domain: store?.settings?.domain });
   },
 
   async verify(ctx) {
@@ -36,7 +42,7 @@ export default ({ strapi }) => ({
       });
 
       console.info('new:user', { id: user.id, role: role.id });
-      await strapi.service('api::auth-magic.auth-magic').welcomeEmail(email);
+      await strapi.service('api::auth-magic.auth-magic').welcomeEmail(email, magic?.store);
     }
 
     const jwt = strapi.plugin('users-permissions').service('jwt').issue({ id: user.id });

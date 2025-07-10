@@ -546,6 +546,7 @@ export interface ApiAuthMagicMagicCode extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1285,6 +1286,7 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+    settings: Schema.Attribute.Relation<'oneToOne', 'api::store.store-setting'>;
     Slides: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -1334,6 +1336,52 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+  };
+}
+
+export interface ApiStoreStoreSetting extends Struct.CollectionTypeSchema {
+  collectionName: 'store_settings';
+  info: {
+    description: 'Per-store configuration and advanced settings';
+    displayName: 'Store Settings';
+    pluralName: 'store-settings';
+    singularName: 'store-setting';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    allowed_domains: Schema.Attribute.JSON;
+    branding: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    custom_scripts: Schema.Attribute.Text;
+    dashboard_url: Schema.Attribute.String;
+    default_locale: Schema.Attribute.String;
+    domain: Schema.Attribute.String;
+    email_footer: Schema.Attribute.Text;
+    email_header_message: Schema.Attribute.String;
+    email_theme: Schema.Attribute.JSON;
+    feature_flags: Schema.Attribute.JSON;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::store.store-setting'
+    > &
+      Schema.Attribute.Private;
+    meta: Schema.Attribute.JSON;
+    notification_settings: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    reply_to_email: Schema.Attribute.Email;
+    social_links: Schema.Attribute.JSON;
+    store: Schema.Attribute.Relation<'oneToOne', 'api::store.store'>;
+    store_name_override: Schema.Attribute.String;
+    support_email: Schema.Attribute.Email;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    welcome_email_text: Schema.Attribute.Text;
   };
 }
 
@@ -1910,6 +1958,7 @@ declare module '@strapi/strapi' {
       'api::rsvp.rsvp': ApiRsvpRsvp;
       'api::shipment.shipment': ApiShipmentShipment;
       'api::store.store': ApiStoreStore;
+      'api::store.store-setting': ApiStoreStoreSetting;
       'api::subscriber.subscriber': ApiSubscriberSubscriber;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
