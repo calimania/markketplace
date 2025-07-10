@@ -1,17 +1,20 @@
+export type Store = {
+  title: string;
+  Favicon: {
+    url: string;
+  },
+  settings: {
+    email_header_message: string;
+    store_name_override: string;
+    welcome_email_text: string;
+    dashboard_url: string;
+  }
+};
 
 type EmailLayout = {
   content: string;
   title: string;
-  store?: {
-    title: string;
-    Favicon: {
-      url: string;
-    },
-    settings: {
-      email_header_message: string;
-      store_name_override: string;
-    }
-  }
+  store?: Store;
 };
 
 /**

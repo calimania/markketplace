@@ -18,6 +18,9 @@
       "mappedBy": "settings"
     },
     "domain": { "type": "string" },
+    "dashboard_url": {
+      "type": "string"
+    },
     "allowed_domains": { "type": "json" },
     "reply_to_email": { "type": "email" },
     "support_email": { "type": "email" },
@@ -25,6 +28,9 @@
       "type": "json"
     },
     "email_footer": {
+      "type": "text"
+    },
+    "welcome_email_text": {
       "type": "text"
     },
     "email_header_message": {

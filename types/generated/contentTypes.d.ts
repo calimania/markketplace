@@ -546,6 +546,7 @@ export interface ApiAuthMagicMagicCode extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1356,6 +1357,7 @@ export interface ApiStoreStoreSetting extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     custom_scripts: Schema.Attribute.Text;
+    dashboard_url: Schema.Attribute.String;
     default_locale: Schema.Attribute.String;
     domain: Schema.Attribute.String;
     email_footer: Schema.Attribute.Text;
@@ -1379,6 +1381,7 @@ export interface ApiStoreStoreSetting extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    welcome_email_text: Schema.Attribute.Text;
   };
 }
 

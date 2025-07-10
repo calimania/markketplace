@@ -9,7 +9,7 @@ export default ({ strapi }) => ({
 
     if (!email) return ctx.badRequest('Email required');
 
-    const code = await strapi.service('api::auth-magic.auth-magic').generateCode(email);
+    const code = await strapi.service('api::auth-magic.auth-magic').generateCode(email, store_id);
 
     const store = await strapi.service('api::store.store').findOne(store_id, {
       populate: ['Favicon', 'settings']
@@ -42,7 +42,7 @@ export default ({ strapi }) => ({
       });
 
       console.info('new:user', { id: user.id, role: role.id });
-      await strapi.service('api::auth-magic.auth-magic').welcomeEmail(email);
+      await strapi.service('api::auth-magic.auth-magic').welcomeEmail(email, magic?.store);
     }
 
     const jwt = strapi.plugin('users-permissions').service('jwt').issue({ id: user.id });
