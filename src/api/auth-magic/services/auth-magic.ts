@@ -63,8 +63,8 @@ export default ({ strapi }) => ({
 
     await strapi.plugin('email').service('email').send({
       to: email,
-      subject: 'Welcome to Markkët',
-      text: `Welcome to Markkët`,
+      subject: `Welcome to ${store?.title || 'Markkët'}`,
+      text: `Welcome to ${store?.title || 'Markkët'}`,
       html: AccountCreatedHTML(email, store),
     });
 
