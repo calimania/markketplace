@@ -1,5 +1,7 @@
 export type Store = {
   title: string;
+  slug: string;
+  documentId: string;
   Favicon: {
     url: string;
   },
@@ -26,11 +28,11 @@ type EmailLayout = {
  * @returns
  */
 export const emailLayout = ({ content, title, store }: EmailLayout) => {
-  console.log({ store });
+  console.log({ store: store?.documentId || store?.slug });
 
   const logoUrl = store?.Favicon?.url;
 
-  const preheader = store?.settings?.email_header_message || 'Thank you for using Markkët!';
+  const preheader = store?.settings?.email_header_message || `Thank you for using ${store?.title || 'Markkët'}!`;
 
   return `
     <!DOCTYPE html>
@@ -60,8 +62,8 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
               </tr>
               <tr>
                 <td style="padding:24px 20px 12px 20px;">
-                  <div style="font-size:1.3rem; font-weight:900; color:#0057ad; margin-bottom:16px; letter-spacing:1px;">${store?.title}</div>
-                  ${content}
+                  <div style="font-size:1.3rem; font-weight:900; color:#0057ad; margin-bottom:16px; letter-spacing:1px;">${store?.title || ''}</div>
+                  ${content || ''}
                 </td>
               </tr>
               <tr>
@@ -140,15 +142,15 @@ export const RSVPNotificationHTml = (event: any) => {
  * @returns
  */
 export const OrderStoreNotificationEmailHTML = (order: { documentId: string, Amount: number, }, store: { title: string, documentId: string }) => {
-  console.log({ order });
+  console.log({ order: order?.documentId });
 
   const content = `
     <h2>You must construct additional pylons</h2>
-    <p>A new order has been placed in your store: ${store.title}</p>
+    <p>A new order has been placed in your store: ${store?.title || ''}</p>
     <p><strong>$${order?.Amount}</strong></p>
     <p>order id: ${order?.documentId}</p>
     <p>Visit the Dashboard to view details</p>
-    <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order.documentId}#orders">/dashboard/crm</a>
+    <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders">/dashboard/crm</a>
     </div>
   `;
 
