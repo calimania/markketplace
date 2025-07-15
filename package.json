@@ -1,7 +1,7 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "A Markket.place powered by strapi",
   "scripts": {
     "dev": "strapi develop",
@@ -13,10 +13,10 @@
     "deploy": "strapi deploy"
   },
   "dependencies": {
-    "@strapi/plugin-cloud": "5.16.0",
-    "@strapi/plugin-users-permissions": "5.16.0",
-    "@strapi/provider-email-sendgrid": "5.16.0",
-    "@strapi/strapi": "5.16.0",
+    "@strapi/plugin-cloud": "5.18.0",
+    "@strapi/plugin-users-permissions": "5.18.0",
+    "@strapi/provider-email-sendgrid": "5.18.0",
+    "@strapi/strapi": "5.18.0",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
     "get-strapi-schema": "^0.0.3",
