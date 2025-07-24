@@ -13,6 +13,7 @@
     "deploy": "strapi deploy"
   },
   "dependencies": {
+    "@strapi-community/plugin-healthcheck": "^1.0.5",
     "@strapi/plugin-cloud": "5.18.0",
     "@strapi/plugin-users-permissions": "5.18.0",
     "@strapi/provider-email-sendgrid": "5.18.0",
