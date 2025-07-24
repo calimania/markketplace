@@ -33,4 +33,21 @@ export default ({ env }) => ({
       },
     },
   },
+  healthcheck: {
+    enabled: true,
+    config: {
+      server: {
+        uptime: true,
+        memory: true,
+        version: true,
+      },
+      database: {
+        client: true,
+        connections: true,
+        uptime: true,
+        size: true,
+        version: true,
+      },
+    },
+  },
 });
