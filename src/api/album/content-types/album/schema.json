@@ -54,8 +54,7 @@
     "tracks": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::album.track",
-      "label": "Tracks"
+      "target": "api::album.track"
     },
     "store": {
       "type": "relation",
