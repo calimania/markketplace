@@ -8,6 +8,7 @@
  *  - Stripe webhooks
  *  - Stripe payment links
  *  - Stripe connect actions
+ *  - Twilio Sendgrid emails
  *
  * @TODO: Abstract model creation to utilities
  */
@@ -17,24 +18,100 @@ const modelId = "api::markket.markket";
 
 import { createPaymentLinkWithPriceIds, getSessionById, getAccount } from '../services/stripe';
 import { sendOrderNotification, notifyStoreOfPurchase } from '../services/notification';
+import { emailLayout } from '../services/notification/email.template';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || 'n/a';
 
+/**
+ * email:jo***@example.com
+ */
+const censor = (to: string | string[]) => {
+  return (Array.isArray(to)
+    ? to.map(email => email.replace(/^(.{2})[^@]*(@.*)$/, '$1***$2')).join(', ')
+    : to.replace(/^(.{2})[^@]*(@.*)$/, '$1***$2'));
+}
+
 module.exports = createCoreController(modelId, ({ strapi }) => ({
   async about(ctx: any) {
     console.info('markket.get');
     ctx.send({
-      message: 'This is the about endpoint',
+      message: 'about',
       data: {
-        info: 'Markket.place is an international commercial community',
+        info: 'markkët.place',
         version,
         NODE_ENV,
         STRIPE_PUBLIC_KEY,
         SENDGRID_REPLY_TO_EMAIL,
       },
     });
+  },
+
+  /**
+   * POST /api/markket/send-email
+   * Send branded email using store settings
+   */
+  async email(ctx: any) {
+    try {
+      const {
+        to,
+        subject,
+        content,
+        title,
+        store_id,
+        from_name,
+        reply_to
+      } = ctx.request.body;
+
+      if (!to || !subject || !content || !title || !store_id) {
+        return ctx.badRequest('400:email:[to,subject,content,title,store_id]');
+      }
+
+      const store = await strapi.documents('api::store.store').findOne({
+        documentId: store_id,
+        populate: ['settings', 'Logo'],
+      });
+
+      if (!store) {
+        return ctx.badRequest(`404:store:${store_id}`);
+      }
+
+      const fromEmail = SENDGRID_REPLY_TO_EMAIL; // whitelisted in twilio settings
+      const storeName = from_name || store?.settings?.store_name_override || store?.title;
+      const replyToEmail = reply_to || store?.settings?.reply_to_email || fromEmail;
+
+      await strapi.plugins['email'].services.email.send({
+        to: Array.isArray(to) ? to : [to],
+        from: `${storeName} <${fromEmail}>`,
+        replyTo: replyToEmail,
+        subject,
+        html: emailLayout({
+          content,
+          title: title || subject,
+          store
+        }),
+      });
+
+      console.info(`markket:email:${censor(to)}:store:${store_id}`);
+
+      return ctx.send({
+        message: 'sent',
+        data: {
+          to,
+          subject,
+          store: store ? {
+            id: store.documentId,
+            title: store.title,
+            settings_applied: !!store.settings
+          } : null,
+        }
+      });
+
+    } catch (error) {
+      console.error('Error sending email:', error);
+      return ctx.internalServerError('Failed to send email');
+    }
   },
   async create(ctx: any) {
     console.info('markket.create');
@@ -83,7 +160,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           })
         }
       });
-      message = 'stripe link & order created';
+      message = `order:${order.documentId}`;
     }
 
     if (body?.action == 'stripe:checkout.session.completed') {
@@ -132,6 +209,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
             Shipping_Address: shippingData || order.Shipping_Address,
           }
         });
+        console.log(`updating:order:${update.documentId}`);
       }
 
       if (order?.store?.documentId) {

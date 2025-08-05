@@ -28,47 +28,47 @@ type EmailLayout = {
  * @returns
  */
 export const emailLayout = ({ content, title, store }: EmailLayout) => {
-  console.log({ store: store?.documentId || store?.slug });
-
   const logoUrl = store?.Favicon?.url;
-
   const preheader = store?.settings?.email_header_message || `Thank you for using ${store?.title || 'Markkët'}!`;
+  const storeName = store?.settings?.store_name_override || store?.title || 'Markkët';
+  const storeUrl = store?.settings?.domain || 'https://markket.place';
 
   return `
     <!DOCTYPE html>
-    <html lang="en">
+    <html>
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${title} - ${store?.settings?.store_name_override || store?.title}</title>
-      <style>
-        body { background: #fffbe7; color: #222; margin:0; font-family: 'Inter', Arial, sans-serif; }
-      </style>
+      <meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <title>${title} - ${storeName}</title>
     </head>
-    <body style="background:#fffbe7; color:#222; margin:0; font-family:'Inter',Arial,sans-serif;">
-      <span style="display:none; max-height:0; max-width:0; opacity:0; overflow:hidden; visibility:hidden;">${preheader}</span>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffbe7;">
+    <body style="background:#fffbe7;color:#222;margin:0;font-family:Inter,Arial,sans-serif">
+      <span style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden">${preheader}</span>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffbe7">
         <tr>
           <td align="center">
-            <table width="666" cellpadding="0" cellspacing="0" border="0" style="background:#fff; border-radius:14px; box-shadow:0 2px 16px #ff00cf22; margin:32px 0;">
+            <table width="666" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:14px;box-shadow:0 2px 16px rgba(0,0,0,0.08);margin:32px 0">
               <tr>
-                <td style="padding:18px 20px 0 20px; text-align:left;">
-                  ${(logoUrl ? `<img src="${logoUrl}" alt="Logo" style="height:40px; margin-bottom:8px;" />` : '')}
-                  <span style="color:#ff00cf; font-size:2rem; font-weight:900; letter-spacing:2px; margin-left:8px;">${store?.title || 'Markkët'}</span>
+                <td style="padding:24px 32px 16px 32px;text-align:left">
+                  ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="height:44px;margin-bottom:12px;border-radius:6px">` : ''}
+                  <div style="color:#1a1a1a;font-size:1.6rem;font-weight:600;letter-spacing:-0.5px;margin-bottom:4px">${storeName}</div>
                 </td>
               </tr>
               <tr>
-                <td style="height:4px; background:linear-gradient(90deg,#fbda0d 60%,#ff00cf 100%); margin:8px 0;"></td>
+                <td style="height:1px;background:linear-gradient(90deg,rgba(251,218,13,0.3) 0%,rgba(255,0,207,0.2) 100%)"></td>
               </tr>
               <tr>
-                <td style="padding:24px 20px 12px 20px;">
-                  <div style="font-size:1.3rem; font-weight:900; color:#0057ad; margin-bottom:16px; letter-spacing:1px;">${store?.title || ''}</div>
-                  ${content || ''}
+                <td style="padding:28px 32px 24px 32px">
+                  <div style="font-size:1.2rem;font-weight:700;color:#2d3748;margin-bottom:20px;letter-spacing:-0.3px">${title}</div>
+                  <div style="line-height:1.6;color:#4a5568">
+                    ${content || ''}
+                  </div>
                 </td>
               </tr>
               <tr>
-                <td style="padding:10px 12px; text-align:left; margin-top:8px; border-bottom:2px solid #fbda0d; font-size:9px; color:#666;">
-                  Powered by <a href="https://dev.markket.place" style="color:#0057ad;">Markkët</a>
+                <td style="padding:16px 32px 20px 32px;text-align:center;border-top:1px solid #f7fafc">
+                  <div style="font-size:11px;color:#a0aec0;letter-spacing:0.5px">
+                    <a href=${storeUrl} style="color:#a0aec0;text-decoration:none">${storeName}</a>
+                  </div>
                 </td>
               </tr>
             </table>
@@ -77,7 +77,7 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
       </table>
     </body>
     </html>
-  `.replace(/\n|(\s\s)/g, '');
+  `.replace(/\n\s+/g, '\n').replace(/^\n|\n$/g, '');
 };
 
 /**
