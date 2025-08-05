@@ -2,7 +2,7 @@
 
 ![markketplace logo](https://markketplace.nyc3.digitaloceanspaces.com/uploads/1a82697eaeeb5b376d6983f452d1bf3d.png)
 
-Welcome to Markket.place, a community to support businesses online & AFK.
+Welcome to Markket.place, webmaster community powered by Strapi
 
 This repo offers database structure & the admin dashboard for a server instance
 
@@ -10,6 +10,22 @@ Easy to use REST APIs, compatible with multiple free templates & hosting service
 
 ## Getting Started
 
+Use this project to manage your own markket instance, provide your own credentials
+and exercise full control over your data and community experience
+
+To create a regular account visit [ de.markket.plac ](https://de.markket.place/auth/magic)
+
+For agencies or large communities with multiple initiatives, controlling your own instance makes it possible to
+customize roles, access and availability of features for distributed teams of any size
+
+### Strapi Cloud
+
+Strapi Cloud now offers a free tier where it would be easy to deploy this project, to familiarize
+yourself or support small agencies or communities
+
+Quickly test in [strapi cloud free tier](https://strapi.io/blog/introducing-the-free-plan-for-strapi-cloud)
+
+### Local
 
 1. **Clone the repository:**
 
@@ -26,6 +42,17 @@ Use docker-compose to start the API and admin
 docker-compose build markketplace
 docker-compose up markketplace
 ```
+
+
+### Self Host
+
+Deploy to any cloud prodvider like digital ocean
+
+[ Deploying Strapi in Digital Ocean ](https://strapi.io/integrations/digital-ocean)
+
+Review `.env.example` for ENV names for PostgresQL and essential services
+
+The initial user becomes super admin in your instance
 
 ## Docs
 
@@ -47,12 +74,12 @@ This project runs a posgresdb, redis, strapi and storefront.
 
 ### Storefronts
 
-The storefront comes from a different repo, a modified version of the medusa starter adapted to the
-markketplace API.
+Find templates compatible with astro, or create your own using our strapi-loader
 
-Users can run other storefronts compatible with markketplace to control the appeareance of their stores.
+[ github markketplace astro ](https://github.com/calimania/markketplace-astro)
 
-Contributors are encouraged to keep the systems decoupled for better interoperability.
+[ npm install cafecito ](https://www.npmjs.com/package/cafecito)
+
 
 ## Set up your environment:
 
@@ -67,17 +94,6 @@ turbo dev
 
 Visit in [localhost:1337](http://localhost:1337)
 
-## Grow With Us
-
-Markketplace is designed to support your growth at every stage. Start in our store and expand into your own instances, or grow alongside us. We are currently piloting with close friends and offering professional packages tailored to meet the needs of growing businesses.
-
-## Security and Privacy by Design
-
-At Markketplace, we prioritize security and privacy. Our platform is built with security and privacy by design, ensuring that your data and your customers' data are protected at every step of the way.
-
-## Join Us
-
-We are excited to welcome new users and collaborators to Markketplace. If you're interested in joining our pilot program or want to learn more about our professional packages, please reach out to us at hola[at]caliman.org.
 
 # 🚀 Getting started with Strapi
 

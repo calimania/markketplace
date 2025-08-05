@@ -14,10 +14,9 @@
   },
   "dependencies": {
     "@strapi-community/plugin-healthcheck": "^1.0.5",
-    "@strapi/plugin-cloud": "5.18.0",
-    "@strapi/plugin-users-permissions": "5.18.0",
-    "@strapi/provider-email-sendgrid": "5.18.0",
-    "@strapi/strapi": "5.18.0",
+    "@strapi/plugin-users-permissions": "5.20.0",
+    "@strapi/provider-email-sendgrid": "5.20.0",
+    "@strapi/strapi": "5.20.0",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
     "get-strapi-schema": "^0.0.3",

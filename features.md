@@ -7,6 +7,7 @@
 - [ ] with astro documentation pull request digital ocean
 - [ ] Content type POST and social media scheduling
 - [ ] Content type Review, for product reviews and comments in articles?
+- [ ] Content type Appointment for digital product meeting?
 - [ ] astro documentation - Digital ocean examples  https://github.com/withastro/docs/tree/main/src/content/docs/de/guides/deploy
 - [ ] read existing tags in posts and displays in settings
 - [ ] SocialPost content-type for a social feed
