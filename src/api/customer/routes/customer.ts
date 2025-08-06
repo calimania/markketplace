@@ -1,5 +1,5 @@
 /**
- * customer router
+ * customer router - Simple vanilla routes
  */
 
 import { factories } from '@strapi/strapi'

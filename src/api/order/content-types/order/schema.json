@@ -59,6 +59,11 @@
       "relation": "oneToOne",
       "target": "plugin::users-permissions.user"
     },
+    "customer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::customer.customer"
+    },
     "Payment_attempts": {
       "displayName": "Payment_attempts",
       "type": "component",

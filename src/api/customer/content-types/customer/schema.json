@@ -17,13 +17,11 @@
       "required": true
     },
     "lastName": {
-      "type": "string",
-      "required": true
+      "type": "string"
     },
     "email": {
       "type": "email",
-      "required": true,
-      "unique": true
+      "required": true
     },
     "phone": {
       "type": "string"
@@ -38,10 +36,12 @@
     "address": {
       "type": "component",
       "component": "common.address",
+      "repeatable": true,
       "required": false
     },
     "notes": {
-      "type": "text"
+      "type": "json",
+      "description": "Array of note objects with metadata: [{id, content, author, createdAt, isPrivate, tags}]"
     },
     "tags": {
       "type": "component",
@@ -52,9 +52,6 @@
       "type": "json"
     },
     "communicationPreferences": {
-      "type": "json"
-    },
-    "emergencyContact": {
       "type": "json"
     },
     "user": {
@@ -73,6 +70,12 @@
       "target": "api::appointment.appointment",
       "mappedBy": "customer"
     },
+    "orders": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order",
+      "mappedBy": "customer"
+    },
     "totalSpent": {
       "type": "decimal",
       "default": 0
@@ -87,16 +90,6 @@
     "isActive": {
       "type": "boolean",
       "default": true
-    },
-    "source": {
-      "type": "enumeration",
-      "enum": ["website", "referral", "social_media", "manual", "other"],
-      "default": "website"
-    },
-    "referredBy": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::customer.customer"
     }
   }
 }

@@ -1,5 +1,5 @@
 /**
- * appointment router
+ * appointment router - Simple vanilla routes
  */
 
 import { factories } from '@strapi/strapi'

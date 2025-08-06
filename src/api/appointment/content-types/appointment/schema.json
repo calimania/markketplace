@@ -38,7 +38,15 @@
     },
     "meetingPlatform": {
       "type": "enumeration",
-      "enum": ["zoom", "google_meet", "skype", "phone", "in_person", "other"],
+      "enum": [
+        "zoom",
+        "google_meet",
+        "skype",
+        "phone",
+        "in_person",
+        "other",
+        "api"
+      ],
       "default": "zoom"
     },
     "status": {
@@ -48,14 +56,49 @@
     },
     "type": {
       "type": "enumeration",
-      "enum": ["coaching", "tarot_reading", "consultation", "follow_up", "intake", "other"],
+      "enum": [
+        "coaching",
+        "tarot_reading",
+        "consultation",
+        "follow_up",
+        "intake",
+        "group_class",
+        "workshop",
+        "seminar",
+        "other"
+      ],
       "required": true
+    },
+    "appointmentFormat": {
+      "type": "enumeration",
+      "enum": [
+        "individual",
+        "group",
+        "class",
+        "workshop"
+      ],
+      "default": "individual"
+    },
+    "maxParticipants": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "participants": {
+      "type": "json",
+      "description": "Participants array {email, role, name, code_id }[]",
+      "default": []
     },
     "customer": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::customer.customer",
       "inversedBy": "appointments"
+    },
+    "customers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::customer.customer"
     },
     "store": {
       "type": "relation",
@@ -70,6 +113,11 @@
     "order": {
       "type": "relation",
       "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "orders": {
+      "type": "relation",
+      "relation": "manyToMany",
       "target": "api::order.order"
     },
     "practitioner": {
@@ -95,13 +143,16 @@
       "default": "manual"
     },
     "internalNotes": {
-      "type": "json"
+      "type": "json",
+      "default": []
     },
     "externalNotes": {
-      "type": "json"
+      "type": "json",
+      "default": []
     },
     "sessionNotes": {
-      "type": "text"
+      "type": "json",
+      "default": []
     },
     "preSessionQuestionnaire": {
       "type": "json"

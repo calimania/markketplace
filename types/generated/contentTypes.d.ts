@@ -496,6 +496,10 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
   attributes: {
     actualDuration: Schema.Attribute.Integer;
     appointmentDate: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    appointmentFormat: Schema.Attribute.Enumeration<
+      ['individual', 'group', 'class', 'workshop']
+    > &
+      Schema.Attribute.DefaultTo<'individual'>;
     attachments: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -514,15 +518,19 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
     currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'USD'>;
     customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     customerFeedback: Schema.Attribute.Text;
+    customers: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::customer.customer'
+    >;
     description: Schema.Attribute.Text;
     duration: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<60>;
-    externalNotes: Schema.Attribute.JSON;
+    externalNotes: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
     followUpDate: Schema.Attribute.DateTime;
     followUpRequired: Schema.Attribute.Boolean &
       Schema.Attribute.DefaultTo<false>;
-    internalNotes: Schema.Attribute.JSON;
+    internalNotes: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
     isRecurring: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -530,17 +538,27 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
       'api::appointment.appointment'
     > &
       Schema.Attribute.Private;
+    maxParticipants: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
     meetingLink: Schema.Attribute.String;
     meetingPlatform: Schema.Attribute.Enumeration<
-      ['zoom', 'google_meet', 'skype', 'phone', 'in_person', 'other']
+      ['zoom', 'google_meet', 'skype', 'phone', 'in_person', 'other', 'api']
     > &
       Schema.Attribute.DefaultTo<'zoom'>;
     noShowReason: Schema.Attribute.Text;
     order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
+    orders: Schema.Attribute.Relation<'manyToMany', 'api::order.order'>;
     parentAppointment: Schema.Attribute.Relation<
       'manyToOne',
       'api::appointment.appointment'
     >;
+    participants: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
     paymentStatus: Schema.Attribute.Enumeration<
       ['pending', 'paid', 'partially_paid', 'refunded', 'failed']
     > &
@@ -569,7 +587,7 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
     >;
     remindersSent: Schema.Attribute.JSON;
     rescheduleHistory: Schema.Attribute.JSON;
-    sessionNotes: Schema.Attribute.Text;
+    sessionNotes: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
     startedAt: Schema.Attribute.DateTime;
     status: Schema.Attribute.Enumeration<
       [
@@ -596,6 +614,9 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
         'consultation',
         'follow_up',
         'intake',
+        'group_class',
+        'workshop',
+        'seminar',
         'other',
       ]
     > &
@@ -725,7 +746,7 @@ export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    address: Schema.Attribute.Component<'common.address', false>;
+    address: Schema.Attribute.Component<'common.address', true>;
     appointments: Schema.Attribute.Relation<
       'oneToMany',
       'api::appointment.appointment'
@@ -735,13 +756,10 @@ export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     dateOfBirth: Schema.Attribute.Date;
-    email: Schema.Attribute.Email &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique;
-    emergencyContact: Schema.Attribute.JSON;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
     firstName: Schema.Attribute.String & Schema.Attribute.Required;
     isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
-    lastName: Schema.Attribute.String & Schema.Attribute.Required;
+    lastName: Schema.Attribute.String;
     lastSessionDate: Schema.Attribute.DateTime;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -749,18 +767,11 @@ export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
       'api::customer.customer'
     > &
       Schema.Attribute.Private;
-    notes: Schema.Attribute.Text;
+    notes: Schema.Attribute.JSON;
+    orders: Schema.Attribute.Relation<'oneToMany', 'api::order.order'>;
     phone: Schema.Attribute.String;
     preferences: Schema.Attribute.JSON;
     publishedAt: Schema.Attribute.DateTime;
-    referredBy: Schema.Attribute.Relation<
-      'manyToOne',
-      'api::customer.customer'
-    >;
-    source: Schema.Attribute.Enumeration<
-      ['website', 'referral', 'social_media', 'manual', 'other']
-    > &
-      Schema.Attribute.DefaultTo<'website'>;
     store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     tags: Schema.Attribute.Component<'common.tag', true>;
     timezone: Schema.Attribute.String & Schema.Attribute.DefaultTo<'UTC'>;
@@ -1083,6 +1094,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     Currency: Schema.Attribute.String;
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     Details: Schema.Attribute.Component<'common.product-snapshop', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
@@ -2106,6 +2118,9 @@ export interface PluginUsersPermissionsUser
     >;
     rsvps: Schema.Attribute.Relation<'oneToMany', 'api::rsvp.rsvp'>;
     stores: Schema.Attribute.Relation<'manyToMany', 'api::store.store'>;
+    stripeConfig: Schema.Attribute.JSON &
+      Schema.Attribute.Private &
+      Schema.Attribute.DefaultTo<{}>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
