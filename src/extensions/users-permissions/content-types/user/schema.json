@@ -98,6 +98,13 @@
       "type": "string",
       "minLength": 2,
       "configurable": false
+    },
+    "stripeConfig": {
+      "type": "json",
+      "configurable": false,
+      "private": true,
+      "default": {},
+      "description": "Stripe connect { account_id, country, status } "
     }
   }
 }

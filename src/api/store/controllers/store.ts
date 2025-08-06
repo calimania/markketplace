@@ -5,10 +5,10 @@
 import { factories } from '@strapi/strapi'
 
 /** Checks for store record for user and user_admin records */
-async function checkUserStoreAccess(strapi: any, userId: string, storeId: string) {
+export async function checkUserStoreAccess(strapi: any, user_id: string, store_id: string) {
 
   const store = await strapi.documents('api::store.store').findOne({
-    documentId: storeId,
+    documentId: store_id,
     populate: ['users', 'admin_users', 'settings'],
   }) as any;
 
@@ -16,9 +16,9 @@ async function checkUserStoreAccess(strapi: any, userId: string, storeId: string
     return { hasAccess: false, store: null };
   }
 
-  const isStoreUser = store.users?.some((user: any) => user.id === parseInt(userId));
+  const isStoreUser = store.users?.some((user: any) => user.id === parseInt(user_id));
 
-  const isAdminUser = store.admin_users?.some((admin: any) => admin.id === parseInt(userId));
+  const isAdminUser = store.admin_users?.some((admin: any) => admin.id === parseInt(user_id));
 
   return {
     hasAccess: isStoreUser || isAdminUser,

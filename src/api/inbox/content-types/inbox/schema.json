@@ -31,10 +31,17 @@
     "Archived": {
       "type": "boolean"
     },
-    "parentMessageId": {
+    "parentMessage": {
       "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::inbox.inbox"
+      "relation": "manyToOne",
+      "target": "api::inbox.inbox",
+      "inversedBy": "childMessages"
+    },
+    "childMessages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::inbox.inbox",
+      "mappedBy": "parentMessage"
     },
     "user": {
       "type": "relation",

@@ -1,0 +1,239 @@
+{
+  "kind": "collectionType",
+  "collectionName": "appointments",
+  "info": {
+    "singularName": "appointment",
+    "pluralName": "appointments",
+    "displayName": "Appointment",
+    "description": "Appointments for coaching, tarot readings, and other services"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "appointmentDate": {
+      "type": "datetime",
+      "required": true
+    },
+    "duration": {
+      "type": "integer",
+      "required": true,
+      "default": 60
+    },
+    "timezone": {
+      "type": "string",
+      "required": true,
+      "default": "UTC"
+    },
+    "meetingLink": {
+      "type": "string"
+    },
+    "meetingPlatform": {
+      "type": "enumeration",
+      "enum": [
+        "zoom",
+        "google_meet",
+        "skype",
+        "phone",
+        "in_person",
+        "other",
+        "api"
+      ],
+      "default": "zoom"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "rescheduled"],
+      "default": "scheduled"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "coaching",
+        "tarot_reading",
+        "consultation",
+        "follow_up",
+        "intake",
+        "group_class",
+        "workshop",
+        "seminar",
+        "other"
+      ],
+      "required": true
+    },
+    "appointmentFormat": {
+      "type": "enumeration",
+      "enum": [
+        "individual",
+        "group",
+        "class",
+        "workshop"
+      ],
+      "default": "individual"
+    },
+    "maxParticipants": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "participants": {
+      "type": "json",
+      "description": "Participants array {email, role, name, code_id }[]",
+      "default": []
+    },
+    "customer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::customer.customer",
+      "inversedBy": "appointments"
+    },
+    "customers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::customer.customer"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "orders": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::order.order"
+    },
+    "practitioner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "paymentStatus": {
+      "type": "enumeration",
+      "enum": ["pending", "paid", "partially_paid", "refunded", "failed"],
+      "default": "pending"
+    },
+    "createdBy": {
+      "type": "enumeration",
+      "enum": ["manual", "automatic", "customer_booking", "admin"],
+      "default": "manual"
+    },
+    "internalNotes": {
+      "type": "json",
+      "default": []
+    },
+    "externalNotes": {
+      "type": "json",
+      "default": []
+    },
+    "sessionNotes": {
+      "type": "json",
+      "default": []
+    },
+    "preSessionQuestionnaire": {
+      "type": "json"
+    },
+    "postSessionFeedback": {
+      "type": "json"
+    },
+    "remindersSent": {
+      "type": "json"
+    },
+    "rescheduleHistory": {
+      "type": "json"
+    },
+    "attachments": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images", "files", "videos", "audios"]
+    },
+    "tags": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.tag"
+    },
+    "followUpRequired": {
+      "type": "boolean",
+      "default": false
+    },
+    "followUpDate": {
+      "type": "datetime"
+    },
+    "rating": {
+      "type": "integer",
+      "min": 1,
+      "max": 5
+    },
+    "customerFeedback": {
+      "type": "text"
+    },
+    "isRecurring": {
+      "type": "boolean",
+      "default": false
+    },
+    "recurringPattern": {
+      "type": "json"
+    },
+    "parentAppointment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::appointment.appointment"
+    },
+    "relatedAppointments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::appointment.appointment",
+      "mappedBy": "parentAppointment"
+    },
+    "cancelReason": {
+      "type": "text"
+    },
+    "cancelledAt": {
+      "type": "datetime"
+    },
+    "cancelledBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "confirmedAt": {
+      "type": "datetime"
+    },
+    "startedAt": {
+      "type": "datetime"
+    },
+    "completedAt": {
+      "type": "datetime"
+    },
+    "actualDuration": {
+      "type": "integer"
+    },
+    "noShowReason": {
+      "type": "text"
+    }
+  }
+}
