@@ -16,6 +16,7 @@
     "@strapi-community/plugin-healthcheck": "^1.0.5",
     "@strapi/plugin-users-permissions": "5.23.3",
     "@strapi/provider-email-sendgrid": "5.23.3",
+    "@strapi/provider-upload-aws-s3": "^5.23.3",
     "@strapi/strapi": "5.23.3",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
@@ -24,7 +25,6 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
-    "strapi-provider-upload-do": "^3.6.9",
     "stripe": "^16.1.0",
     "styled-components": "^6.0.0"
   },
