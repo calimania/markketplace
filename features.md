@@ -14,6 +14,9 @@
 - [ ] Newsletter content-type and functionality
 - [ ] Use sendgrid API to manage marketing lists (calendar, store, )
 
+@SEPTEMBER:
+- [x] Twilio incoming SMS webhook
+
 @AUGUST:
 - [x] POST markket/email
 - [x] PUT store/settings

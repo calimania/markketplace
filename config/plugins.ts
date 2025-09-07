@@ -10,15 +10,27 @@ export default ({ env }) => ({
   upload: {
     config: {
       sizeLimit: 4.2 * 1024 * 1024, // 4.20mb in bytes
-      provider: "strapi-provider-upload-do",
+      provider: "aws-s3",
       providerOptions: {
-        key: env('DO_SPACE_ACCESS_KEY'),
-        secret: env('DO_SPACE_SECRET_KEY'),
-        endpoint: env('DO_SPACE_ENDPOINT'),
-        space: env('DO_SPACE_BUCKET'),
-        directory: env('DO_SPACE_DIRECTORY'),
-        cdn: env('DO_SPACE_CDN'),
-      }
+        s3Options: {
+          credentials: {
+            accessKeyId: env('DO_SPACE_ACCESS_KEY'),
+            secretAccessKey: env('DO_SPACE_SECRET_KEY'),
+          },
+          endpoint: `https://${env('DO_SPACE_ENDPOINT')}`,
+          region: 'nyc3', // Digital Ocean region
+          forcePathStyle: false, // Digital Ocean Spaces uses virtual hosted-style
+          params: {
+            Bucket: env('DO_SPACE_BUCKET'),
+          },
+          // Upload configuration
+          upload: {
+            ACL: 'public-read', // Make files publicly readable
+          },
+          uploadPath: env('DO_SPACE_DIRECTORY', 'uploads'),
+          baseUrl: env('DO_SPACE_CDN') || `https://${env('DO_SPACE_BUCKET')}.${env('DO_SPACE_ENDPOINT')}`,
+        },
+      },
     },
   },
   email: {
