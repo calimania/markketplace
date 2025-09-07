@@ -177,7 +177,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           }
         });
 
-        console.info(`✅ SMS logged: ${body?.From} -> "${body?.Body?.substring(0, 30)}..."`);
+        console.info(`incoming.SMS: ${body?.From} -> "${body?.Body?.substring(0, 30)}..."`);
       }
 
     } catch (error) {
