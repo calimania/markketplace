@@ -13,6 +13,7 @@
  * @TODO: Abstract model creation to utilities
  */
 import { version } from '../../../../package.json';
+import * as crypto from 'crypto';
 const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
 
@@ -23,6 +24,47 @@ import { emailLayout } from '../services/notification/email.template';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || 'n/a';
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
+
+/**
+ * Verify Twilio webhook signature to ensure authenticity
+ * Implements Twilio's official signature validation algorithm
+ */
+const verifyTwilioSignature = (twilioSignature: string, url: string, params: any, authToken: string): boolean => {
+  if (!authToken) {
+    console.warn('TWILIO_AUTH_TOKEN not present');
+    return false;
+  }
+
+  if (!twilioSignature) {
+    console.warn('missing-header:X-Twilio-Signature');
+    return false;
+  }
+
+  try {
+    // Build the signature string according to Twilio spec
+    const data = Object.keys(params || {})
+      .sort()
+      .reduce((acc, key) => {
+        return acc + key + (params[key] || '');
+      }, url);
+
+    const expectedSignature = crypto
+      .createHmac('sha1', authToken)
+      .update(Buffer.from(data, 'utf-8'))
+      .digest('base64');
+
+    // Timing-safe comparison to prevent timing attacks
+    return crypto.timingSafeEqual(
+      Buffer.from(twilioSignature, 'base64'),
+      Buffer.from(expectedSignature, 'base64')
+    );
+
+  } catch (error) {
+    console.error('Twilio signature verification error:', error);
+    return false;
+  }
+};
 
 /**
  * email:jo***@example.com
@@ -48,6 +90,123 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     });
   },
 
+  /**
+   * POST /api/markket/twilio-sms
+   * Handle incoming SMS from Twilio and respond with TwiML
+   * Security: Only processes verified webhooks from Twilio
+   */
+  async twilioSms(ctx: any) {
+    console.info('🔔 Twilio SMS webhook received');
+
+    // Default TwiML response - always sent regardless of verification
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>markkët! 💜 Learn more https://de.markket.place</Message>
+</Response>`;
+
+    let isVerifiedWebhook = false;
+
+    try {
+      const body = ctx.request.body;
+      const twilioSignature = ctx.request.headers['x-twilio-signature'];
+
+      // Get the full URL for signature verification
+      const protocol = ctx.request.header['x-forwarded-proto'] || ctx.protocol;
+      const host = ctx.request.header['x-forwarded-host'] || ctx.request.header.host;
+      const url = `${protocol}://${host}${ctx.request.url}`;
+
+      console.log('SMS.Details:', {
+        from: body?.From,
+        message_preview: body?.Body?.substring(0, 50) + '...',
+        has_signature: !!twilioSignature
+      });
+
+      if (TWILIO_AUTH_TOKEN) {
+        isVerifiedWebhook = verifyTwilioSignature(twilioSignature, url, body, TWILIO_AUTH_TOKEN);
+
+        if (!isVerifiedWebhook) {
+          console.warn('Invalid Twilio signature - rejecting webhook');
+
+          // Log security incident
+          await strapi.service(modelId).create({
+            locale: 'en',
+            data: {
+              Key: 'twilio.security.invalid_signature',
+              Content: {
+                attempted_from: body?.From || 'unknown',
+                attempted_message: body?.Body || '',
+                signature_provided: !!twilioSignature,
+                url: url,
+                timestamp: new Date().toISOString(),
+                severity: 'warning',
+                action: 'webhook_rejected'
+              },
+              user_key_or_id: 'security_log',
+            }
+          });
+
+          // Respond normally to avoid webhook retries
+          ctx.set('Content-Type', 'text/xml');
+          ctx.status = 200;
+          return ctx.send(twiml);
+        }
+
+        console.info('Twilio signature verified: incoming sms');
+      } else {
+        console.warn('TWILIO_AUTH_TOKEN not present');
+        // isVerifiedWebhook = true; // Allow processing in development
+      }
+
+      // Only create SMS records for verified webhooks
+      if (isVerifiedWebhook) {
+        await strapi.service(modelId).create({
+          locale: 'en',
+          data: {
+            Key: 'twilio.incoming.sms',
+            Content: {
+              from: body?.From || 'unknown',
+              to: body?.To || 'unknown',
+              message: body?.Body || '',
+              messageSid: body?.MessageSid || '',
+              accountSid: body?.AccountSid || '',
+              timestamp: new Date().toISOString(),
+              verified: !!TWILIO_AUTH_TOKEN,
+              webhook_source: 'twilio_sms'
+            },
+            user_key_or_id: body?.From || '',
+          }
+        });
+
+        console.info(`✅ SMS logged: ${body?.From} -> "${body?.Body?.substring(0, 30)}..."`);
+      }
+
+    } catch (error) {
+      console.error('❌ Error processing Twilio webhook:', error);
+
+      // Log the error but still respond to Twilio
+      try {
+        await strapi.service(modelId).create({
+          locale: 'en',
+          data: {
+            Key: 'twilio.webhook.error',
+            Content: {
+              error: error.message,
+              timestamp: new Date().toISOString(),
+              verified: isVerifiedWebhook
+            },
+            user_key_or_id: 'error_log',
+          }
+        });
+      } catch (logError) {
+        console.error('Failed to log webhook error:', logError);
+      }
+    }
+
+    // Always respond with TwiML
+    ctx.set('Content-Type', 'text/xml');
+    ctx.status = 200;
+    return ctx.send(twiml);
+  },
   /**
    * POST /api/markket/send-email
    * Send branded email using store settings

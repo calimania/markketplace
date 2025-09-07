@@ -1,4 +1,4 @@
- ## Markketplace
+ ## Markkët API
 
 ![markketplace logo](https://markketplace.nyc3.digitaloceanspaces.com/uploads/1a82697eaeeb5b376d6983f452d1bf3d.png)
 
@@ -8,7 +8,13 @@ This repo offers database structure & the admin dashboard for a server instance
 
 Easy to use REST APIs, compatible with multiple free templates & hosting services
 
+## Cloud
+
+[de.markket.place] create an account to access a store owner dashboard and access API features
+
 ## Getting Started
+
+### Local development
 
 Use this project to manage your own markket instance, provide your own credentials
 and exercise full control over your data and community experience
@@ -17,6 +23,13 @@ To create a regular account visit [ de.markket.plac ](https://de.markket.place/a
 
 For agencies or large communities with multiple initiatives, controlling your own instance makes it possible to
 customize roles, access and availability of features for distributed teams of any size
+
+### Self hosting
+
+We host in digital ocean, using the app features and managed database. With their free trial and a few clicks you can have a full
+admin dashboard for your own community
+
+This repo should be compatible with any cloud provider, see strapi deployment tutorials for best practices
 
 ### Strapi Cloud
 
@@ -136,6 +149,66 @@ Strapi gives you many possible deployment options for your project including [St
 ## Email
 
 Configured by default to use the sendgrid integration. Include your SENDGRID_API_KEY and email to enable.
+
+## SMS & Webhooks
+
+SMS integration via Twilio webhooks is available at `/api/markket/twilio-sms`. Include your `TWILIO_AUTH_TOKEN` to enable signature verification and secure processing of incoming text messages.
+
+
+## 📱 SMS Integration & Text-to-Action
+
+Markketplace now supports SMS webhooks through Twilio integration, enabling text-based interactions with your markket instance.
+
+### Current Features
+
+- **Secure SMS Webhooks**: `POST /api/markket/twilio-sms`
+- **Signature Verification**: Only processes verified Twilio webhooks
+- **Auto-Response**: Branded TwiML responses to incoming texts
+- **Activity Logging**: All legitimate SMS interactions are logged
+
+### Setup
+
+1. Configure your Twilio phone number webhook URL:
+   ```
+   https://yourdomain.com/api/markket/twilio-sms
+   ```
+
+2. Add your Twilio Auth Token to environment:
+   ```bash
+   TWILIO_AUTH_TOKEN=your_twilio_auth_token
+   ```
+
+3. Users texting your number receive:
+   ```
+   markkët! 💜 Learn more https://de.markket.place
+   ```
+
+### 🔮 Coming Soon: Text-to-Action Processing
+
+Future releases will include intelligent text processing to enable markket actions via SMS:
+
+- **Product Inquiries**: Text product names to get details and purchase links
+- **Order Status**: Check order status by texting order IDs
+- **Store Discovery**: Find stores by category or location via text
+- **Quick Orders**: Simple text commands for repeat purchases
+- **Event RSVPs**: Respond to event invitations via SMS
+- **Customer Support**: Automated routing to appropriate store owners
+
+**Example Future Interactions:**
+
+```
+User: "order status"
+→ Retrieves information about orders associated with number and link to view details
+
+User: "order #12345 status"
+→ Returns current shipping status and tracking info for specific order
+
+User: "events near brooklyn"
+→ Lists upcoming events in Brooklyn area
+```
+
+This creates a conversational commerce experience where customers can interact with your entire marketplace ecosystem through simple text messages.
+
 
 ## 📚 Learn more
 
