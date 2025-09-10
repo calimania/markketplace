@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "shortners",
+  "info": {
+    "singularName": "shortner",
+    "pluralName": "shortners",
+    "displayName": "URL shortner",
+    "description": "Key Value system to provide shorter URLs for SMS & markketing"
+  },
+  "options": {
+    "comment": ""
+  },
+  "attributes": {
+    "alias": {
+      "type": "string",
+      "unique": true
+    },
+    "url": {
+      "type": "string",
+      "required": true
+    },
+    "visit": {
+      "type": "integer"
+    }
+  }
+}

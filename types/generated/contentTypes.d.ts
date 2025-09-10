@@ -1219,6 +1219,38 @@ export interface ApiShipmentShipment extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiShortnerShortner extends Struct.CollectionTypeSchema {
+  collectionName: 'shortners';
+  info: {
+    description: 'Key Value system to provide shorter URLs for SMS & markketing';
+    displayName: 'URL shortner';
+    pluralName: 'shortners';
+    singularName: 'shortner';
+  };
+  options: {
+    comment: '';
+    draftAndPublish: false;
+  };
+  attributes: {
+    alias: Schema.Attribute.String & Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::shortner.shortner'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    url: Schema.Attribute.String & Schema.Attribute.Required;
+    visit: Schema.Attribute.Integer;
+  };
+}
+
 export interface ApiStoreStore extends Struct.CollectionTypeSchema {
   collectionName: 'stores';
   info: {
@@ -1957,6 +1989,7 @@ declare module '@strapi/strapi' {
       'api::product.product': ApiProductProduct;
       'api::rsvp.rsvp': ApiRsvpRsvp;
       'api::shipment.shipment': ApiShipmentShipment;
+      'api::shortner.shortner': ApiShortnerShortner;
       'api::store.store': ApiStoreStore;
       'api::store.store-setting': ApiStoreStoreSetting;
       'api::subscriber.subscriber': ApiSubscriberSubscriber;
