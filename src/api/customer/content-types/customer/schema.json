@@ -1,0 +1,95 @@
+{
+  "kind": "collectionType",
+  "collectionName": "customers",
+  "info": {
+    "singularName": "customer",
+    "pluralName": "customers",
+    "displayName": "Customer",
+    "description": "Customer information for appointments and services"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "firstName": {
+      "type": "string",
+      "required": true
+    },
+    "lastName": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "dateOfBirth": {
+      "type": "date"
+    },
+    "timezone": {
+      "type": "string",
+      "default": "UTC"
+    },
+    "address": {
+      "type": "component",
+      "component": "common.address",
+      "repeatable": true,
+      "required": false
+    },
+    "notes": {
+      "type": "json",
+      "description": "Array of note objects with metadata: [{id, content, author, createdAt, isPrivate, tags}]"
+    },
+    "tags": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.tag"
+    },
+    "preferences": {
+      "type": "json"
+    },
+    "communicationPreferences": {
+      "type": "json"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
+    },
+    "appointments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::appointment.appointment",
+      "mappedBy": "customer"
+    },
+    "orders": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order",
+      "mappedBy": "customer"
+    },
+    "totalSpent": {
+      "type": "decimal",
+      "default": 0
+    },
+    "totalSessions": {
+      "type": "integer",
+      "default": 0
+    },
+    "lastSessionDate": {
+      "type": "datetime"
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

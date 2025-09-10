@@ -49,8 +49,7 @@
     "albums": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::album.album",
-      "label": "Albums"
+      "target": "api::album.album"
     },
     "creator": {
       "type": "relation",

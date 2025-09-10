@@ -482,6 +482,151 @@ export interface ApiAlbumTrack extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
+  collectionName: 'appointments';
+  info: {
+    description: 'Appointments for coaching, tarot readings, and other services';
+    displayName: 'Appointment';
+    pluralName: 'appointments';
+    singularName: 'appointment';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    actualDuration: Schema.Attribute.Integer;
+    appointmentDate: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    appointmentFormat: Schema.Attribute.Enumeration<
+      ['individual', 'group', 'class', 'workshop']
+    > &
+      Schema.Attribute.DefaultTo<'individual'>;
+    attachments: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios',
+      true
+    >;
+    cancelledAt: Schema.Attribute.DateTime;
+    cancelledBy: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    cancelReason: Schema.Attribute.Text;
+    completedAt: Schema.Attribute.DateTime;
+    confirmedAt: Schema.Attribute.DateTime;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'USD'>;
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
+    customerFeedback: Schema.Attribute.Text;
+    customers: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::customer.customer'
+    >;
+    description: Schema.Attribute.Text;
+    duration: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<60>;
+    externalNotes: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    followUpDate: Schema.Attribute.DateTime;
+    followUpRequired: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
+    internalNotes: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    isRecurring: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::appointment.appointment'
+    > &
+      Schema.Attribute.Private;
+    maxParticipants: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>;
+    meetingLink: Schema.Attribute.String;
+    meetingPlatform: Schema.Attribute.Enumeration<
+      ['zoom', 'google_meet', 'skype', 'phone', 'in_person', 'other', 'api']
+    > &
+      Schema.Attribute.DefaultTo<'zoom'>;
+    noShowReason: Schema.Attribute.Text;
+    order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
+    orders: Schema.Attribute.Relation<'manyToMany', 'api::order.order'>;
+    parentAppointment: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::appointment.appointment'
+    >;
+    participants: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    paymentStatus: Schema.Attribute.Enumeration<
+      ['pending', 'paid', 'partially_paid', 'refunded', 'failed']
+    > &
+      Schema.Attribute.DefaultTo<'pending'>;
+    postSessionFeedback: Schema.Attribute.JSON;
+    practitioner: Schema.Attribute.Relation<
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    preSessionQuestionnaire: Schema.Attribute.JSON;
+    price: Schema.Attribute.Decimal;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    rating: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 5;
+          min: 1;
+        },
+        number
+      >;
+    recurringPattern: Schema.Attribute.JSON;
+    relatedAppointments: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::appointment.appointment'
+    >;
+    remindersSent: Schema.Attribute.JSON;
+    rescheduleHistory: Schema.Attribute.JSON;
+    sessionNotes: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    startedAt: Schema.Attribute.DateTime;
+    status: Schema.Attribute.Enumeration<
+      [
+        'scheduled',
+        'confirmed',
+        'in_progress',
+        'completed',
+        'cancelled',
+        'no_show',
+        'rescheduled',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'scheduled'>;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
+    tags: Schema.Attribute.Component<'common.tag', true>;
+    timezone: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'UTC'>;
+    title: Schema.Attribute.String & Schema.Attribute.Required;
+    type: Schema.Attribute.Enumeration<
+      [
+        'coaching',
+        'tarot_reading',
+        'consultation',
+        'follow_up',
+        'intake',
+        'group_class',
+        'workshop',
+        'seminar',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
   collectionName: 'articles';
   info: {
@@ -586,6 +731,59 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCustomerCustomer extends Struct.CollectionTypeSchema {
+  collectionName: 'customers';
+  info: {
+    description: 'Customer information for appointments and services';
+    displayName: 'Customer';
+    pluralName: 'customers';
+    singularName: 'customer';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    address: Schema.Attribute.Component<'common.address', true>;
+    appointments: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::appointment.appointment'
+    >;
+    communicationPreferences: Schema.Attribute.JSON;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    dateOfBirth: Schema.Attribute.Date;
+    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    firstName: Schema.Attribute.String & Schema.Attribute.Required;
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    lastName: Schema.Attribute.String;
+    lastSessionDate: Schema.Attribute.DateTime;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::customer.customer'
+    > &
+      Schema.Attribute.Private;
+    notes: Schema.Attribute.JSON;
+    orders: Schema.Attribute.Relation<'oneToMany', 'api::order.order'>;
+    phone: Schema.Attribute.String;
+    preferences: Schema.Attribute.JSON;
+    publishedAt: Schema.Attribute.DateTime;
+    store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
+    tags: Schema.Attribute.Component<'common.tag', true>;
+    timezone: Schema.Attribute.String & Schema.Attribute.DefaultTo<'UTC'>;
+    totalSessions: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    totalSpent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    user: Schema.Attribute.Relation<
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
   };
 }
 
@@ -821,6 +1019,7 @@ export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
   };
   attributes: {
     Archived: Schema.Attribute.Boolean;
+    childMessages: Schema.Attribute.Relation<'oneToMany', 'api::inbox.inbox'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -830,7 +1029,7 @@ export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     Message: Schema.Attribute.Text;
     Name: Schema.Attribute.String & Schema.Attribute.Required;
-    parentMessageId: Schema.Attribute.Relation<'oneToOne', 'api::inbox.inbox'>;
+    parentMessage: Schema.Attribute.Relation<'manyToOne', 'api::inbox.inbox'>;
     publishedAt: Schema.Attribute.DateTime;
     store: Schema.Attribute.Relation<'oneToOne', 'api::store.store'>;
     updatedAt: Schema.Attribute.DateTime;
@@ -895,6 +1094,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     Currency: Schema.Attribute.String;
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::customer.customer'>;
     Details: Schema.Attribute.Component<'common.product-snapshop', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
@@ -1958,6 +2158,9 @@ export interface PluginUsersPermissionsUser
     >;
     rsvps: Schema.Attribute.Relation<'oneToMany', 'api::rsvp.rsvp'>;
     stores: Schema.Attribute.Relation<'manyToMany', 'api::store.store'>;
+    stripeConfig: Schema.Attribute.JSON &
+      Schema.Attribute.Private &
+      Schema.Attribute.DefaultTo<{}>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -1983,9 +2186,11 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::album.album': ApiAlbumAlbum;
       'api::album.track': ApiAlbumTrack;
+      'api::appointment.appointment': ApiAppointmentAppointment;
       'api::article.article': ApiArticleArticle;
       'api::auth-magic.magic-code': ApiAuthMagicMagicCode;
       'api::category.category': ApiCategoryCategory;
+      'api::customer.customer': ApiCustomerCustomer;
       'api::event.event': ApiEventEvent;
       'api::extension.extension': ApiExtensionExtension;
       'api::forms.form-response': ApiFormsFormResponse;

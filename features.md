@@ -4,12 +4,6 @@
 
 @NEXT:
 
-- [ ] with astro documentation pull request digital ocean
-- [ ] Content type POST and social media scheduling
-- [ ] Content type Review, for product reviews and comments in articles?
-- [ ] Content type Appointment for digital product meeting?
-- [ ] astro documentation - Digital ocean examples  https://github.com/withastro/docs/tree/main/src/content/docs/de/guides/deploy
-- [ ] read existing tags in posts and displays in settings
 - [ ] SocialPost content-type for a social feed
 - [ ] Newsletter content-type and functionality
 - [ ] Use sendgrid API to manage marketing lists (calendar, store, )
@@ -18,6 +12,8 @@
 - [x] Twilio incoming SMS webhook
 
 @AUGUST:
+- [x] Appointment schema
+- [x] Customer schema
 - [x] POST markket/email
 - [x] PUT store/settings
 - [x] new design for homepage
@@ -43,15 +39,7 @@
 - [x] Use ASTRO API endpoints
 - [x] Astro, fix Meta.Title and SEO
 - [x] Product lists and pages from API
-- [x] Start working in NextJS dashboards
-- [x] After functionality is proven in markket.place & morir soñando -start migrationg to NextJS and libraries
-- [x] Design system: https://design-system.strapi.io/?
-- [x] Block STRIPE_CUSTOMER_ID: null, from Store endpoint
-- [x] BUG: Categories and users show up in selectors indiscrimnately
 - [x] Fix middleware - use populate in .astro
-- [x] Use workspaces to publish types and utilities https://docs.npmjs.com/cli/v8/using-npm/workspaces
-- [x] Swagger UI https://docs.strapi.io/dev-docs/plugins/documentation
-- [x] Add instagram API https://developers.facebook.com/docs/instagram-basic-display-api/getting-started/
 - [x] Create Content Type Event & Calendar & RSVP
 - [x] Customer resources can go on their own APP ?
 - [x] Customers can input their own digital ocean keys
