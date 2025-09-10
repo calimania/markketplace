@@ -533,24 +533,32 @@ export interface ApiAuthMagicMagicCode extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    attempts: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    channel: Schema.Attribute.Enumeration<['email', 'sms', 'whatsapp']> &
+      Schema.Attribute.DefaultTo<'email'>;
     code: Schema.Attribute.String & Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    email: Schema.Attribute.Email & Schema.Attribute.Required;
+    email: Schema.Attribute.Email;
     expiresAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    ipAddress: Schema.Attribute.String;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::auth-magic.magic-code'
     > &
       Schema.Attribute.Private;
+    maxAttempts: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<3>;
+    phone: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    shortner: Schema.Attribute.Relation<'oneToOne', 'api::shortner.shortner'>;
     store: Schema.Attribute.Relation<'manyToOne', 'api::store.store'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     used: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    userAgent: Schema.Attribute.Text;
   };
 }
 
