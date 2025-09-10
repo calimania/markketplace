@@ -7,6 +7,7 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_SENDER = process.env.TWILIO_SENDER
 const TWILIO_MESSAGING_SERVICE_SID = process.env.TWILIO_MESSAGING_SERVICE_SID;
 const TWILIO_TEMPLATE_ID_MAGIC_LINK = process.env.TWILIO_TEMPLATE_ID_MAGIC_LINK; // WhatsApp magic link template
+const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
 
 let twilioClient = null;
 
@@ -40,6 +41,9 @@ if (TWILIO_AUTH_TOKEN) {
  */
 export default ({ strapi }) => ({
   async generateCode(identifier: string, store_id?: string, channel = 'email', ipAddress?: string, userAgent?: string) {
+    // Security: Check for rate limiting (prevent spam/abuse)
+    await this.checkRateLimit(identifier, ipAddress);
+
     const code = crypto.randomBytes(24).toString('hex');
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
@@ -56,9 +60,9 @@ export default ({ strapi }) => ({
     if (channel === 'email') {
       data.email = identifier;
     } else {
-      // For SMS and WhatsApp, store with prefix for Twilio compatibility
-      const phoneWithPrefix = channel === 'whatsapp' ? `whatsapp:${identifier}` : identifier;
-      data.phone = phoneWithPrefix;
+      // For SMS and WhatsApp, store normalized phone number (same user)
+      // The whatsapp: prefix is only used for Twilio API calls
+      data.phone = identifier; // Store clean phone number: +1234567890
     }
 
     // For SMS/WhatsApp, create a shortener link
@@ -109,7 +113,117 @@ export default ({ strapi }) => ({
       data
     });
 
+    // Update user's communication preferences if this is a phone-based channel
+    if (channel === 'sms' || channel === 'whatsapp') {
+      await this.updateUserChannelPreference(identifier, channel);
+    }
+
     return { code, shortner: data.shortner, attempts: magicCode?.attempts };
+  },
+
+  /**
+   * Security: Check rate limiting to prevent abuse
+   */
+  async checkRateLimit(identifier: string, ipAddress?: string) {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    // Check identifier rate limit (email/phone)
+    const identifierAttempts = await strapi.entityService.findMany('api::auth-magic.magic-code', {
+      filters: {
+        $or: [
+          { email: identifier },
+          { phone: identifier }
+        ],
+        createdAt: { $gte: oneHourAgo }
+      }
+    });
+
+    if (identifierAttempts.length >= 5) {
+      throw new Error('Rate limit exceeded for this contact. Please wait before requesting another code.');
+    }
+
+    // Check IP rate limit (prevent mass attacks)
+    if (ipAddress) {
+      const ipAttempts = await strapi.entityService.findMany('api::auth-magic.magic-code', {
+        filters: {
+          ipAddress,
+          createdAt: { $gte: oneHourAgo }
+        }
+      });
+
+      if (ipAttempts.length >= 10) {
+        throw new Error('Rate limit exceeded for this IP address. Please wait before requesting more codes.');
+      }
+    }
+  },
+
+  /**
+   * Update user's preferred communication channel
+   */
+  async updateUserChannelPreference(phone: string, channel: 'sms' | 'whatsapp') {
+    try {
+      // Find user by phone number
+      const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+        filters: { phone },
+        limit: 1
+      });
+
+      if (users && users.length > 0) {
+        const user = users[0];
+
+        // Update their communication preferences
+        await strapi.entityService.update('plugin::users-permissions.user', user.id, {
+          data: {
+            lastChannelUsed: channel,
+            // Only update preferred channel if they don't have one set
+            ...((!user.preferredChannel || user.preferredChannel === 'email') && {
+              preferredChannel: channel
+            })
+          }
+        });
+
+        console.log(`📱 Updated user ${phone} communication preference: ${channel}`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not update user channel preference:', error.message);
+      // Don't fail the magic auth if this fails
+    }
+  },
+
+  /**
+   * Get user's preferred communication channel
+   */
+  async getUserPreferredChannel(identifier: string): Promise<'email' | 'sms' | 'whatsapp'> {
+    try {
+      // Try to find user by email first
+      let users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+        filters: { email: identifier },
+        limit: 1
+      });
+
+      // If not found by email, try by phone
+      if (!users || users.length === 0) {
+        users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+          filters: { phone: identifier },
+          limit: 1
+        });
+      }
+
+      if (users && users.length > 0) {
+        const user = users[0];
+        return user.preferredChannel || user.lastChannelUsed || 'email';
+      }
+
+      // Smart default: if identifier looks like phone, default to SMS
+      const isPhone = identifier.startsWith('+') || /^\d+$/.test(identifier);
+      return isPhone ? 'sms' : 'email';
+    } catch (error) {
+      console.warn('⚠️ Could not get user channel preference:', error.message);
+      // Smart fallback based on identifier format
+      const isPhone = identifier.startsWith('+') || /^\d+$/.test(identifier);
+      return isPhone ? 'sms' : 'email';
+    }
   },
 
   /**
@@ -322,6 +436,74 @@ export default ({ strapi }) => ({
     } catch (error) {
       console.error('❌ Failed to send welcome SMS:', error);
       return { message, sent: false, error: error.message };
+    }
+  },
+
+  /**
+   * Generate TwiML auto-reply for SMS webhook
+   * Returns TwiML XML with magic link for auto-response
+   */
+  async generateSmsAutoReplyTwiML(fromPhone: string, messageBody: string, store?: any) {
+    try {
+      // Check if message contains magic link keywords
+      const triggerWords = ['login', 'signin', 'magic', 'link', 'auth', 'authenticate'];
+      const lowerBody = messageBody.toLowerCase();
+      const shouldReply = triggerWords.some(word => lowerBody.includes(word));
+
+      if (!shouldReply) {
+        return null;
+      }
+
+      // Remove whatsapp: prefix if present (normalize phone number)
+      const normalizedPhone = fromPhone.replace(/^whatsapp:/, '');
+
+      // Use provided store or fallback
+      let resolvedStore = store;
+      if (!resolvedStore) {
+        // Fallback: lookup default store by slug
+        const stores = await strapi.entityService.findMany('api::store.store', {
+          filters: { slug: DEFAULT_STORE_SLUG },
+          populate: ['settings'],
+          limit: 1
+        });
+        resolvedStore = stores && stores.length > 0 ? stores[0] : { id: 1 }; // fallback to store ID 1
+      }
+
+      // Generate magic code and short URL
+      const codeData = await this.generateCode(
+        normalizedPhone,
+        resolvedStore.id?.toString() || '1',
+        'sms',
+        'sms-webhook-twiml',
+        'Twilio-SMS-Webhook-TwiML'
+      );
+
+      // Build short URL if shortner was created
+      let shortUrl: string;
+      if (codeData.shortner) {
+        const shortnerRecord = await strapi.entityService.findOne('api::shortner.shortner', codeData.shortner);
+        const baseUrl = process.env.MARKKET_API_URL || 'https://api.markket.place';
+        shortUrl = `${baseUrl}/s/${shortnerRecord.alias}`;
+      } else {
+        // Fallback to direct magic link using store settings
+        const baseUrl = resolvedStore?.settings?.domain || 'https://de.markket.place';
+        shortUrl = `${baseUrl}/auth/magic?code=${codeData.code}`;
+      }
+
+      // Generate TwiML response
+      const replyMessage = `🔐 Here's your magic login link: ${shortUrl}`;
+
+      const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Message>${replyMessage}</Message>
+</Response>`;
+
+      console.log(`Generated TwiML auto-reply for ${normalizedPhone}`);
+      return twimlResponse;
+
+    } catch (error) {
+      console.error('Error:Twilio auto reply:', error);
+      return null;
     }
   }
 });

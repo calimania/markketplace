@@ -1946,6 +1946,7 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    lastChannelUsed: Schema.Attribute.Enumeration<['email', 'sms', 'whatsapp']>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -1957,6 +1958,11 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    phone: Schema.Attribute.String;
+    preferredChannel: Schema.Attribute.Enumeration<
+      ['email', 'sms', 'whatsapp']
+    > &
+      Schema.Attribute.DefaultTo<'email'>;
     provider: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private;

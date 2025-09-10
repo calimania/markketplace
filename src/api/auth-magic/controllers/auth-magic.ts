@@ -5,10 +5,21 @@
  */
 export default ({ strapi }) => ({
   async request(ctx) {
-    const { email, phone, store_id, channel = 'email' } = ctx.request.body;
+    const { email, phone, store_id, channel } = ctx.request.body;
 
-    // Backwards compatibility: if only email provided, default to email channel
-    const finalChannel = email && !phone ? 'email' : channel;
+    // Auto-detect preferred channel if not specified
+    let finalChannel = channel;
+
+    if (!finalChannel) {
+      if (email && !phone) {
+        finalChannel = 'email';
+      } else if (phone) {
+        // Get user's preferred channel for this phone number
+        finalChannel = await strapi.service('api::auth-magic.auth-magic').getUserPreferredChannel(phone);
+      } else {
+        finalChannel = 'email'; // Default fallback
+      }
+    }
 
     // Validate input based on channel
     if (finalChannel === 'email' && !email) {
