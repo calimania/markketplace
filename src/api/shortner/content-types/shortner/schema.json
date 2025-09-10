@@ -13,14 +13,27 @@
   "attributes": {
     "alias": {
       "type": "string",
-      "unique": true
+      "unique": true,
+      "required": true
     },
     "url": {
       "type": "string",
       "required": true
     },
     "visit": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
     }
   }
 }

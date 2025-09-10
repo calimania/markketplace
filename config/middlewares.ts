@@ -1,6 +1,7 @@
 export default [
   'strapi::logger',
   'strapi::errors',
+  'global::short-url', // Custom middleware for /s/:slug redirects
   {
     name: 'strapi::security',
     config: {
