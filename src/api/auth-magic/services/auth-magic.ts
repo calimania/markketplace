@@ -350,7 +350,7 @@ export default ({ strapi }) => ({
       filters: { code, used: false },
       sort: { createdAt: 'desc' },
       limit: 1,
-      populate: ['store.settings', 'store', 'store.favicon', 'shortner']
+      populate: ['store.settings', 'store', 'store.Favicon', 'shortner']
     });
 
     if (!record.length) return null;
