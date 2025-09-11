@@ -1,12 +1,26 @@
 import { isStripeConfigured } from './stripe';
 import { createStripeProduct, updateStripeProductMetadata } from './stripe-product';
 import { syncPricesWithStripe } from './stripe-price';
+import { validateProductData, sanitizeForLogging } from './stripe-security';
+
+// Debouncing map to prevent rapid updates
+const updateDebounce = new Map<string, NodeJS.Timeout>();
+const DEBOUNCE_DELAY = 500; // 0.5 seconds - fast and responsive
 
 /**
  * Main Stripe synchronization service
  */
 export async function syncProductWithStripe(product: any, context: any): Promise<void> {
-  console.log(`[STRIPE_SYNC_SERVICE] Starting ${context.action} operation for product: ${product.Name}`);
+  // Validate input data
+  const validation = validateProductData(product);
+  if (!validation.valid) {
+    console.error('[STRIPE_SYNC_SERVICE] Invalid product data:', validation.errors);
+    return;
+  }
+
+  // Sanitize product name for logging
+  const sanitizedName = sanitizeForLogging(product.Name, 'Name');
+  console.log(`[STRIPE_SYNC_SERVICE] Starting ${context.action} operation for product: ${sanitizedName}`);
 
   if (!isStripeConfigured()) {
     console.warn('[STRIPE_SYNC_SERVICE] No Stripe clients configured, skipping product sync');
@@ -29,13 +43,24 @@ export async function syncProductWithStripe(product: any, context: any): Promise
 
   // Step 1.5: Update existing Stripe Product if metadata changed
   if (product.SKU && context.action === 'update') {
-    console.log('[STRIPE_SYNC_SERVICE] Checking if Stripe product needs updating...');
-    await updateStripeProductMetadata(product);
+    // Only update if we're sure this isn't a partial read
+    if (product.Name) { // Name is required, so if it's missing this might be partial data
+      console.log('[STRIPE_SYNC_SERVICE] Checking if Stripe product needs updating...');
+      await updateStripeProductMetadata(product);
+    } else {
+      console.log('[STRIPE_SYNC_SERVICE] Skipping product metadata update - incomplete product data');
+    }
   }
 
   // Step 2: Handle Stripe Prices
   if (Array.isArray(product.PRICES) && product.SKU) {
-    await syncPricesWithStripe(product);
+    // Additional validation: ensure prices have the required structure
+    const validPrices = product.PRICES.filter(p => p && (p.Price !== undefined || p.STRIPE_ID));
+    if (validPrices.length === product.PRICES.length) {
+      await syncPricesWithStripe(product);
+    } else {
+      console.log('[STRIPE_SYNC_SERVICE] Skipping price sync - incomplete price data detected');
+    }
   }
 
   // Step 3: Persist Stripe IDs back to database if new ones were created
@@ -45,9 +70,19 @@ export async function syncProductWithStripe(product: any, context: any): Promise
   if (hasNewSKU || hasNewPriceIds) {
     console.log('[STRIPE_SYNC_SERVICE] Scheduling persistence of new Stripe IDs...');
 
+    // Clear any existing debounce for this product
+    const debounceKey = product.documentId;
+    if (updateDebounce.has(debounceKey)) {
+      clearTimeout(updateDebounce.get(debounceKey)!);
+    }
+
     // Use setTimeout to ensure we're outside the current transaction
-    setTimeout(async () => {
+    // and add debouncing to prevent rapid successive updates
+    const timeoutId = setTimeout(async () => {
       try {
+        // Remove from debounce map
+        updateDebounce.delete(debounceKey);
+
         const updateData: any = {};
 
         if (hasNewSKU) {
@@ -58,12 +93,12 @@ export async function syncProductWithStripe(product: any, context: any): Promise
           updateData.PRICES = product.PRICES;
         }
 
+        console.log('[STRIPE_SYNC_SERVICE] Persisting Stripe IDs to database...');
+
         const updatedProduct = await strapi.documents('api::product.product').update({
           documentId: product.documentId,
           data: updateData,
-        });
-
-        // Publish the document to make sure changes are live (not draft)
+        });        // Publish the document to make sure changes are live (not draft)
         if (updatedProduct) {
           try {
             await strapi.documents('api::product.product').publish({
@@ -78,31 +113,34 @@ export async function syncProductWithStripe(product: any, context: any): Promise
 
         if (updatedProduct) {
           console.log('[STRIPE_SYNC_SERVICE] Successfully persisted Stripe IDs to database');
-          console.log('[STRIPE_SYNC_SERVICE] Updated product SKU:', updatedProduct.SKU);
+          console.log('[STRIPE_SYNC_SERVICE] Updated product with new Stripe references');
         }
       } catch (error) {
         console.error('[STRIPE_SYNC_SERVICE] Failed to persist Stripe IDs:', error.message);
         console.log('[STRIPE_SYNC_SERVICE] MANUAL ACTION REQUIRED:');
-        console.log('[STRIPE_SYNC_SERVICE] Product documentId:', product.documentId);
+        console.log('[STRIPE_SYNC_SERVICE] Product documentId: [REDACTED]');
 
         if (hasNewSKU) {
-          console.log('[STRIPE_SYNC_SERVICE] - Set SKU field to:', product.SKU);
+          console.log('[STRIPE_SYNC_SERVICE] - Set SKU field to: [NEW_STRIPE_PRODUCT_ID]');
         }
         if (hasNewPriceIds) {
-          const priceIds = product.PRICES.filter((p: any) => p.STRIPE_ID).map((p: any) => p.STRIPE_ID);
-          console.log('[STRIPE_SYNC_SERVICE] - Update PRICES with Stripe IDs:', priceIds);
+          const priceCount = product.PRICES.filter((p: any) => p.STRIPE_ID).length;
+          console.log('[STRIPE_SYNC_SERVICE] - Update PRICES with new Stripe IDs (', priceCount, 'prices)');
         }
         console.log('[STRIPE_SYNC_SERVICE] Please update these fields manually in the Strapi admin panel');
       }
-    }, 2000);
+    }, DEBOUNCE_DELAY);
+
+    // Store the timeout ID for potential cancellation
+    updateDebounce.set(debounceKey, timeoutId);
   }
 
   console.log('[STRIPE_SYNC_SERVICE] Stripe sync completed successfully');
   if (product.SKU) {
-    console.log('[STRIPE_SYNC_SERVICE] Product Stripe ID:', product.SKU);
+    console.log('[STRIPE_SYNC_SERVICE] Product has Stripe product ID');
   }
   if (product.PRICES?.some((p: any) => p.STRIPE_ID)) {
-    const syncedPrices = product.PRICES.filter((p: any) => p.STRIPE_ID).map((p: any) => p.STRIPE_ID);
-    console.log('[STRIPE_SYNC_SERVICE] Price Stripe IDs:', syncedPrices);
+    const syncedCount = product.PRICES.filter((p: any) => p.STRIPE_ID).length;
+    console.log('[STRIPE_SYNC_SERVICE] Synced prices count:', syncedCount);
   }
 }

@@ -10,7 +10,7 @@ export default {
   register({ strapi }) {
     // Register Stripe product synchronization middleware
     registerStripeProductSync({ strapi });
-    
+
     console.log('[APP] Application registered successfully');
   },
 

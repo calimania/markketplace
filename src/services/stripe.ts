@@ -43,7 +43,13 @@ export function isStripeConfigured(): boolean {
  * Convert relative image URLs to full URLs
  */
 export function getFullImageUrl(url: string): string {
-  if (!url) return '';
+  if (!url || typeof url !== 'string') return '';
+
+  // Basic URL validation
+  if (url.length > 2048) {
+    console.warn('[STRIPE_SERVICE] Image URL too long, truncating');
+    return '';
+  }
 
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
@@ -57,7 +63,12 @@ export function getFullImageUrl(url: string): string {
  * Strip HTML tags from description
  */
 export function stripHtml(html: string): string {
-  if (!html) return '';
+  if (!html || typeof html !== 'string') return '';
+
+  // Limit input size to prevent DoS
+  if (html.length > 10000) {
+    html = html.substring(0, 10000);
+  }
 
   return html
     .replace(/<[^>]*>/g, '')

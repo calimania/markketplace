@@ -11,6 +11,17 @@ export async function createStripeProduct(product: any): Promise<string | null> 
     return null;
   }
 
+  // Input validation
+  if (!product?.Name || typeof product.Name !== 'string') {
+    console.error('[STRIPE_PRODUCT_SERVICE] Invalid or missing product name');
+    return null;
+  }
+
+  if (product.Name.length > 250) {
+    console.error('[STRIPE_PRODUCT_SERVICE] Product name too long (max 250 characters)');
+    return null;
+  }
+
   console.log('[STRIPE_PRODUCT_SERVICE] Creating Stripe product');
 
   // Determine if this is a digital product

@@ -28,6 +28,12 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
       continue;
     }
 
+    // Safety check: don't process if this looks like incomplete data
+    if (price.STRIPE_ID && !price.Name && price.Price === 0) {
+      console.log(`[STRIPE_PRICE_SERVICE] Skipping price ${i + 1}: appears to be incomplete data`);
+      continue;
+    }
+
     let needsNewPrice = false;
     let oldPriceId = null;
 
