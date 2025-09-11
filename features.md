@@ -5,16 +5,19 @@
 @NEXT:
 
 - [ ] Content type POST and social media scheduling
-- [ ] Content type Review, for product reviews and comments in articles?
-- [ ] Content type Appointment for digital product meeting?
-- [ ] astro documentation - Digital ocean examples  https://github.com/withastro/docs/tree/main/src/content/docs/de/guides/deploy
+- [ ] Using and deployment an Astro [slug]  docs
 - [ ] read existing tags in posts and displays in settings
 - [ ] SocialPost content-type for a social feed
 - [ ] Newsletter content-type and functionality
 - [ ] Use sendgrid API to manage marketing lists (calendar, store, )
 
 @SEPTEMBER:
-- [ ] POST /markket/sms
+- [ ] POST /markket/sms to send text to an user on a sms|whatsapp
+- [ ] product schema, is digital, better stripe link creation
+- [ ] orders decrease inventory amount
+- [ ] Content type Review, for product reviews and comments in articles?
+- [ ] Content type Appointment for digital product meeting?
+- [ ] Content type Customer/Subscriber for managing CRM contacts
 - [x] STRIPE sync products|prices on save using middleware
 - [x] Magic link via SMS, whatsapp & url shortner
 - [x] Twilio incoming SMS webhook
