@@ -6,43 +6,36 @@
 export default ({ strapi }) => ({
   async request(ctx) {
     const { email, phone, store_id, channel } = ctx.request.body;
-
-    // Auto-detect preferred channel if not specified
     let finalChannel = channel;
 
+    console.log('Auth_magic:request:', { email, phone, store_id, channel });
     if (!finalChannel) {
-      if (email && !phone) {
-        finalChannel = 'email';
-      } else if (phone) {
-        // Get user's preferred channel for this phone number
+      finalChannel = 'email';
+      if (phone) {
         finalChannel = await strapi.service('api::auth-magic.auth-magic').getUserPreferredChannel(phone);
-      } else {
-        finalChannel = 'email'; // Default fallback
       }
     }
 
-    // Validate input based on channel
+    console.log('Final channel:', finalChannel);
     if (finalChannel === 'email' && !email) {
       return ctx.badRequest('Email required for email channel');
     }
+
     if ((finalChannel === 'sms' || finalChannel === 'whatsapp') && !phone) {
       return ctx.badRequest('Phone required for SMS/WhatsApp channel');
     }
+
     if (!['email', 'sms', 'whatsapp'].includes(finalChannel)) {
       return ctx.badRequest('Invalid channel. Use: email, sms, or whatsapp');
     }
 
     try {
       const identifier = email || phone;
-
-      // Extract IP and User-Agent from request (automatically available from AJAX)
       const clientIP = ctx.request.ip ||
         ctx.request.header['x-forwarded-for'] ||
         ctx.request.header['x-real-ip'] ||
         ctx.request.connection?.remoteAddress;
-
       const userAgent = ctx.request.header['user-agent'] || 'Unknown';
-
       const codeData = await strapi.service('api::auth-magic.auth-magic').generateCode(
         identifier,
         store_id,
@@ -55,7 +48,6 @@ export default ({ strapi }) => ({
         populate: ['Favicon', 'settings']
       });
 
-      // Send the magic link via the specified channel
       if (finalChannel === 'email') {
         await strapi.service('api::auth-magic.auth-magic').sendMagicLink(email, codeData, store);
       } else if (finalChannel === 'sms') {
@@ -74,7 +66,14 @@ export default ({ strapi }) => ({
       });
 
     } catch (error) {
-      console.error('Error sending magic link:', error);
+      console.error('Error:magic_link:', error);
+      console.error('Error_details:', {
+        message: error.message,
+        stack: error.stack,
+        phone,
+        finalChannel,
+        store_id
+      });
       return ctx.internalServerError('Failed to send magic link');
     }
   },

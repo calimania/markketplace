@@ -41,13 +41,16 @@ if (TWILIO_AUTH_TOKEN) {
  */
 export default ({ strapi }) => ({
   async generateCode(identifier: string, store_id?: string, channel = 'email', ipAddress?: string, userAgent?: string) {
+    console.log('generateCode magic link:', { identifier, store_id, channel });
+
     // Security: Check for rate limiting (prevent spam/abuse)
     await this.checkRateLimit(identifier, ipAddress);
 
     const code = crypto.randomBytes(24).toString('hex');
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
-    // Prepare data based on channel
+    console.log('Generated code and expiration');
+
     const data: any = {
       code,
       expiresAt,
@@ -65,15 +68,39 @@ export default ({ strapi }) => ({
       data.phone = identifier; // Store clean phone number: +1234567890
     }
 
+    console.log('Channel data prepared');
+
     // For SMS/WhatsApp, create a shortener link
     if (channel === 'sms' || channel === 'whatsapp') {
-      const store = store_id ? await strapi.documents('api::store.store').findOne({
-        documentId: store_id,
-        populate: ['settings']
-      }) : null;
+      console.log('Creating shortener link...');
+
+      let store = null;
+
+      if (store_id) {
+        console.log('Fetching store by ID:', store_id);
+        store = await strapi.documents('api::store.store').findOne({
+          documentId: store_id,
+          populate: ['settings', 'SEO']
+        });
+        console.log('Store found by ID:', !!store);
+      }
+
+      // If no store found or no store_id provided, use default store
+      if (!store) {
+        console.log('Fetching default store by slug:', DEFAULT_STORE_SLUG);
+        const stores = await strapi.documents('api::store.store').findMany({
+          filters: { slug: DEFAULT_STORE_SLUG },
+          populate: ['settings', 'SEO'],
+          limit: 1
+        });
+        store = stores && stores.length > 0 ? stores[0] : null;
+        console.log('📊 Default store found:', !!store, stores?.length);
+      }
 
       const baseUrl = store?.settings?.domain || 'https://de.markket.place';
       const magicUrl = `${baseUrl}/auth/magic?code=${code}`;
+
+      console.log('URLs:', { baseUrl, magicUrl });
 
       // Generate a unique alias for the short URL
       let alias = generateRandomSlug();
@@ -97,12 +124,10 @@ export default ({ strapi }) => ({
       }
 
       // Create a short URL for the magic link with store-specific branding
-      const storeForBranding = store_id ? await strapi.documents('api::store.store').findOne({
-        documentId: store_id,
-        populate: ['seo']
-      }) : null;
+      // Use the store we already fetched (either by store_id or default)
+      const storeTitle = store?.title || store?.SEO?.metaTitle || 'Markkët';
+      console.log('Creating shortener with:', { alias, magicUrl, storeTitle });
 
-      const storeTitle = storeForBranding?.title || storeForBranding?.seo?.metaTitle || 'Markkët';
       const shortner = await strapi.documents('api::shortner.shortner').create({
         data: {
           alias,
@@ -110,11 +135,14 @@ export default ({ strapi }) => ({
           title: `${storeTitle}  Auth`,
           description: `Secure ${channel.toUpperCase()} authentication link for ${storeTitle}`,
           visit: 0,
-          store: store_id
+          store: store?.documentId || store?.id  // Use the store we found
         }
       });
 
-      data.shortner = shortner.id;
+      console.log('Shortener created:', { id: shortner.documentId || shortner.id, alias: shortner.alias });
+
+      data.shortner = shortner.documentId || shortner.id;
+      console.log('Shortener ID stored:', data.shortner);
     }
 
     const magicCode = await strapi.documents('api::auth-magic.magic-code').create({
@@ -192,10 +220,10 @@ export default ({ strapi }) => ({
           }
         });
 
-        console.log(`📱 Updated user ${phone} communication preference: ${channel}`);
+        console.log(`Updated user ${phone} communication preference: ${channel}`);
       }
     } catch (error) {
-      console.warn('⚠️ Could not update user channel preference:', error.message);
+      console.warn('Could not update user channel preference:', error.message);
       // Don't fail the magic auth if this fails
     }
   },
@@ -228,7 +256,7 @@ export default ({ strapi }) => ({
       const isPhone = identifier.startsWith('+') || /^\d+$/.test(identifier);
       return isPhone ? 'sms' : 'email';
     } catch (error) {
-      console.warn('⚠️ Could not get user channel preference:', error.message);
+      console.warn('Could not get user channel preference:', error.message);
       // Smart fallback based on identifier format
       const isPhone = identifier.startsWith('+') || /^\d+$/.test(identifier);
       return isPhone ? 'sms' : 'email';
@@ -261,9 +289,17 @@ export default ({ strapi }) => ({
       throw new Error('Short URL not created for phone magic link');
     }
 
+    console.log('Looking for shortener with ID:', shortner);
     const shortnerRecord = await strapi.documents('api::shortner.shortner').findOne({
       documentId: shortner
     });
+
+    if (!shortnerRecord) {
+      console.error('Shortener record not found for ID:', shortner);
+      throw new Error(`Shortener record not found for ID: ${shortner}`);
+    }
+
+    console.log('Found shortener record:', { alias: shortnerRecord.alias, url: shortnerRecord.url });
     const baseUrl = process.env.MARKKET_API_URL || 'https://api.markket.place';
     const shortUrl = `${baseUrl}/s/${shortnerRecord.alias}`;
     const message = `${store?.title || 'Markkët'} login link: ${shortUrl}`;
