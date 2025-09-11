@@ -122,3 +122,6 @@ build
 
 .turbo
 
+# local test scripts folder
+scripts
+

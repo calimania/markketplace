@@ -10,17 +10,56 @@
     "draftAndPublish": false
   },
   "attributes": {
-    "email": { "type": "email", "required": true },
-    "code": { "type": "string", "required": true },
-    "expiresAt": { "type": "datetime", "required": true },
+    "email": {
+      "type": "email"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string",
+      "required": true
+    },
+    "expiresAt": {
+      "type": "datetime",
+      "required": true
+    },
     "used": {
       "type": "boolean",
       "default": false
+    },
+    "attempts": {
+      "type": "integer",
+      "default": 0
+    },
+    "maxAttempts": {
+      "type": "integer",
+      "default": 3
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp"
+      ],
+      "default": "email"
+    },
+    "shortner": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::shortner.shortner"
     },
     "store": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::store.store"
+    },
+    "ipAddress": {
+      "type": "string"
+    },
+    "userAgent": {
+      "type": "text"
     }
   }
 }

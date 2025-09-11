@@ -25,6 +25,7 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || 'n/a';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
+const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
 
 /**
  * Verify Twilio webhook signature to ensure authenticity
@@ -178,10 +179,46 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         });
 
         console.info(`incoming.SMS: ${body?.From} -> "${body?.Body?.substring(0, 30)}..."`);
+
+        // Find store by slug with settings populated (single lookup)
+        const stores = await strapi.documents('api::store.store').findMany({
+          filters: { slug: DEFAULT_STORE_SLUG },
+          populate: ['settings'],
+          limit: 1
+        });
+        const store = stores && stores.length > 0 ? stores[0] : null;
+
+        // Check for magic link keywords and generate TwiML response
+        const autoReplyTwiML = await strapi.service('api::auth-magic.auth-magic').generateSmsAutoReplyTwiML(
+          body?.From,
+          body?.Body || '',
+          store
+        );
+
+        if (autoReplyTwiML) {
+          console.info(`Twilio: Auto-replying with magic link to ${body?.From}`);
+
+          await strapi.service(modelId).create({
+            locale: 'en',
+            data: {
+              Key: 'twilio.auto_reply.magic_link',
+              Content: {
+                to: body?.From,
+                trigger_message: body?.Body,
+                timestamp: new Date().toISOString()
+              },
+              user_key_or_id: body?.From || '',
+            }
+          });
+
+          ctx.set('Content-Type', 'text/xml');
+          ctx.status = 200;
+          return ctx.send(autoReplyTwiML);
+        }
       }
 
     } catch (error) {
-      console.error('❌ Error processing Twilio webhook:', error);
+      console.error('Error processing Twilio webhook:', error);
 
       // Log the error but still respond to Twilio
       try {

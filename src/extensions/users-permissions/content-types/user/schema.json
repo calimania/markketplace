@@ -98,6 +98,29 @@
       "type": "string",
       "minLength": 2,
       "configurable": false
+    },
+    "phone": {
+      "type": "string",
+      "configurable": false
+    },
+    "preferredChannel": {
+      "type": "enumeration",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp"
+      ],
+      "default": "email",
+      "configurable": false
+    },
+    "lastChannelUsed": {
+      "type": "enumeration",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp"
+      ],
+      "configurable": false
     }
   }
 }

@@ -4,7 +4,6 @@
 
 @NEXT:
 
-- [ ] with astro documentation pull request digital ocean
 - [ ] Content type POST and social media scheduling
 - [ ] Content type Review, for product reviews and comments in articles?
 - [ ] Content type Appointment for digital product meeting?
@@ -15,7 +14,10 @@
 - [ ] Use sendgrid API to manage marketing lists (calendar, store, )
 
 @SEPTEMBER:
+- [ ] POST /markket/sms
+- [x] Magic link via SMS, whatsapp & url shortner
 - [x] Twilio incoming SMS webhook
+- [x] URL Shortner content collection & controllers
 
 @AUGUST:
 - [x] POST markket/email

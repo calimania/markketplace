@@ -26,7 +26,8 @@
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "stripe": "^16.1.0",
-    "styled-components": "^6.0.0"
+    "styled-components": "^6.0.0",
+    "twilio": "^5.9.0"
   },
   "author": {
     "name": "calimania"
