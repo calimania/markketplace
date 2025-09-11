@@ -14,10 +14,10 @@ export default createCoreController('api::shortner.shortner', ({ strapi }) => ({
   /**
    * POST /api/shortners/create
    * Create a new short URL
-   * Body: { url: string, alias?: string, title?: string, description?: string }
+   * Body: { url: string, alias?: string, title?: string, description?: string, storeId?: number }
    */
   async create(ctx) {
-    const { url, alias, title, description } = ctx.request.body.data || ctx.request.body;
+    const { url, alias, title, description, storeId } = ctx.request.body.data || ctx.request.body;
     const user = ctx.state.user; // Will be present if authenticated
 
     if (!url) {
@@ -71,13 +71,34 @@ export default createCoreController('api::shortner.shortner', ({ strapi }) => ({
         }
       }
 
+      let store = null;
+      if (storeId) {
+        try {
+          store = await strapi.documents('api::store.store').findOne({
+            documentId: storeId
+          });
+        } catch (error) {
+          console.warn(`Store ${storeId} not found, using default`);
+        }
+      }
+
+      if (!store) {
+        const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
+        const stores = await strapi.documents('api::store.store').findMany({
+          filters: { slug: DEFAULT_STORE_SLUG },
+          limit: 1
+        });
+        store = stores && stores.length > 0 ? stores[0] : null;
+      }
+
       const data = {
         url,
         alias: finalAlias,
         title,
         description,
         visit: 0,
-        ...(user && { user: user.id })
+        ...(user && { user: user.id }),
+        ...(store && { store: store.documentId })
       };
 
       const shortner = await strapi.documents('api::shortner.shortner').create({

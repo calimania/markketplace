@@ -181,7 +181,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         console.info(`incoming.SMS: ${body?.From} -> "${body?.Body?.substring(0, 30)}..."`);
 
         // Find store by slug with settings populated (single lookup)
-        const stores = await strapi.entityService.findMany('api::store.store', {
+        const stores = await strapi.documents('api::store.store').findMany({
           filters: { slug: DEFAULT_STORE_SLUG },
           populate: ['settings'],
           limit: 1

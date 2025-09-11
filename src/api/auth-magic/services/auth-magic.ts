@@ -67,7 +67,8 @@ export default ({ strapi }) => ({
 
     // For SMS/WhatsApp, create a shortener link
     if (channel === 'sms' || channel === 'whatsapp') {
-      const store = store_id ? await strapi.entityService.findOne('api::store.store', store_id, {
+      const store = store_id ? await strapi.documents('api::store.store').findOne({
+        documentId: store_id,
         populate: ['settings']
       }) : null;
 
@@ -80,7 +81,7 @@ export default ({ strapi }) => ({
       // Check for collision (very unlikely but possible)
       let attempts = 0;
       while (attempts < 5) {
-        const existing = await strapi.entityService.findMany('api::shortner.shortner', {
+        const existing = await strapi.documents('api::shortner.shortner').findMany({
           filters: { alias },
           limit: 1
         });
@@ -95,21 +96,28 @@ export default ({ strapi }) => ({
         throw new Error('Failed to generate unique alias for magic link');
       }
 
-      // Create a short URL for the magic link
-      const shortner = await strapi.entityService.create('api::shortner.shortner', {
+      // Create a short URL for the magic link with store-specific branding
+      const storeForBranding = store_id ? await strapi.documents('api::store.store').findOne({
+        documentId: store_id,
+        populate: ['seo']
+      }) : null;
+
+      const storeTitle = storeForBranding?.title || storeForBranding?.seo?.metaTitle || 'Markkët';
+      const shortner = await strapi.documents('api::shortner.shortner').create({
         data: {
           alias,
           url: magicUrl,
-          title: `Magic login for ${identifier}`,
-          description: `${channel.toUpperCase()} magic auth link`,
-          visit: 0
+          title: `${storeTitle}  Auth`,
+          description: `Secure ${channel.toUpperCase()} authentication link for ${storeTitle}`,
+          visit: 0,
+          store: store_id
         }
       });
 
       data.shortner = shortner.id;
     }
 
-    const magicCode = await strapi.entityService.create('api::auth-magic.magic-code', {
+    const magicCode = await strapi.documents('api::auth-magic.magic-code').create({
       data
     });
 
@@ -129,7 +137,7 @@ export default ({ strapi }) => ({
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
     // Check identifier rate limit (email/phone)
-    const identifierAttempts = await strapi.entityService.findMany('api::auth-magic.magic-code', {
+    const identifierAttempts = await strapi.documents('api::auth-magic.magic-code').findMany({
       filters: {
         $or: [
           { email: identifier },
@@ -145,7 +153,7 @@ export default ({ strapi }) => ({
 
     // Check IP rate limit (prevent mass attacks)
     if (ipAddress) {
-      const ipAttempts = await strapi.entityService.findMany('api::auth-magic.magic-code', {
+      const ipAttempts = await strapi.documents('api::auth-magic.magic-code').findMany({
         filters: {
           ipAddress,
           createdAt: { $gte: oneHourAgo }
@@ -164,7 +172,7 @@ export default ({ strapi }) => ({
   async updateUserChannelPreference(phone: string, channel: 'sms' | 'whatsapp') {
     try {
       // Find user by phone number
-      const users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+      const users = await strapi.documents('plugin::users-permissions.user').findMany({
         filters: { phone },
         limit: 1
       });
@@ -173,7 +181,8 @@ export default ({ strapi }) => ({
         const user = users[0];
 
         // Update their communication preferences
-        await strapi.entityService.update('plugin::users-permissions.user', user.id, {
+        await strapi.documents('plugin::users-permissions.user').update({
+          documentId: user.documentId,
           data: {
             lastChannelUsed: channel,
             // Only update preferred channel if they don't have one set
@@ -197,14 +206,14 @@ export default ({ strapi }) => ({
   async getUserPreferredChannel(identifier: string): Promise<'email' | 'sms' | 'whatsapp'> {
     try {
       // Try to find user by email first
-      let users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+      let users = await strapi.documents('plugin::users-permissions.user').findMany({
         filters: { email: identifier },
         limit: 1
       });
 
       // If not found by email, try by phone
       if (!users || users.length === 0) {
-        users = await strapi.entityService.findMany('plugin::users-permissions.user', {
+        users = await strapi.documents('plugin::users-permissions.user').findMany({
           filters: { phone: identifier },
           limit: 1
         });
@@ -252,7 +261,9 @@ export default ({ strapi }) => ({
       throw new Error('Short URL not created for phone magic link');
     }
 
-    const shortnerRecord = await strapi.entityService.findOne('api::shortner.shortner', shortner);
+    const shortnerRecord = await strapi.documents('api::shortner.shortner').findOne({
+      documentId: shortner
+    });
     const baseUrl = process.env.MARKKET_API_URL || 'https://api.markket.place';
     const shortUrl = `${baseUrl}/s/${shortnerRecord.alias}`;
     const message = `${store?.title || 'Markkët'} login link: ${shortUrl}`;
@@ -335,11 +346,11 @@ export default ({ strapi }) => ({
    * Verify magic code with attempt tracking and security
    */
   async verifyCode(code: string, ipAddress?: string, userAgent?: string) {
-    const record = await strapi.entityService.findMany('api::auth-magic.magic-code', {
+    const record = await strapi.documents('api::auth-magic.magic-code').findMany({
       filters: { code, used: false },
       sort: { createdAt: 'desc' },
       limit: 1,
-      populate: ['store.settings', 'store', 'store.Favicon', 'shortner']
+      populate: ['store.settings', 'store', 'store.favicon', 'shortner']
     });
 
     if (!record.length) return null;
@@ -348,7 +359,8 @@ export default ({ strapi }) => ({
 
     // Check if expired
     if (new Date(magic.expiresAt) < new Date()) {
-      await strapi.entityService.update('api::auth-magic.magic-code', magic.id, {
+      await strapi.documents('api::auth-magic.magic-code').update({
+        documentId: magic.documentId,
         data: { used: true } // Mark as used to prevent reuse
       });
       return null;
@@ -361,7 +373,8 @@ export default ({ strapi }) => ({
     }
 
     // Increment attempts
-    await strapi.entityService.update('api::auth-magic.magic-code', magic.id, {
+    await strapi.documents('api::auth-magic.magic-code').update({
+      documentId: magic.documentId,
       data: {
         attempts: magic.attempts + 1,
         used: true // Mark as used on successful verification
@@ -373,7 +386,8 @@ export default ({ strapi }) => ({
 
     // If this was a shortener-based link, increment its visit count
     if (magic.shortner) {
-      await strapi.entityService.update('api::shortner.shortner', magic.shortner.id, {
+      await strapi.documents('api::shortner.shortner').update({
+        documentId: magic.shortner.documentId,
         data: { visit: magic.shortner.visit + 1 }
       });
     }
@@ -403,38 +417,31 @@ export default ({ strapi }) => ({
 
     console.log(`📱 Welcome SMS to ${phone}: ${message}`);
 
-    // Send via Twilio
     try {
       if (!twilioClient) {
-        console.warn('⚠️ Twilio client not configured for welcome SMS');
+        console.warn('Twilio client not initialized');
         return { message, sent: false };
       }
 
       if (!TWILIO_MESSAGING_SERVICE_SID && !TWILIO_SENDER) {
-        console.warn('⚠️ Neither TWILIO_MESSAGING_SERVICE_SID nor TWILIO_SENDER configured');
+        console.warn('Missing:TWILIO_MESSAGING_SERVICE_SID|TWILIO_SENDER');
         return { message, sent: false };
       }
 
-      // Create message parameters
       const messageParams: any = {
         body: message,
         to: phone
       };
 
-      // Use Messaging Service SID if available, otherwise use phone number
-      if (TWILIO_MESSAGING_SERVICE_SID) {
-        messageParams.messagingServiceSid = TWILIO_MESSAGING_SERVICE_SID;
-      } else {
-        messageParams.from = TWILIO_SENDER;
-      }
+      messageParams.from = TWILIO_MESSAGING_SERVICE_SID || TWILIO_SENDER
 
       const twilioMessage = await twilioClient.messages.create(messageParams);
 
-      console.log(`✅ Welcome SMS sent: ${twilioMessage.sid}`);
+      console.log(`Welcome SMS sent: ${twilioMessage.sid}`);
       return { message, sent: true, messageSid: twilioMessage.sid, status: twilioMessage.status };
 
     } catch (error) {
-      console.error('❌ Failed to send welcome SMS:', error);
+      console.error('Failed to send welcome SMS:', error);
       return { message, sent: false, error: error.message };
     }
   },
@@ -461,7 +468,7 @@ export default ({ strapi }) => ({
       let resolvedStore = store;
       if (!resolvedStore) {
         // Fallback: lookup default store by slug
-        const stores = await strapi.entityService.findMany('api::store.store', {
+        const stores = await strapi.documents('api::store.store').findMany({
           filters: { slug: DEFAULT_STORE_SLUG },
           populate: ['settings'],
           limit: 1
@@ -481,7 +488,9 @@ export default ({ strapi }) => ({
       // Build short URL if shortner was created
       let shortUrl: string;
       if (codeData.shortner) {
-        const shortnerRecord = await strapi.entityService.findOne('api::shortner.shortner', codeData.shortner);
+        const shortnerRecord = await strapi.documents('api::shortner.shortner').findOne({
+          documentId: codeData.shortner
+        });
         const baseUrl = process.env.MARKKET_API_URL || 'https://api.markket.place';
         shortUrl = `${baseUrl}/s/${shortnerRecord.alias}`;
       } else {
@@ -491,7 +500,7 @@ export default ({ strapi }) => ({
       }
 
       // Generate TwiML response
-      const replyMessage = `🔐 Here's your magic login link: ${shortUrl}`;
+      const replyMessage = `Magic login link: ${shortUrl}`;
 
       const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
