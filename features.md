@@ -15,6 +15,7 @@
 
 @SEPTEMBER:
 - [ ] POST /markket/sms
+- [x] STRIPE sync products|prices on save using middleware
 - [x] Magic link via SMS, whatsapp & url shortner
 - [x] Twilio incoming SMS webhook
 - [x] URL Shortner content collection & controllers
