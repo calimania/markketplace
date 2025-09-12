@@ -56,6 +56,9 @@ export interface CommonPrices extends Struct.ComponentSchema {
   attributes: {
     Currency: Schema.Attribute.String;
     Description: Schema.Attribute.Text;
+    extra: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
+    hidden: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    inventory: Schema.Attribute.Integer;
     Name: Schema.Attribute.String;
     Price: Schema.Attribute.Decimal;
     STRIPE_ID: Schema.Attribute.String;

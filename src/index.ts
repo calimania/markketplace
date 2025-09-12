@@ -1,4 +1,3 @@
-import { registerStripeProductSync } from './middlewares/stripe-product-sync';
 
 export default {
   /**
@@ -8,9 +7,6 @@ export default {
    * This gives you an opportunity to extend code.
    */
   register({ strapi }) {
-    // Register Stripe product synchronization middleware
-    registerStripeProductSync({ strapi });
-
     console.log('[APP] Application registered successfully');
   },
 

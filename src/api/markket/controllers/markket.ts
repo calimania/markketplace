@@ -321,6 +321,18 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
 
     console.log(`markket.create:${body.action || 'default'}`);
 
+    // Collect extra metadata for transaction record
+    const extraMeta = {
+      session_id: body.session_id || null,
+      user_id: body.user_id || null,
+      status: body.status || null,
+      metadata: body.metadata || {},
+      schema_version: 2,
+      created_at: new Date().toISOString(),
+      ip_address: ctx.request.ip || null,
+      user_agent: ctx.request.headers['user-agent'] || null,
+    };
+
     if (body?.action === 'stripe.link') {
       const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
 
@@ -346,14 +358,13 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           Status: 'open',
           Shipping_Address: {},
           STRIPE_PAYMENT_ID: response?.id,
-          Details: prices.map((price: any) => {
-            return {
-              Price: parseInt(price?.unit_amount || '0', 10),
-              product,
-              Quantity: parseInt(price.quantity || '0', 10),
-              Name: price?.Name,
-            }
-          })
+          Details: prices.map((price: any) => ({
+            Price: parseInt(price?.unit_amount || '0', 10),
+            product,
+            Quantity: parseInt(price.quantity || '0', 10),
+            Name: price?.Name,
+          })),
+          extra: extraMeta,
         }
       });
       message = `order:${order.documentId}`;
@@ -376,7 +387,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         const prevAttempts = Array.isArray(order.Payment_attempts) ? order.Payment_attempts : [];
         const newAttempt = {
           Timestampt: new Date(),
-          buyer_email: buyer_email,
+          buyer_email,
           Status: 'Succeeded',
           reason: '',
         };
@@ -403,6 +414,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
               newAttempt
             ],
             Shipping_Address: shippingData || order.Shipping_Address,
+            product: body?.product || order.product,
+            extra: extraMeta,
           }
         });
         console.log(`updating:order:${update.documentId}`);
@@ -449,9 +462,10 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           link: link || '',
           product: body?.product,
           total: body?.total,
+          ...extraMeta,
         },
         // @TODO: Review authorization, token or related user
-        user_key_or_id: "",
+        user_key_or_id: body?.user_id || "",
       }
     });
 
@@ -460,6 +474,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       data: {
         info: message,
         link: link || '',
+        ...extraMeta,
       },
     });
   },

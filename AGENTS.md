@@ -533,12 +533,12 @@ POST /api/payments/create-intent
 // Server handles Stripe complexity
 export async function createPaymentIntent(ctx) {
   const { amount, currency, productId } = ctx.request.body;
-  
+
   // Server-side validation and enrichment
   const product = await strapi.documents('api::product.product').findOne({
     documentId: productId
   });
-  
+
   // Full Stripe integration with all metadata
   const paymentIntent = await stripe.paymentIntents.create({
     amount,
@@ -549,7 +549,7 @@ export async function createPaymentIntent(ctx) {
       // Rich server-side context
     }
   });
-  
+
   // Return minimal client-safe data
   return { client_secret: paymentIntent.client_secret };
 }
@@ -560,8 +560,8 @@ export async function createPaymentIntent(ctx) {
 // ✅ Smart environment detection with fallbacks
 export function createStripeClient(): Stripe {
   const isProduction = process.env.NODE_ENV === 'production';
-  const apiKey = isProduction 
-    ? process.env.STRIPE_SECRET_KEY 
+  const apiKey = isProduction
+    ? process.env.STRIPE_SECRET_KEY
     : process.env.STRIPE_SECRET_KEY_TEST;
 
   if (!apiKey) {
@@ -588,7 +588,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function handleStripeWebhook(ctx) {
   const sig = ctx.request.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  
+
   try {
     // Use official verification method
     const event = stripe.webhooks.constructEvent(
@@ -596,7 +596,7 @@ export async function handleStripeWebhook(ctx) {
       sig,
       endpointSecret
     );
-    
+
     // Follow Stripe's recommended event handling patterns
     switch (event.type) {
       case 'payment_intent.succeeded':
@@ -608,7 +608,7 @@ export async function handleStripeWebhook(ctx) {
       default:
         console.log(`[STRIPE] Unhandled event type: ${event.type}`);
     }
-    
+
     return ctx.send({ received: true });
   } catch (err) {
     console.error('[STRIPE] Webhook signature verification failed:', err.message);
@@ -659,11 +659,11 @@ interface ThirdPartyService {
 class StripeService implements ThirdPartyService {
   name = 'stripe';
   private client: Stripe;
-  
+
   async initialize(config: StripeConfig) {
     this.client = new Stripe(config.secretKey, config.options);
   }
-  
+
   async healthCheck(): Promise<boolean> {
     try {
       await this.client.accounts.retrieve();
@@ -722,12 +722,12 @@ const API_VERSIONS = {
 // ✅ Version compatibility checks
 export function validateApiVersions() {
   const warnings: string[] = [];
-  
+
   // Check for upcoming deprecations
   if (API_VERSIONS.stripe < '2024-06-20') {
     warnings.push('Stripe API version is outdated, consider upgrading');
   }
-  
+
   return warnings;
 }
 ```

@@ -904,6 +904,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     Currency: Schema.Attribute.String;
     Details: Schema.Attribute.Component<'common.product-snapshop', true>;
+    extra: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
       Schema.Attribute.Private;

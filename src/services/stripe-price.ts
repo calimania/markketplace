@@ -13,8 +13,21 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
   console.log('[STRIPE_PRICE_SERVICE] Syncing prices with Stripe');
   console.log('[STRIPE_PRICE_SERVICE] Product PRICES array:', JSON.stringify(product.PRICES, null, 2));
 
+  const createdPrices = [];
+  const skippedPrices = [];
   for (let i = 0; i < product.PRICES.length; i++) {
     const price = product.PRICES[i];
+    const missingFields = [];
+    if (!price.Name || typeof price.Name !== 'string' || price.Name.trim() === '') missingFields.push('Name');
+    if (price.Price === undefined || price.Price === null || isNaN(price.Price) || Number(price.Price) <= 0) missingFields.push('Price');
+    if (!price.Currency || typeof price.Currency !== 'string' || price.Currency.trim() === '') missingFields.push('Currency');
+
+    if (missingFields.length > 0) {
+      console.warn(`[STRIPE_PRICE_SERVICE] Skipping price ${i + 1}: missing or invalid fields [${missingFields.join(', ')}]`, price);
+      skippedPrices.push({ index: i, reason: `Missing fields: ${missingFields.join(', ')}`, price });
+      continue;
+    }
+
     console.log(`[STRIPE_PRICE_SERVICE] Processing price ${i + 1}:`, {
       Name: price.Name,
       Price: price.Price,
@@ -22,15 +35,10 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
       Currency: price.Currency
     });
 
-    // Skip if no price value
-    if (!price.Price || price.Price <= 0) {
-      console.log(`[STRIPE_PRICE_SERVICE] Skipping price ${i + 1}: invalid or zero price`);
-      continue;
-    }
-
     // Safety check: don't process if this looks like incomplete data
     if (price.STRIPE_ID && !price.Name && price.Price === 0) {
       console.log(`[STRIPE_PRICE_SERVICE] Skipping price ${i + 1}: appears to be incomplete data`);
+      skippedPrices.push({ index: i, reason: 'Incomplete data', price });
       continue;
     }
 
@@ -46,7 +54,7 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
       console.log(`[STRIPE_PRICE_SERVICE] Checking existing price ${price.STRIPE_ID} for changes...`);
       try {
         const existingPrice = await stripeClient.prices.retrieve(price.STRIPE_ID);
-        const currentAmount = Math.round(price.Price * 100);
+        const currentAmount = Math.round(Number(price.Price) * 100);
 
         console.log(`[STRIPE_PRICE_SERVICE] Price comparison:`, {
           existing: existingPrice.unit_amount,
@@ -60,6 +68,7 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
           console.log(`[STRIPE_PRICE_SERVICE] Price value changed (${existingPrice.unit_amount} -> ${currentAmount}), creating new price: ${price.Name || 'Price ' + (i + 1)}`);
         } else {
           console.log(`[STRIPE_PRICE_SERVICE] Price unchanged, skipping: ${price.Name || 'Price ' + (i + 1)}`);
+          skippedPrices.push({ index: i, reason: 'Price unchanged', price });
         }
       } catch (error) {
         // If we can't retrieve the existing price, create a new one
@@ -74,7 +83,7 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
       const isDigitalProduct = product.Name.toLowerCase().includes('digital');
 
       const priceData: Stripe.PriceCreateParams = {
-        unit_amount: Math.round(price.Price * 100),
+        unit_amount: Math.round(Number(price.Price) * 100),
         currency: (price.Currency || 'usd').toLowerCase(),
         product: product.SKU,
         nickname: price.Name || `${product.Name} - Price ${i + 1}`,
@@ -103,6 +112,7 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
       try {
         const stripePrice = await stripeClient.prices.create(priceData);
         console.log('[STRIPE_PRICE_SERVICE] Price created successfully:', stripePrice.id);
+        createdPrices.push({ index: i, stripeId: stripePrice.id, price });
 
         // Archive the old price if it exists
         if (oldPriceId) {
@@ -117,7 +127,17 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
         product.PRICES[i].STRIPE_ID = stripePrice.id;
       } catch (error) {
         console.error('[STRIPE_PRICE_SERVICE] Failed to create price:', error);
+        skippedPrices.push({ index: i, reason: 'Stripe error', error, price });
       }
     }
+  }
+
+  // Summary log
+  console.log('[STRIPE_PRICE_SERVICE] Price sync summary:');
+  if (createdPrices.length > 0) {
+    console.log('  Created prices:', createdPrices.map(p => ({ index: p.index, stripeId: p.stripeId, name: p.price.Name, price: p.price.Price })));
+  }
+  if (skippedPrices.length > 0) {
+    console.log('  Skipped prices:', skippedPrices.map(p => ({ index: p.index, reason: p.reason, name: p.price.Name, price: p.price.Price })));
   }
 }
