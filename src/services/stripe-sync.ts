@@ -52,14 +52,22 @@ export async function syncProductWithStripe(product: any, context: any): Promise
     }
   }
 
-  // Step 2: Handle Stripe Prices
+  // Step 2: Handle Stripe Prices (robust, tolerant of missing fields)
   if (Array.isArray(product.PRICES) && product.SKU) {
-    // Additional validation: ensure prices have the required structure
-    const validPrices = product.PRICES.filter(p => p && (p.Price !== undefined || p.STRIPE_ID));
-    if (validPrices.length === product.PRICES.length) {
-      await syncPricesWithStripe(product);
+    // Accept prices with just Name, Price, Currency for creation
+    const validPrices = product.PRICES.filter(p => p && (p.Name && p.Price !== undefined && p.Currency));
+    if (validPrices.length > 0) {
+      await syncPricesWithStripe({
+        ...product,
+        PRICES: validPrices
+      });
+      // After sync, ensure STRIPE_ID is updated for all prices
+      product.PRICES = product.PRICES.map((p: any, idx: number) => ({
+        ...p,
+        STRIPE_ID: validPrices[idx]?.STRIPE_ID || p.STRIPE_ID || ''
+      }));
     } else {
-      console.log('[STRIPE_SYNC_SERVICE] Skipping price sync - incomplete price data detected');
+      console.warn('[STRIPE_SYNC_SERVICE] No valid prices found for sync. Each price should have Name, Price, and Currency.');
     }
   }
 

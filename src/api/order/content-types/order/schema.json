@@ -70,6 +70,10 @@
       "relation": "oneToMany",
       "target": "api::shipment.shipment",
       "mappedBy": "order"
+    },
+    "extra": {
+      "type": "json",
+      "default": {}
     }
   }
 }

@@ -84,6 +84,8 @@ export async function createStripeProduct(product: any): Promise<string | null> 
       .filter((slide: any) => slide.url)
       .slice(0, 8)
       .map((slide: any) => getFullImageUrl(slide.url));
+  } else {
+    console.warn('[STRIPE_PRODUCT_SERVICE] No Thumbnail or Slides found for product images. Skipping image sync.');
   }
 
   try {
@@ -144,13 +146,15 @@ export async function updateStripeProductMetadata(product: any): Promise<void> {
         .slice(0, 8)
         .map((slide: any) => getFullImageUrl(slide.url));
       newImages.push(...slideImages);
+    } else {
+      console.warn('[STRIPE_PRODUCT_SERVICE] No Thumbnail or Slides found for product images. Skipping image update.');
     }
 
     const existingImages = existingProduct.images || [];
     const imagesChanged = JSON.stringify(newImages.sort()) !== JSON.stringify(existingImages.sort());
 
-    if (imagesChanged) {
-      updateData.images = newImages.length > 0 ? newImages : [];
+    if (imagesChanged && newImages.length > 0) {
+      updateData.images = newImages;
       needsUpdate = true;
       console.log('[STRIPE_PRODUCT_SERVICE] Product images changed:', {
         oldCount: existingImages.length,

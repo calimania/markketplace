@@ -21,6 +21,18 @@
     },
     "Description": {
       "type": "text"
+    },
+    "hidden": {
+      "type": "boolean",
+      "default": false
+    },
+    "extra": {
+      "type": "json",
+      "default": {}
+    },
+    "inventory": {
+      "type": "integer",
+      "default": null
     }
   }
 }
