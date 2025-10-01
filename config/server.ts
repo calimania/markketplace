@@ -4,7 +4,7 @@ export default ({ env }) => ({
   app: {
     keys: env.array('APP_KEYS'),
   },
-  proxy: true,
+  proxy: { koa: true },
   webhooks: {
     populateRelations: env.bool('WEBHOOKS_POPULATE_RELATIONS', false),
   },
