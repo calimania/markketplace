@@ -39,10 +39,6 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       const userId = ctx.state.user?.id;
       console.log(`get:store:settings:${id}`);
 
-      if (!userId) {
-        return ctx.unauthorized('Authentication required');
-      }
-
       const { hasAccess, store } = await checkUserStoreAccess(strapi, userId, id);
       if (!hasAccess) {
         return ctx.forbidden(`403:store:${store.title}`);
@@ -53,7 +49,34 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       }
 
       return ctx.send({
-        store
+        store: store?.[0]?.data,
+      });
+
+    } catch (error) {
+      console.error('Error fetching store settings:', error);
+      return ctx.internalServerError('Failed to fetch store settings');
+    }
+  },
+
+  /**
+   * GET /api/stores/:slug/settings
+   */
+  async getSettingsBySlug(ctx) {
+    try {
+      const { slug } = ctx.params;
+      console.log(`get:store:settings:${slug}`);
+
+      const stores = await strapi.documents('api::store.store').findMany({
+        filters: { slug: slug },
+        populate: ['settings', 'SEO.socialImage', 'Logo', 'URLS', 'Favicon', 'Cover',],
+      }) as any;
+
+      if (!stores?.length) {
+        return ctx.notFound('Store not found');
+      }
+
+      return ctx.send({
+        data: stores,
       });
     } catch (error) {
       console.error('Error fetching store settings:', error);

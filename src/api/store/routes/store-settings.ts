@@ -14,6 +14,15 @@ export default {
       },
     },
     {
+      method: 'GET',
+      path: '/stores/:slug/info',
+      handler: 'store.getSettingsBySlug',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'PUT',
       path: '/stores/:id/settings',
       handler: 'store.updateSettings',
