@@ -39,8 +39,21 @@ yourself or support small agencies or communities
 Quickly test in [strapi cloud free tier](https://strapi.io/blog/introducing-the-free-plan-for-strapi-cloud)
 
 ### Local
+Welcome to Markkëtplace — an open, extensible, and community-driven commerce platform. Our mission is to empower anyone to create, run, and extend their own marketplace, whether online, offline, or at the edge.
 
-1. **Clone the repository:**
+**Why Markkëtplace?**
+- **Open Community:** We welcome contributors, users, and integrators from all backgrounds. Our goal is to build a platform that serves real-world needs, from local events to global e-commerce.
+- **Extensible by Design:** Easily add new features, payment methods, or integrations via plugins and extensions. Propose or adopt standards as the project evolves.
+- **Data Portability:** Your data is yours. Import, export, and migrate with ease. We encourage adapters for other systems and formats.
+- **Offline & Edge Ready:** Markkëtplace can run on localhost, in the cloud, or at the edge. Register cash payments, sell tickets for a school play, or operate in low-connectivity environments.
+- **Not Just for Profit:** This platform is for everyone — from small businesses to community groups, schools, and non-profits.
+
+> "A school play can use Markkëtplace to sell tickets, take cash payments, and register them on a local server — no internet required."
+
+---
+
+
+Easy to use REST APIs, compatible with multiple free templates & hosting services. See our [CONTRIBUTING.md](./CONTRIBUTING.md) for how to build your own extension or adapter.
 
 ```bash
 git clone git@github.com:calimania/markketplace.git
@@ -67,7 +80,17 @@ Review `.env.example` for ENV names for PostgresQL and essential services
 
 The initial user becomes super admin in your instance
 
-## Docs
+## 🤝 Philosophy & Standards
+
+Markkëtplace is committed to open standards, data portability, and community-driven development. We encourage:
+- Proposals for new features, standards, and extensions
+- Adapters for other platforms and data formats
+- Offline and edge use cases
+- Contributions from all backgrounds
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for how to get involved, propose a standard, or build an extension.
+
+---
 
 Find some documentation in markdown in the `docs` folder.
 

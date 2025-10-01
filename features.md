@@ -10,6 +10,10 @@
 - [ ] SocialPost content-type for a social feed
 - [ ] Newsletter content-type and functionality
 - [ ] Use sendgrid API to manage marketing lists (calendar, store, )
+- [ ] Use Stripe API to better display information directly in dashboard
+- [ ] Valkey caching
+- [ ] User: verify new email for a store or login
+- [ ] User: add email to account created with phone number
 
 @SEPTEMBER:
 - [ ] POST /markket/sms to send text to an user on a sms|whatsapp
@@ -18,6 +22,9 @@
 - [ ] Content type Review, for product reviews and comments in articles?
 - [ ] Content type Appointment for digital product meeting?
 - [ ] Content type Customer/Subscriber for managing CRM contacts
+- [ ] SEO generate endpoint [product|page|article|store]
+- [x] @strapi 5.24.2 upgrade
+- [x] Read store.settings in public
 - [x] STRIPE sync products|prices on save using middleware
 - [x] Magic link via SMS, whatsapp & url shortner
 - [x] Twilio incoming SMS webhook
