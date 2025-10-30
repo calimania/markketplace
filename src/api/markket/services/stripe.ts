@@ -107,8 +107,8 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
       quantity: set_price.quantity || 1,
     });
   }
-
-  const url = `${redirect_to_url || 'https://markket.place/receipt'}?session_id={CHECKOUT_SESSION_ID}`;
+  const base_url = redirect_to_url || (store?.slug ? `https://de.markket.place/store/${store.slug}/receipt` : 'https://markket.place/receipt');
+  const url = `${base_url}?session_id={CHECKOUT_SESSION_ID}`;
   console.log('create.stripe.payment.link', { line_items: line_items.length, url });
 
   if (line_items?.length < 1) {
