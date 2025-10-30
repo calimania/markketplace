@@ -107,13 +107,13 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
       quantity: set_price.quantity || 1,
     });
   }
+  const base_url = redirect_to_url || (store?.slug ? `https://de.markket.place/store/${store.slug}/receipt` : 'https://markket.place/receipt');
+  const url = `${base_url}?session_id={CHECKOUT_SESSION_ID}`;
+  console.log('create.stripe.payment.link', { line_items: line_items.length, url });
 
   if (line_items?.length < 1) {
     return null;
   }
-
-  console.log('create.stripe.payment.link', { line_items: line_items.length });
-  const url = `${redirect_to_url || 'https://markket.place/receipt'}?session_id={CHECKOUT_SESSION_ID}`;
 
   const stripe_options = {
     line_items: line_items.splice(0, 20) || [],
@@ -164,9 +164,12 @@ export const createPaymentLinkWithPriceIds = async ({ prices, include_shipping, 
     };
   }
 
-  console.log('create.stripe.payment.link', { include_shipping, connect: connected_account_id, store: store?.documentId });
 
   const paymentLink = await client.paymentLinks.create(stripe_options as Stripe.PaymentLinkCreateParams);
+  console.log('created.stripe.payment.link', {
+    include_shipping, connect: connected_account_id, store: store?.documentId,
+    stripe_id: paymentLink?.id,
+  });
 
   return paymentLink;
 };
