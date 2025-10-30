@@ -379,7 +379,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
 
       const order = paymentLinkId && await strapi.db.query('api::order.order').findOne({
         where: { STRIPE_PAYMENT_ID: paymentLinkId },
-        populate: ['store.users']
+        populate: ['store.users', 'store.settings']
       });
 
       if (order) {
@@ -423,9 +423,14 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
 
       if (order?.store?.documentId) {
         storeUsers.push(...order?.store?.users);
-        const emails = storeUsers.filter(user => user.confirmed).map(user => user.email);
+        const emails = new Set(storeUsers.filter(user => user.confirmed).map(user => user.email));
+        const store_settings_email = order.store?.settings?.support_email || order.store?.settings?.reply_to_email;
 
-        if (emails?.length > 0) {
+        if (store_settings_email) {
+          emails.add(store_settings_email)
+        }
+
+        if (emails?.size > 0) {
           await notifyStoreOfPurchase({ strapi, order, emails, store: order?.store as {} });
         }
       }
