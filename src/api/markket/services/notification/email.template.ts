@@ -141,17 +141,66 @@ export const RSVPNotificationHTml = (event: any) => {
  * @param order, store
  * @returns
  */
-export const OrderStoreNotificationEmailHTML = (order: { documentId: string, Amount: number, }, store: { title: string, documentId: string }) => {
-  console.log({ order: order?.documentId });
+export const OrderStoreNotificationEmailHTML = (order: {
+  documentId: string,
+  Amount: number,
+  Currency: string,
+  buyer?: { email: string },
+  Shipping_Address?: {
+    address_line1?: string,
+    address_line2?: string,
+    city?: string,
+    state?: string,
+    postal_code?: string,
+    country?: string
+  },
+  Details?: Array<{
+    Name?: string,
+    Quantity?: number
+  }>
+}, store: { title: string, documentId: string }) => {
+  console.log('notification:order:store', { order: order?.documentId });
+
+  const formatAddress = (addr?: typeof order.Shipping_Address) => {
+    if (!addr) return 'No shipping address provided';
+    return [
+      addr.address_line1,
+      addr.address_line2,
+      [addr.city, addr.state, addr.postal_code].filter(Boolean).join(', '),
+      addr.country
+    ].filter(Boolean).join('\n');
+  };
 
   const content = `
-    <h2>You must construct additional pylons</h2>
-    <p>A new order has been placed in your store: ${store?.title || ''}</p>
-    <p><strong>$${order?.Amount}</strong></p>
-    <p>order id: ${order?.documentId}</p>
-    <p>Visit the Dashboard to view details</p>
-    <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders">/dashboard/crm</a>
+    <h2>Order Received!</h2>
+    <p>A new order has been placed in your store: <strong>${store?.title || ''}</strong></p>
+
+    <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+      <h3 style="margin: 0 0 10px 0;">Order Details</h3>
+      <p><strong>Amount:</strong> ${order?.Currency || '$'}${order?.Amount}</p>
+      <p><strong>Order ID:</strong> ${order?.documentId}</p>
+      ${order?.buyer?.email ? `<p><strong>Buyer Email:</strong> ${order?.buyer.email}</p>` : ''}
+
+      ${order?.Details && order.Details.length > 0 ? `
+        <h4 style="margin: 15px 0 5px 0;">Items Ordered:</h4>
+        <ul style="margin: 0; padding-left: 20px;">
+          ${order.Details.map(item => `
+            <li>${item.Name || 'Unnamed item'}${item.Quantity ? ` × ${item.Quantity}` : ''}</li>
+          `).join('')}
+        </ul>
+      ` : ''}
+
+      ${order?.Shipping_Address ? `
+        <h4 style="margin: 15px 0 5px 0;">Shipping Address:</h4>
+        <pre style="margin: 0; white-space: pre-wrap; font-family: inherit;">${formatAddress(order.Shipping_Address)}</pre>
+      ` : ''}
     </div>
+
+    <p>Visit your Dashboard to view complete details and process this order:</p>
+    <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders"
+       style="display: inline-block; padding: 10px 20px; background: #4a5568; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px;">
+      View in Dashboard
+    </a>
   `;
 
   const title = 'Markkët: Order notification';

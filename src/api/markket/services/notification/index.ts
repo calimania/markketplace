@@ -37,9 +37,26 @@ export const sendRSVPNotification = async ({ strapi, rsvp, event }) => {
 type notifyStoreOfPurchaseProps = {
   strapi: any,
   order: {
-    id: string,
+    id?: string,
     documentId: string,
     Amount: number,
+    Currency: string,
+    buyer?: {
+      email: string,
+    },
+    Shipping_Address?: {
+      address_line1?: string,
+      address_line2?: string,
+      city?: string,
+      state?: string,
+      postal_code?: string,
+      country?: string,
+    },
+    Details?: {
+      Name?: string,
+      Quantity?: number,
+      Price?: number,
+    }[],
   },
   emails: string[],
   store: {
@@ -58,6 +75,7 @@ export const notifyStoreOfPurchase = async ({ strapi, order, emails, store }: no
   });
 
   if (!SENDGRID_FROM_EMAIL || !SENDGRID_REPLY_TO_EMAIL) {
+    console.warn('missing.sendgrid.config');
     return;
   }
 
@@ -66,13 +84,13 @@ export const notifyStoreOfPurchase = async ({ strapi, order, emails, store }: no
     from: SENDGRID_FROM_EMAIL,
     cc: SENDGRID_REPLY_TO_EMAIL,
     replyTo: SENDGRID_REPLY_TO_EMAIL,
-    subject: 'Markkët: Order Notification',
+    subject: `${store.title || 'Markkët'}: Order Notification`,
     text: 'New order in your store! - log in to view details',
     html: OrderStoreNotificationEmailHTML(order, store),
   });
 };
 
-export const sendOrderNotification = async ({ strapi, order }) => {
+export const sendOrderNotification = async ({ strapi, order, store }) => {
   console.info('notification::stripe:checkout.session.completed', {
     order: order?.documentId || order?.id,
     strapi: !!strapi,
@@ -95,7 +113,7 @@ export const sendOrderNotification = async ({ strapi, order }) => {
     from: SENDGRID_FROM_EMAIL, //e.g. single sender verification in SendGrid
     cc: SENDGRID_REPLY_TO_EMAIL,
     replyTo: SENDGRID_REPLY_TO_EMAIL,
-    subject: 'Markkët: Order Confirmation',
+    subject: `${store.title || 'Markkët'}: Order Confirmation`,
     text: 'Thank you for your order!',
     html: OrderNotificationHTml(order),
   });

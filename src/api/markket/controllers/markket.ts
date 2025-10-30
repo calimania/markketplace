@@ -436,7 +436,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         }
       }
 
-      const response = sendOrderNotification({ strapi, order: body });
+      const response = sendOrderNotification({ strapi, order: body, store: order.store });
       link = { body, response };
     }
 
