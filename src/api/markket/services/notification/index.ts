@@ -34,13 +34,27 @@ export const sendRSVPNotification = async ({ strapi, rsvp, event }) => {
   });
 };
 
+type notifyStoreOfPurchaseProps = {
+  strapi: any,
+  order: {
+    id: string,
+    documentId: string,
+    Amount: number,
+  },
+  emails: string[],
+  store: {
+    title: string,
+    documentId: string,
+  }
+}
 
-export const notifyStoreOfPurchase = async ({ strapi, order, emails, store }) => {
+export const notifyStoreOfPurchase = async ({ strapi, order, emails, store }: notifyStoreOfPurchaseProps) => {
   console.info('notification::store:purchase', {
     order: order?.documentId || order?.id,
     strapi: !!strapi,
     from: !!SENDGRID_FROM_EMAIL,
     reply_to: !!SENDGRID_REPLY_TO_EMAIL,
+    emails: emails?.length,
   });
 
   if (!SENDGRID_FROM_EMAIL || !SENDGRID_REPLY_TO_EMAIL) {

@@ -431,7 +431,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         }
 
         if (emails?.size > 0) {
-          await notifyStoreOfPurchase({ strapi, order, emails, store: order?.store as {} });
+          const destinations = [...emails];
+          await notifyStoreOfPurchase({ strapi, order, emails: destinations, store: order?.store as any });
         }
       }
 
