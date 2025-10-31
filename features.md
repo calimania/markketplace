@@ -3,7 +3,7 @@
 ### 2025
 
 @NEXT:
-
+- [ ] webhook transaction complete finds store for default orders
 - [ ] Content type POST and social media scheduling
 - [ ] Using and deployment an Astro [slug]  docs
 - [ ] read existing tags in posts and displays in settings
@@ -15,7 +15,7 @@
 - [ ] User: verify new email for a store or login
 - [ ] User: add email to account created with phone number
 
-@SEPTEMBER:
+@OCTOBER:
 - [ ] POST /markket/sms to send text to an user on a sms|whatsapp
 - [ ] product schema, is digital, better stripe link creation
 - [ ] orders decrease inventory amount
@@ -23,6 +23,9 @@
 - [ ] Content type Appointment for digital product meeting?
 - [ ] Content type Customer/Subscriber for managing CRM contacts
 - [ ] SEO generate endpoint [product|page|article|store]
+- [x] verify stripe webhook
+
+@SEPTEMBER:
 - [x] @strapi 5.24.2 upgrade
 - [x] Read store.settings in public
 - [x] STRIPE sync products|prices on save using middleware

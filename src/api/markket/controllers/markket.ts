@@ -402,25 +402,77 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       });
 
       const paymentLinkId = session.payment_link;
-      const shipping = session.shipping || session.customer_details?.address;
+      const shipping = session.shipping_details || session.customer_details || session?.shipping;
       const buyer_email = session.customer_details?.email || body.customer_email;
       const storeUsers = [];
 
       // Try to find the order linked to this payment
-      const order = paymentLinkId ? await strapi.db.query('api::order.order').findOne({
+      let order = paymentLinkId ? await strapi.db.query('api::order.order').findOne({
         where: { STRIPE_PAYMENT_ID: paymentLinkId },
         populate: ['store.users', 'store.settings', 'Shipping_Address', 'buyer']
       }) : null;
 
       if (!order) {
-        console.warn('[STRIPE] No matching order found for payment_link:', paymentLinkId);
-        return ctx.send({
-          message: 'webhook processed but no matching order',
+        console.warn('stripe:order.creating', { session_id: session?.id });
+
+        const defaultOrder = {
           data: {
-            payment_link: paymentLinkId,
-            session_id: session.id
+            STRIPE_PAYMENT_ID: session.id,
+            Amount: session.amount_total ? session.amount_total / 100 : 0,
+            Currency: session.currency?.toUpperCase() || 'USD',
+            Status: 'complete',
+            store: session.metadata?.store_id || null,
+            Shipping_Address: {
+              name: shipping.name || session.customer_details?.name,
+              email: buyer_email,
+              street: shipping.address?.line1 || shipping.line1,
+              street_2: shipping.address?.line2 || shipping.line2,
+              city: shipping.address?.city || shipping.city,
+              state: shipping.address?.state || shipping.state,
+              zipcode: shipping.address?.postal_code || shipping.postal_code,
+              country: shipping.address?.country || shipping.country,
+            },
+            Payment_attempts: [{
+              Timestampt: new Date(),
+              buyer_email,
+              Status: 'Succeeded',
+              reason: '',
+              session_id: session.id,
+              amount: session.amount_total ? session.amount_total / 100 : 0,
+              currency: session.currency?.toUpperCase() || 'USD'
+            }],
+            Details: session.line_items?.data?.map((item: any) => ({
+              Price: (item.amount_total || 0) / 100,
+              product: item.price?.product || null,
+              Quantity: item.quantity || 1,
+              Name: item.description || item.price?.product?.name || '',
+              Metadata: item.price?.metadata || {}
+            })) || [],
+            extra: {
+              stripe_session_id: session.id,
+              stripe_payment_link: paymentLinkId,
+              stripe_payment_intent: session.payment_intent,
+              stripe_customer: session.customer,
+              stripe_customer_details: session.customer_details,
+              stripe_payment_status: session.payment_status,
+              stripe_mode: session.mode,
+              created_from: 'webhook_fallback',
+              created_at: new Date().toISOString(),
+              is_test: session.id.startsWith('cs_test_'),
+              session_metadata: session.metadata || {}
+            }
           }
+        };
+
+        console.log('stripe:webhook:default-order:', {
+          session_id: session.id,
+          amount: defaultOrder.data.Amount,
+          currency: defaultOrder.data.Currency,
+          has_shipping: !!shipping,
+          has_items: defaultOrder.data.Details?.length || 0
         });
+
+        order = await strapi.service('api::order.order').create(defaultOrder);
       }
 
       console.log(`stripe:checkout.session.completed:order:${order.documentId}`);
@@ -435,29 +487,26 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           session_id: session.id,
         };
 
-        let shippingData = order.Shipping_Address;
-
-        if (!shippingData && shipping) {
-          shippingData = {
-            street: shipping.address?.line1 || shipping.line1,
-            street_2: shipping.address?.line2 || shipping.line2,
-            city: shipping.address?.city || shipping.city,
-            state: shipping.address?.state || shipping.state,
-            zipcode: shipping.address?.postal_code || shipping.postal_code,
-            country: shipping.address?.country || shipping.country,
-            name: shipping.name || session.customer_details?.name,
-            email: buyer_email,
-          };
-        }
-
         const update = await strapi.service('api::order.order').update(order.documentId, {
+          populate: [
+            'Shipping_Address', 'store'
+          ],
           data: {
             Status: 'complete',
             Payment_attempts: [
               ...prevAttempts,
               newAttempt
             ],
-            Shipping_Address: shippingData || order.Shipping_Address,
+            Shipping_Address: {
+              name: shipping.name || session.customer_details?.name || order.Shipping_Address?.name,
+              email: buyer_email || session.Shipping_Address?.email,
+              street: shipping.address?.line1 || shipping.line1,
+              street_2: shipping.address?.line2 || shipping.line2,
+              city: shipping.address?.city || shipping.city,
+              state: shipping.address?.state || shipping.state,
+              zipcode: shipping.address?.postal_code || shipping.postal_code,
+              country: shipping.address?.country || shipping.country,
+            },
             product: body?.product || order.product,
             extra: {
               ...extraMeta,
