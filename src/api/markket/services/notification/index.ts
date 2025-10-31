@@ -133,13 +133,14 @@ export const sendOrderNotification = async ({
   });
 
   if (!SENDGRID_FROM_EMAIL || !SENDGRID_REPLY_TO_EMAIL) {
+    console.warn('notification:missing:platform_email');
     return;
   }
 
   const customer_email = order?.Shipping_Address?.email || order?.buyer?.email;
 
   if (!customer_email) {
-    console.warn('notification:missing:customer_email');
+    console.warn(`notification:missing:customer_email:order:${order?.documentId}`);
     return;
   }
 
@@ -148,7 +149,7 @@ export const sendOrderNotification = async ({
     from: SENDGRID_FROM_EMAIL,
     cc: SENDGRID_REPLY_TO_EMAIL,
     replyTo: SENDGRID_REPLY_TO_EMAIL,
-    subject: `${store.title || 'Markkët'}: Order Confirmation`,
+    subject: `${store?.title || 'Markkët'}: Order Confirmation`,
     text: 'Thank you for your order!',
     html: OrderNotificationHTml(order),
   });
