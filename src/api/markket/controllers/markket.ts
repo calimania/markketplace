@@ -17,7 +17,7 @@ import * as crypto from 'crypto';
 const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
 
-import { createPaymentLinkWithPriceIds, getSessionById, getAccount } from '../services/stripe';
+import { createPaymentLinkWithPriceIds, getSessionById, getAccount, verifyStripeWebhook } from '../services/stripe';
 import { sendOrderNotification, notifyStoreOfPurchase } from '../services/notification';
 import { emailLayout } from '../services/notification/email.template';
 
@@ -26,6 +26,7 @@ const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || 'n/a';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
+
 
 /**
  * Verify Twilio webhook signature to ensure authenticity
@@ -311,11 +312,13 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
   },
   async create(ctx: any) {
     console.info('markket.create');
+    const rawBody = ctx.request.rawBody;
     const body = ctx.request?.body || {};
     let message = 'action started';
     let link = body;
 
     if (body?.id?.startsWith('evt_')) {
+      // @example: stripe:checkout.session.completed
       body.action = `stripe:${body.type}`;
     }
 
@@ -370,8 +373,17 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       message = `order:${order.documentId}`;
     }
 
-    if (body?.action == 'stripe:checkout.session.completed') {
-      const session = body.data?.object as any;
+    if (body?.action === 'stripe:checkout.session.completed') {
+      const signature = ctx.request.headers['stripe-signature'];
+      const is_test = body.data.object.id;
+      const event = verifyStripeWebhook(signature, rawBody, is_test);
+
+      if (!event) {
+        console.error('[STRIPE] Invalid webhook signature');
+        return ctx.badRequest('Invalid Stripe webhook signature');
+      }
+
+      const session = event.data?.object;
       const paymentLinkId = session.payment_link;
       const shipping = session.shipping || session.customer_details?.address;
       const buyer_email = session.customer_details?.email || body.customer_email;
@@ -379,20 +391,23 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
 
       const order = paymentLinkId && await strapi.db.query('api::order.order').findOne({
         where: { STRIPE_PAYMENT_ID: paymentLinkId },
-        populate: ['store.users', 'store.settings']
+        populate: ['store.users', 'store.settings', 'Shipping_Address', 'buyer']
       });
 
+      console.log(`stripe:checkout.session.completed:order:${order.documentId}`);
+
       if (order) {
-        console.log(`updating:order:${order.documentId}`);
         const prevAttempts = Array.isArray(order.Payment_attempts) ? order.Payment_attempts : [];
         const newAttempt = {
           Timestampt: new Date(),
           buyer_email,
           Status: 'Succeeded',
           reason: '',
+          session_id: session.id,
         };
 
         let shippingData = order.Shipping_Address;
+
         if (!shippingData && shipping) {
           shippingData = {
             street: shipping.address?.line1 || shipping.line1,
@@ -415,29 +430,34 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
             ],
             Shipping_Address: shippingData || order.Shipping_Address,
             product: body?.product || order.product,
-            extra: extraMeta,
+            extra: {
+              ...extraMeta,
+              stripe_session_id: session.id,
+              stripe_payment_intent: session.payment_intent
+            },
           }
         });
+
         console.log(`updating:order:${update.documentId}`);
-      }
 
-      if (order?.store?.documentId) {
-        storeUsers.push(...order?.store?.users);
-        const emails = new Set(storeUsers.filter(user => user.confirmed).map(user => user.email));
-        const store_settings_email = order.store?.settings?.support_email || order.store?.settings?.reply_to_email;
+        if (order?.store?.documentId) {
+          storeUsers.push(...order?.store?.users);
+          const emails = new Set(storeUsers.filter(user => user.confirmed).map(user => user.email));
+          const store_settings_email = order.store?.settings?.support_email || order.store?.settings?.reply_to_email;
 
-        if (store_settings_email) {
-          emails.add(store_settings_email)
+          if (store_settings_email) {
+            emails.add(store_settings_email)
+          }
+
+          if (emails?.size > 0) {
+            const destinations = [...emails];
+            await notifyStoreOfPurchase({ strapi, order: update, emails: destinations, store: order?.store as any });
+          }
         }
 
-        if (emails?.size > 0) {
-          const destinations = [...emails];
-          await notifyStoreOfPurchase({ strapi, order, emails: destinations, store: order?.store as any });
-        }
+        const response = await sendOrderNotification({ strapi, order: update, store: order.store });
+        link = { body, response };
       }
-
-      const response = sendOrderNotification({ strapi, order: body, store: order.store });
-      link = { body, response };
     }
 
     if (body?.action === 'stripe.account') {
@@ -483,5 +503,5 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         ...extraMeta,
       },
     });
-  },
+  }
 }));

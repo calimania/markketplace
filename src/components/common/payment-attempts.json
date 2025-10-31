@@ -9,6 +9,9 @@
     "Timestampt": {
       "type": "datetime"
     },
+    "session_id": {
+      "type": "string"
+    },
     "buyer_email": {
       "type": "string"
     },
