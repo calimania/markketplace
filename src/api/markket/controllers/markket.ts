@@ -312,7 +312,6 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
   },
   async create(ctx: any) {
     console.info('markket.create');
-    const rawBody = ctx.request.rawBody;
     const body = ctx.request?.body || {};
     let message = 'action started';
     let link = body;
@@ -373,26 +372,56 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       message = `order:${order.documentId}`;
     }
 
+
     if (body?.action === 'stripe:checkout.session.completed') {
       const signature = ctx.request.headers['stripe-signature'];
-      const is_test = body.data.object.id;
-      const event = verifyStripeWebhook(signature, rawBody, is_test);
+      const is_test = !!body.data?.object?.id?.startsWith('cs_test_');
+      const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
+
+      // Simple debug log
+      console.log('stripe:webhook', {
+        has_sig: !!signature,
+        has_raw: !!(rawBody?.toString()),
+        session: body.data?.object?.id
+      });
+
+      // Verify webhook
+      const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
 
       if (!event) {
-        console.error('[STRIPE] Invalid webhook signature');
-        return ctx.badRequest('Invalid Stripe webhook signature');
+        return ctx.badRequest('Invalid webhook signature');
       }
 
       const session = event.data?.object;
+
+      console.log('stripe:session', {
+        id: session?.id,
+        payment_link: session?.payment_link,
+        has_shipping: !!session?.shipping,
+        has_customer: !!session?.customer_details
+      });
+
       const paymentLinkId = session.payment_link;
       const shipping = session.shipping || session.customer_details?.address;
       const buyer_email = session.customer_details?.email || body.customer_email;
       const storeUsers = [];
 
-      const order = paymentLinkId && await strapi.db.query('api::order.order').findOne({
+      // Try to find the order linked to this payment
+      const order = paymentLinkId ? await strapi.db.query('api::order.order').findOne({
         where: { STRIPE_PAYMENT_ID: paymentLinkId },
         populate: ['store.users', 'store.settings', 'Shipping_Address', 'buyer']
-      });
+      }) : null;
+
+      if (!order) {
+        console.warn('[STRIPE] No matching order found for payment_link:', paymentLinkId);
+        return ctx.send({
+          message: 'webhook processed but no matching order',
+          data: {
+            payment_link: paymentLinkId,
+            session_id: session.id
+          }
+        });
+      }
 
       console.log(`stripe:checkout.session.completed:order:${order.documentId}`);
 

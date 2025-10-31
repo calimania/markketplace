@@ -197,25 +197,22 @@ export const getSessionById = async (session_id: string, stripe_test) => {
  */
 export const verifyStripeWebhook = (signature: string, payload: string | Buffer, test: boolean = true): any => {
   const secret = test ? STRIPE_WEBHOOK_SECRET_TEST : STRIPE_WEBHOOK_SECRET;
+  const client = test ? stripeTest : stripe;
 
-  console.log('stripe:verify:webhook', { test });
-
-  if (!secret) {
-    console.warn('[STRIPE]:Webhook secret not configured');
-    return null;
-  }
-
-  if (!signature) {
-    console.warn('[STRIPE]:Missing Stripe-Signature header');
+  // Early validation
+  if (!secret || !signature || !payload) {
+    console.warn('[STRIPE] Webhook verification failed:', {
+      has_secret: !!secret,
+      has_sig: !!signature,
+      has_payload: !!payload
+    });
     return null;
   }
 
   try {
-    const event = (test ? stripeTest : stripe).webhooks.constructEvent(payload, signature, secret);
-    return event;
-
+    return client.webhooks.constructEvent(payload, signature, secret);
   } catch (error) {
-    console.error('[STRIPE]:Webhook signature verification failed:', error.message);
+    console.error('[STRIPE] Webhook verification error:', error.message);
     return null;
   }
 };
