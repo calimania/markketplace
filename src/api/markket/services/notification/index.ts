@@ -37,14 +37,32 @@ export const sendRSVPNotification = async ({ strapi, rsvp, event }) => {
 type notifyStoreOfPurchaseProps = {
   strapi: any,
   order: {
-    id: string,
+    id?: string,
     documentId: string,
     Amount: number,
+    Currency: string,
+    buyer?: {
+      email: string,
+    },
+    Shipping_Address?: {
+      address_line1?: string,
+      address_line2?: string,
+      city?: string,
+      state?: string,
+      postal_code?: string,
+      country?: string,
+    },
+    Details?: {
+      Name?: string,
+      Quantity?: number,
+      Price?: number,
+    }[],
   },
   emails: string[],
   store: {
     title: string,
     documentId: string,
+    slug: string,
   }
 }
 
@@ -58,6 +76,7 @@ export const notifyStoreOfPurchase = async ({ strapi, order, emails, store }: no
   });
 
   if (!SENDGRID_FROM_EMAIL || !SENDGRID_REPLY_TO_EMAIL) {
+    console.warn('missing.sendgrid.config');
     return;
   }
 
@@ -66,15 +85,48 @@ export const notifyStoreOfPurchase = async ({ strapi, order, emails, store }: no
     from: SENDGRID_FROM_EMAIL,
     cc: SENDGRID_REPLY_TO_EMAIL,
     replyTo: SENDGRID_REPLY_TO_EMAIL,
-    subject: 'Markkët: Order Notification',
+    subject: `${store.title || 'Markkët'}: Order Notification`,
     text: 'New order in your store! - log in to view details',
     html: OrderStoreNotificationEmailHTML(order, store),
   });
 };
 
-export const sendOrderNotification = async ({ strapi, order }) => {
+export const sendOrderNotification = async ({
+  strapi,
+  order,
+  store
+}: {
+  strapi: any,
+  order: {
+    documentId: string,
+    Amount: number,
+    Currency: string,
+    buyer?: {
+      email: string,
+    },
+    Shipping_Address?: {
+      address_line1?: string,
+      address_line2?: string,
+      city?: string,
+      state?: string,
+      email?: string,
+      postal_code?: string,
+      country?: string,
+    },
+    Details?: Array<{
+      Name?: string,
+      Quantity?: number,
+      Price?: number,
+    }>,
+    store?: any
+  },
+  store: {
+    title: string,
+    documentId: string,
+  }
+}) => {
   console.info('notification::stripe:checkout.session.completed', {
-    order: order?.documentId || order?.id,
+    order: order?.documentId,
     strapi: !!strapi,
     from: !!SENDGRID_FROM_EMAIL,
     reply_to: !!SENDGRID_REPLY_TO_EMAIL,
@@ -84,18 +136,19 @@ export const sendOrderNotification = async ({ strapi, order }) => {
     return;
   }
 
-  if (!order?.data?.object?.customer_details?.email) {
+  const customer_email = order?.Shipping_Address?.email || order?.buyer?.email;
+
+  if (!customer_email) {
+    console.warn('notification:missing:customer_email');
     return;
   }
 
-  const customer = order?.data?.object?.customer_details;
-
   return await strapi.plugins['email'].services.email.send({
-    to: customer.email,
-    from: SENDGRID_FROM_EMAIL, //e.g. single sender verification in SendGrid
+    to: customer_email,
+    from: SENDGRID_FROM_EMAIL,
     cc: SENDGRID_REPLY_TO_EMAIL,
     replyTo: SENDGRID_REPLY_TO_EMAIL,
-    subject: 'Markkët: Order Confirmation',
+    subject: `${store.title || 'Markkët'}: Order Confirmation`,
     text: 'Thank you for your order!',
     html: OrderNotificationHTml(order),
   });

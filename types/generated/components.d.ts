@@ -32,6 +32,7 @@ export interface CommonPaymentAttempts extends Struct.ComponentSchema {
   attributes: {
     buyer_email: Schema.Attribute.String;
     reason: Schema.Attribute.String;
+    session_id: Schema.Attribute.String;
     Status: Schema.Attribute.Enumeration<
       [
         'Succeeded',

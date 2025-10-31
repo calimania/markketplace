@@ -141,16 +141,84 @@ export const RSVPNotificationHTml = (event: any) => {
  * @param order, store
  * @returns
  */
-export const OrderStoreNotificationEmailHTML = (order: { documentId: string, Amount: number, }, store: { title: string, documentId: string }) => {
-  console.log({ order: order?.documentId });
+export const OrderStoreNotificationEmailHTML = (order: {
+  documentId: string,
+  Amount: number,
+  Currency: string,
+  buyer?: { email: string },
+  STRIPE_PAYMENT_ID?: string,
+  Shipping_Address?: {
+    name?: string,
+    email?: string,
+    street?: string,
+    street_2?: string,
+    city?: string,
+    state?: string,
+    country?: string,
+    zipcode?: string,
+  },
+  Details?: Array<{
+    Name?: string,
+    Quantity?: number
+  }>
+}, store: { title: string, documentId: string, slug: string }) => {
+  console.log('notification:order:store', { order: order?.documentId });
+
+  const formatAddress = (addr?: typeof order.Shipping_Address) => {
+    if (!addr) return 'No shipping address provided';
+    return [
+      addr.name,
+      addr.street,
+      addr.street_2,
+      [addr.city, addr.state, addr.zipcode].filter(Boolean).join(', '),
+      addr.country
+    ].filter(Boolean).join('\n');
+  };
+
+  const customer_email = order?.buyer?.email || order?.Shipping_Address?.email;
 
   const content = `
-    <h2>You must construct additional pylons</h2>
-    <p>A new order has been placed in your store: ${store?.title || ''}</p>
-    <p><strong>$${order?.Amount}</strong></p>
-    <p>order id: ${order?.documentId}</p>
-    <p>Visit the Dashboard to view details</p>
-    <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders">/dashboard/crm</a>
+    <h2>Order Received!</h2>
+    <p>A new order has been placed in your '<strong>${store?.title || 'markket'}</strong>' store</p>
+
+    <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+      <h3 style="margin: 0 0 10px 0;">Order Details</h3>
+      <p><strong>Amount:</strong> ${order?.Currency || '$'}${order?.Amount}</p>
+      <p><strong>Order ID:</strong> ${order?.documentId}</p>
+      ${customer_email ? `<p><strong>Email:</strong> ${customer_email}</p>` : ''}
+
+      ${order?.Details && order.Details.length > 0 ? `
+        <h4 style="margin: 15px 0 5px 0;">Items Ordered:</h4>
+        <ul style="margin: 0; padding-left: 20px;">
+          ${order.Details.map(item => `
+            <li>${item.Name || 'Unnamed item'}${item.Quantity ? ` × ${item.Quantity}` : ''}</li>
+          `).join('')}
+        </ul>
+      ` : ''}
+
+      ${order?.Shipping_Address ? `
+        <h4 style="margin: 15px 0 5px 0;">Shipping Address:</h4>
+        <pre style="margin: 0; white-space: pre-wrap; font-family: inherit;">${formatAddress(order.Shipping_Address)}</pre>
+      ` : ''}
+    </div>
+
+    <div style="margin: 20px 0;">
+      <p><strong>Receipt & Payment Details:</strong></p>
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <a href="https://de.markket.place/store/${store?.slug}/receipt?session_id=${order?.STRIPE_PAYMENT_ID}"
+           style="display: inline-block; padding: 10px 20px; background: #4a5568; color: white; text-decoration: none; border-radius: 6px;">
+          View Receipt
+        </a>
+        <p style="margin: 0; font-size: 12px; color: #718096;">
+          Session ID: <code style="background: #f7fafc; padding: 2px 4px; border-radius: 4px;">${order?.STRIPE_PAYMENT_ID || 'N/A'}</code>
+        </p>
+      </div>
+
+      <p><strong>Manage Order:</strong></p>
+      <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders"
+         style="display: inline-block; padding: 10px 20px; background: #4a5568; color: white; text-decoration: none; border-radius: 6px;">
+        View in Dashboard
+      </a>
     </div>
   `;
 

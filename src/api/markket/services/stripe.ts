@@ -3,6 +3,9 @@ import Stripe from "stripe";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_SECRET_TEST_KEY = process.env.STRIPE_SECRET_TEST_KEY;
 
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const STRIPE_WEBHOOK_SECRET_TEST = process.env.STRIPE_WEBHOOK_SECRET_TEST || '';
+
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 const stripeTest = new Stripe(STRIPE_SECRET_TEST_KEY);
 
@@ -186,4 +189,33 @@ export const getSessionById = async (session_id: string, stripe_test) => {
   );
 
   return session;
+};
+
+
+/**
+ * Verify Stripe webhook signature to ensure request authenticity using Stripe's official signature verification
+ */
+export const verifyStripeWebhook = (signature: string, payload: string | Buffer, test: boolean = true): any => {
+  const secret = test ? STRIPE_WEBHOOK_SECRET_TEST : STRIPE_WEBHOOK_SECRET;
+
+  console.log('stripe:verify:webhook', { test });
+
+  if (!secret) {
+    console.warn('[STRIPE]:Webhook secret not configured');
+    return null;
+  }
+
+  if (!signature) {
+    console.warn('[STRIPE]:Missing Stripe-Signature header');
+    return null;
+  }
+
+  try {
+    const event = (test ? stripeTest : stripe).webhooks.constructEvent(payload, signature, secret);
+    return event;
+
+  } catch (error) {
+    console.error('[STRIPE]:Webhook signature verification failed:', error.message);
+    return null;
+  }
 };
