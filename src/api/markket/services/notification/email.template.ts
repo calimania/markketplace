@@ -183,8 +183,8 @@ export const OrderStoreNotificationEmailHTML = (order: {
 
     <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
       <h3 style="margin: 0 0 10px 0;">Order Details</h3>
-      <p><strong>Amount:</strong> ${order?.Currency || '$'}${order?.Amount}</p>
-      <p><strong>Order ID:</strong> ${order?.documentId}</p>
+      <p><strong>Amount:</strong> ${'$'}${order?.Amount}  ${order?.Currency || ''}</p>
+      <p><strong>Markket Order ID:</strong> ${order?.documentId}</p>
       ${customer_email ? `<p><strong>Email:</strong> ${customer_email}</p>` : ''}
 
       ${order?.Details && order.Details.length > 0 ? `
