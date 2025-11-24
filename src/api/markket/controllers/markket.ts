@@ -414,14 +414,12 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       const is_test = !!body.data?.object?.id?.startsWith('cs_test_');
       const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
 
-      // Simple debug log
       console.log('stripe:webhook', {
         has_sig: !!signature,
         has_raw: !!(rawBody?.toString()),
         session: body.data?.object?.id
       });
 
-      // Verify webhook
       const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
 
       if (!event) {
@@ -441,6 +439,30 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       const shipping = session.shipping_details || session.customer_details || session?.shipping;
       const buyer_email = session.customer_details?.email || body.customer_email;
       const storeUsers = [];
+
+      let actualStripeFees = null;
+      if (session.payment_intent) {
+        try {
+          const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+          const balanceTxns = await stripe.balanceTransactions.list({
+            source: session.payment_intent,
+            limit: 1,
+          });
+
+          if (balanceTxns.data.length > 0) {
+            const txn = balanceTxns.data[0];
+            actualStripeFees = {
+              fees_cents: txn.fee,
+              fees_usd: (txn.fee / 100).toFixed(2),
+              net_cents: txn.net,
+              net_usd: (txn.net / 100).toFixed(2),
+            };
+            console.log('[STRIPE_WEBHOOK] Actual fees retrieved:', actualStripeFees);
+          }
+        } catch (error) {
+          console.error('[STRIPE_WEBHOOK] Failed to retrieve actual fees:', error?.message);
+        }
+      }
 
       // Try to find the order linked to this payment
       let order = paymentLinkId ? await strapi.db.query('api::order.order').findOne({
@@ -495,7 +517,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
               created_from: 'webhook_fallback',
               created_at: new Date().toISOString(),
               is_test: session.id.startsWith('cs_test_'),
-              session_metadata: session.metadata || {}
+              session_metadata: session.metadata || {},
+              stripe_actual_fees: actualStripeFees,
             }
           }
         };
@@ -547,7 +570,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
             extra: {
               ...extraMeta,
               stripe_session_id: session.id,
-              stripe_payment_intent: session.payment_intent
+              stripe_payment_intent: session.payment_intent,
+              stripe_actual_fees: actualStripeFees,
             },
           }
         });
