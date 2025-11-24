@@ -14,8 +14,6 @@
 - [ ] Valkey caching
 - [ ] User: verify new email for a store or login
 - [ ] User: add email to account created with phone number
-
-@OCTOBER:
 - [ ] POST /markket/sms to send text to an user on a sms|whatsapp
 - [ ] product schema, is digital, better stripe link creation
 - [ ] orders decrease inventory amount
@@ -23,7 +21,20 @@
 - [ ] Content type Appointment for digital product meeting?
 - [ ] Content type Customer/Subscriber for managing CRM contacts
 - [ ] SEO generate endpoint [product|page|article|store]
-- [x] verify stripe webhook
+- [ ] save Inbox with order associated
+- [ ] create Extension schema
+- [ ] create store.extensions.notifications association
+- [ ] forward Inbox to Odoo, with associated order|customer
+- [ ] forward order to Odoo
+- [ ] order, better tracking | title in schema
+- [ ] odoo webhook application
+
+@NOVEMBER:
+- [ ] store.settings.transaction_percentage
+- [ ] create stripe link use store.settings if present
+
+@OCTOBER:
+- [x] verify stripe webhook before proceeding in checkout.complete
 
 @SEPTEMBER:
 - [x] @strapi 5.24.2 upgrade
