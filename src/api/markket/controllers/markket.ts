@@ -338,6 +338,22 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     if (body?.action === 'stripe.link') {
       const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
 
+      console.log('[STRIPE_LINK_DEBUG] Payment link creation initiated', {
+        requested_total: total,
+        requested_total_type: typeof total,
+        prices_count: Array.isArray(prices) ? prices.length : 0,
+        prices_breakdown: prices?.map((p: any) => ({
+          price_id: p.price || 'custom',
+          unit_amount: p.unit_amount,
+          quantity: p.quantity,
+          line_total: (p.unit_amount || 0) * (p.quantity || 1)
+        })),
+        store_id,
+        includes_shipping,
+        stripe_test,
+        redirect_to_url,
+      });
+
       const response = await createPaymentLinkWithPriceIds({
         prices: body?.prices || [],
         include_shipping: !!includes_shipping,
@@ -345,6 +361,13 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         store_id,
         redirect_to_url,
         total,
+      });
+
+      console.log('[STRIPE_LINK_DEBUG] Payment link response', {
+        success: !!response,
+        link_id: response?.id,
+        link_url: response?.url ? response.url.substring(0, 50) + '...' : null,
+        url_length: response?.url?.length,
       });
 
       link = {
@@ -366,9 +389,22 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
             Quantity: parseInt(price.quantity || '0', 10),
             Name: price?.Name,
           })),
-          extra: extraMeta,
+          extra: {
+            ...extraMeta,
+            link_creation_debug: {
+              requested_total: total,  // ✅ FIXED: Use 'total'
+              calculated_total: prices?.reduce((sum: number, p: any) => sum + ((p.unit_amount || 0) * (p.quantity || 1)), 0),
+            }
+          },
         }
       });
+
+      console.log('[STRIPE_LINK_DEBUG] Order created', {
+        order_id: order.documentId,
+        order_amount: order.Amount,
+        stripe_payment_id: order.STRIPE_PAYMENT_ID,
+      });
+
       message = `order:${order.documentId}`;
     }
 
