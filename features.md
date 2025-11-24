@@ -30,8 +30,11 @@
 - [ ] odoo webhook application
 
 @NOVEMBER:
-- [ ] store.settings.transaction_percentage
-- [ ] create stripe link use store.settings if present
+- [ ] (product).settings overrides store or ENV fees
+- [ ] (store|product).settings inventory options
+- [ ] (store|product).settings shipping options
+- [x] store.settings.transaction_percentage
+- [x] create stripe link use store.settings if present
 
 @OCTOBER:
 - [x] verify stripe webhook before proceeding in checkout.complete
