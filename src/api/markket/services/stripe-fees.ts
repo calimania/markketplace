@@ -42,18 +42,17 @@ export enum StoreTier {
  * @typedef {Object} StoreFeeSetting
  * @property {number} percentage_fee - Platform percentage (default: 3.3)
  * @property {number} base_fee - Platform fixed fee in dollars
+ * @property {number} [fee_minimum] - Minimum fee floor in dollars (optional)
  * @property {number} max_application_fee - Fee cap in dollars
  * @property {StoreTier} [tier] - Store subscription tier
  * @property {Object} [transaction_overrides] - Per-type fee overrides
- * @property {number} [transaction_overrides.event] - Event fee override
- * @property {number} [transaction_overrides.subscription] - Subscription fee override
- * @property {number} [transaction_overrides.donation] - Donation fee override
  * @property {boolean} [seasonal_pricing_enabled] - Enable seasonal adjustments
  * @property {Object} [promotional_codes] - Time-limited fee discounts
  */
 interface StoreFeeSetting {
   percentage_fee: number;
   base_fee: number;
+  fee_minimum?: number;
   max_application_fee: number;
   tier?: StoreTier;
   transaction_overrides?: Partial<Record<TransactionType, number>>;
@@ -64,6 +63,7 @@ interface StoreFeeSetting {
 interface FeeConfig {
   percentFeeDecimal: number;
   baseFeeCents: number;
+  feeMinimumCents?: number;
   maxAppFeeCents: number;
 }
 
@@ -117,14 +117,18 @@ export function resolveFeeConfig(
   if (typeof settings.percentage_fee === 'number' && settings.percentage_fee >= 0) {
     config.percentFeeDecimal = settings.percentage_fee / 100;
   }
+
   if (typeof settings.base_fee === 'number' && settings.base_fee >= 0) {
     config.baseFeeCents = Math.round(settings.base_fee * 100);
   }
+
+  if (typeof settings.fee_minimum === 'number' && settings.fee_minimum >= 0) {
+    config.feeMinimumCents = Math.round(settings.fee_minimum * 100);
+  }
+
   if (typeof settings.max_application_fee === 'number' && settings.max_application_fee >= 0) {
     config.maxAppFeeCents = Math.round(settings.max_application_fee * 100);
   }
-
-  // @TODO: allow for additional overrides via tiers, product or category for events & services
 
   return config;
 }
@@ -154,6 +158,12 @@ function getSeasonalAdjustment(): number {
 /**
  * Calculate application fee with all overrides
  *
+ * Formula with minimum:
+ * 1. percentageFee = total × percentage
+ * 2. basePlusPct = percentageFee + base_fee
+ * 3. withMinimum = MAX(basePlusPct, fee_minimum)
+ * 4. final = MIN(withMinimum, max_application_fee)
+ *
  * @param {number} totalCents - Transaction amount in cents
  * @param {any} store - Store object with settings
  * @param {TransactionType} [transactionType] - Type of transaction
@@ -173,9 +183,18 @@ export function calculateFee(
 
   const config = resolveFeeConfig(store, transactionType, promoCode);
 
+  // 1. Calculate percentage portion
   const variableFee = Math.round(totalCents * config.percentFeeDecimal);
+
+  // 2. Add base fee
   let totalFee = variableFee + config.baseFeeCents;
 
+  // 3. Apply fee minimum floor (MAX of base+pct or minimum)
+  if (config.feeMinimumCents && totalFee < config.feeMinimumCents) {
+    totalFee = config.feeMinimumCents;
+  }
+
+  // 4. Apply maximum cap
   if (totalFee > config.maxAppFeeCents) {
     totalFee = config.maxAppFeeCents;
   }
@@ -196,13 +215,15 @@ export function calculateFee(
  * // {
  * //   total_cents: 10000,
  * //   total_usd: "100.00",
- * //   percentage: 3.3,
- * //   base_fee_cents: 33,
- * //   calculated_fee_cents: 363,
- * //   calculated_fee_usd: "3.63",
- * //   store_tier: "premium",
- * //   transaction_type: "event",
- * //   applied_overrides: [...]
+ * //   percentage: 20,
+ * //   base_fee_cents: 100,
+ * //   fee_minimum_cents: 100,
+ * //   percentage_fee_calc: 2000,
+ * //   base_plus_percentage: 2100,
+ * //   calculated_fee_cents: 2100,
+ * //   calculated_fee_usd: "21.00",
+ * //   store_tier: "enterprise",
+ * //   transaction_type: "product",
  * // }
  */
 export function getFeeBreakdown(
@@ -211,6 +232,10 @@ export function getFeeBreakdown(
   transactionType: TransactionType = TransactionType.PRODUCT
 ): Record<string, any> {
   const config = resolveFeeConfig(store, transactionType);
+
+  // Calculate step by step for transparency
+  const percentageCalc = Math.round(totalCents * config.percentFeeDecimal);
+  const basePlusPct = percentageCalc + config.baseFeeCents;
   const fee = calculateFee(totalCents, store, transactionType);
 
   return {
@@ -219,11 +244,17 @@ export function getFeeBreakdown(
     percentage: config.percentFeeDecimal * 100,
     base_fee_cents: config.baseFeeCents,
     base_fee_usd: (config.baseFeeCents / 100).toFixed(2),
+    fee_minimum_cents: config.feeMinimumCents || 0,
+    fee_minimum_usd: config.feeMinimumCents ? (config.feeMinimumCents / 100).toFixed(2) : '0.00',
+    percentage_fee_calc: percentageCalc,
+    percentage_fee_usd: (percentageCalc / 100).toFixed(2),
+    base_plus_percentage: basePlusPct,
+    base_plus_percentage_usd: (basePlusPct / 100).toFixed(2),
     calculated_fee_cents: fee,
     calculated_fee_usd: (fee / 100).toFixed(2),
     max_fee_cents: config.maxAppFeeCents,
     max_fee_usd: (config.maxAppFeeCents / 100).toFixed(2),
-    store_tier: store?.settings?.meta?.['payouts:stripe']?.tier || 'default',  // ✅ FIXED
+    store_tier: store?.settings?.meta?.['payouts:stripe']?.tier || 'default',
     transaction_type: transactionType,
   };
 }

@@ -64,8 +64,23 @@ const DEFAULT_MAX_APP_FEE_CENTS = Math.round(parseFloat(process.env.STRIPE_MAX_A
  * Stripe's own processing fees (used for informational net payout estimates only)
  * NOT charged by this platform - included for transparent calculations
  *
- * @constant {number} STRIPE_PROCESSING_PERCENT - Stripe's percentage (typical: 2.9%)
- * @constant {number} STRIPE_PROCESSING_FIXED_CENTS - Stripe's fixed fee in cents (typical: $0.30)
+ * NOTE: This is an ESTIMATE using standard US domestic rates.
+ * Actual fees vary by:
+ * - Card type (credit vs debit)
+ * - Card origin (domestic vs international)
+ * - Business category and risk level
+ * - Payment method and region
+ *
+ * Standard rate: 2.9% + $0.30 (US domestic cards)
+ * International cards can be 3.9% + $0.30 or higher
+ *
+ * For accurate fees, check Stripe Dashboard → Reports → Payouts
+ * or use Stripe Balance Transactions API after payment settles
+ * https://stripe.com/docs/api/balance_transactions
+ * https://stripe.com/pricing
+ *
+ * @constant {number} STRIPE_PROCESSING_PERCENT - Estimated percentage (3.5% average)
+ * @constant {number} STRIPE_PROCESSING_FIXED_CENTS - Estimated fixed fee in cents ($0.30)
  */
 const STRIPE_PROCESSING_PERCENT = parseFloat(process.env.STRIPE_PROCESSING_PERCENT || '2.9');
 const STRIPE_PROCESSING_FIXED_CENTS = Math.round(parseFloat(process.env.STRIPE_PROCESSING_FIXED || '0.30') * 100);
@@ -567,7 +582,6 @@ export function validateStripeConfig(): { configured: boolean; warnings: string[
   };
 }
 
-// Call on module load
 if (process.env.NODE_ENV !== 'test') {
   const config = validateStripeConfig();
   console.log(`[STRIPE_SERVICE] Configuration status: ${config.configured ? '✅ Ready' : '⚠️ Degraded'}`);

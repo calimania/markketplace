@@ -45,11 +45,13 @@ import {
  * @typedef {Object} ConnectFeeConfig
  * @property {number} percentFeeDecimal - Percentage as decimal (0.033 = 3.3%)
  * @property {number} baseFeeCents - Fixed fee in cents (33 = $0.33)
+ * @property {number} [feeMinimumCents] - Minimum fee floor in cents (optional)
  * @property {number} maxAppFeeCents - Maximum fee cap in cents (9999 = $99.99)
  */
 interface ConnectFeeConfig {
   percentFeeDecimal: number;
   baseFeeCents: number;
+  feeMinimumCents?: number;
   maxAppFeeCents: number;
 }
 
@@ -199,6 +201,7 @@ export function resolveConnectFeeConfig(
     defaults_being_used: {
       percent: defaults.percentFeeDecimal * 100,
       base: defaults.baseFeeCents / 100,
+      minimum: defaults.feeMinimumCents ? (defaults.feeMinimumCents / 100) : 'none',
       max: defaults.maxAppFeeCents / 100,
     }
   });
@@ -219,6 +222,11 @@ export function resolveConnectFeeConfig(
     console.log('[STRIPE_CONNECT] Override base fee:', payoutsStripe.base_fee);
   }
 
+  if (typeof payoutsStripe.fee_minimum === 'number' && payoutsStripe.fee_minimum >= 0) {
+    config.feeMinimumCents = Math.round(payoutsStripe.fee_minimum * 100);
+    console.log('[STRIPE_CONNECT] Override fee minimum:', payoutsStripe.fee_minimum);
+  }
+
   if (typeof payoutsStripe.max_application_fee === 'number' && payoutsStripe.max_application_fee >= 0) {
     config.maxAppFeeCents = Math.round(payoutsStripe.max_application_fee * 100);
     console.log('[STRIPE_CONNECT] Override max fee:', payoutsStripe.max_application_fee);
@@ -227,6 +235,7 @@ export function resolveConnectFeeConfig(
   console.log('[STRIPE_CONNECT] Final fee config', {
     percent: config.percentFeeDecimal * 100,
     base: config.baseFeeCents / 100,
+    minimum: config.feeMinimumCents ? (config.feeMinimumCents / 100) : 'none',
     max: config.maxAppFeeCents / 100,
   });
 
@@ -272,6 +281,11 @@ export function calculateApplicationFee(
   // Apply cap
   if (applicationFee > config.maxAppFeeCents) {
     applicationFee = config.maxAppFeeCents;
+  }
+
+  // Apply minimum fee floor if configured
+  if (config.feeMinimumCents && applicationFee < config.feeMinimumCents) {
+    applicationFee = config.feeMinimumCents;
   }
 
   return applicationFee;
