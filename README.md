@@ -14,6 +14,18 @@ Easy to use REST APIs, compatible with multiple free templates & hosting service
 
 ## Getting Started
 
+### Comprehensive API documentation
+
+```bash
+npm run api:docs
+```
+
+#### Interactive testing helper
+
+```bash
+npm run api:test
+```
+
 ### Local development
 
 Use this project to manage your own markket instance, provide your own credentials

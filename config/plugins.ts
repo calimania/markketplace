@@ -1,5 +1,6 @@
 export default ({ env }) => ({
   // Development is currently done in this repo and can be abstracted into plugins for easier sharing
+  // Extensions allow to interoperate with other useful tools
   // 'markketplace': {
   //   enabled: true,
   //   resolve: './src/plugins/markketplace'
@@ -23,9 +24,8 @@ export default ({ env }) => ({
           params: {
             Bucket: env('DO_SPACE_BUCKET'),
           },
-          // Upload configuration
           upload: {
-            ACL: 'public-read', // Make files publicly readable
+            ACL: 'public-read',
           },
           uploadPath: env('DO_SPACE_DIRECTORY', 'uploads'),
           baseUrl: env('DO_SPACE_CDN') || `https://${env('DO_SPACE_BUCKET')}.${env('DO_SPACE_ENDPOINT')}`,
@@ -40,8 +40,8 @@ export default ({ env }) => ({
         apiKey: env('SENDGRID_API_KEY'),
       },
       settings: {
-        defaultFrom: env('SENDGRID_FROM_EMAIL'),
-        defaultReplyTo: env('SENDGRID_REPLY_TO_EMAIL'),
+        defaultFrom: env('SENDGRID_FROM_EMAIL', 'noreply@markket.place'),
+        defaultReplyTo: env('SENDGRID_REPLY_TO_EMAIL', 'support@markket.place'),
       },
     },
   },
@@ -59,6 +59,13 @@ export default ({ env }) => ({
         uptime: true,
         size: true,
         version: true,
+      },
+    },
+  },
+  'users-permissions': {
+    config: {
+      jwt: {
+        expiresIn: '8760h',
       },
     },
   },
