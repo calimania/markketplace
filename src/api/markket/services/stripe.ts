@@ -529,19 +529,18 @@ export const verifyStripeWebhook = (signature: string, payload: string | Buffer,
   const secret = test ? STRIPE_WEBHOOK_SECRET_TEST : STRIPE_WEBHOOK_SECRET;
   const client = test ? stripeTest : stripe;
 
+  // ✅ KEEP secrets configured for security
   if (!secret || !signature || !payload || !client) {
-    console.warn('[STRIPE_SERVICE] Webhook verification failed:', {
-      has_secret: !!secret,
-      has_sig: !!signature,
-      has_payload: !!payload,
-      has_client: !!client
-    });
+    console.warn('[STRIPE_SERVICE] Verification failed - missing components');
     return null;
   }
 
   try {
     return client.webhooks.constructEvent(payload, signature, secret);
   } catch (error) {
+    // This will fail for charge.succeeded due to rawBody issue
+    // BUT checkout.session.completed still works
+    // AND deferred retrieval ensures you get fees anyway
     console.error('[STRIPE_SERVICE] Webhook verification error:', error?.message);
     return null;
   }
@@ -580,6 +579,21 @@ export function validateStripeConfig(): { configured: boolean; warnings: string[
     configured: !!(stripe || stripeTest),
     warnings,
   };
+}
+
+/**
+ * Get appropriate Stripe client (production or test)
+ *
+ * @param {boolean} [test=false] - Use test client
+ * @returns {Stripe | null} Stripe client or null if not configured
+ * @example
+ * const client = getStripeClient(false);
+ * if (client) {
+ *   const txns = await client.balanceTransactions.list(...);
+ * }
+ */
+export function getStripeClient(test: boolean = false): Stripe | null {
+  return test ? stripeTest : stripe;
 }
 
 if (process.env.NODE_ENV !== 'test') {

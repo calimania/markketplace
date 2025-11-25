@@ -158,20 +158,16 @@ function getSeasonalAdjustment(): number {
 /**
  * Calculate application fee with all overrides
  *
- * Formula with minimum:
+ * Formula:
  * 1. percentageFee = total × percentage
  * 2. basePlusPct = percentageFee + base_fee
  * 3. withMinimum = MAX(basePlusPct, fee_minimum)
- * 4. final = MIN(withMinimum, max_application_fee)
+ * 4. final = withMinimum (NO CAP - analyze later if needed)
  *
  * @param {number} totalCents - Transaction amount in cents
  * @param {any} store - Store object with settings
  * @param {TransactionType} [transactionType] - Type of transaction
- * @param {string} [promoCode] - Optional promotional code
  * @returns {number} Calculated fee in cents
- * @example
- * const fee = calculateFee(10000, store, TransactionType.EVENT);
- * // Returns fee in cents, respecting store overrides and event pricing
  */
 export function calculateFee(
   totalCents: number,
@@ -189,42 +185,26 @@ export function calculateFee(
   // 2. Add base fee
   let totalFee = variableFee + config.baseFeeCents;
 
-  // 3. Apply fee minimum floor (MAX of base+pct or minimum)
+  // 3. Apply fee minimum floor
   if (config.feeMinimumCents && totalFee < config.feeMinimumCents) {
     totalFee = config.feeMinimumCents;
   }
 
-  // 4. Apply maximum cap
-  if (totalFee > config.maxAppFeeCents) {
-    totalFee = config.maxAppFeeCents;
-  }
+  // @TODO: review cap at max transaction fee, disabling temp to avoid undercharging when high stripe fees
+  // This prevents losing money on high-value transactions
+  // Monitor actual transactions via logs below
 
   return totalFee;
 }
 
 /**
- * Get fee breakdown for transparency
- * Shows all components and overrides applied
+ * Get fee breakdown for transparency and analysis
+ * Logs detailed breakdown so we can monitor for optimization
  *
  * @param {number} totalCents - Transaction amount
  * @param {any} store - Store object
  * @param {TransactionType} [transactionType] - Transaction type
  * @returns {Object} Detailed fee breakdown
- * @example
- * const breakdown = getFeeBreakdown(10000, store, TransactionType.EVENT);
- * // {
- * //   total_cents: 10000,
- * //   total_usd: "100.00",
- * //   percentage: 20,
- * //   base_fee_cents: 100,
- * //   fee_minimum_cents: 100,
- * //   percentage_fee_calc: 2000,
- * //   base_plus_percentage: 2100,
- * //   calculated_fee_cents: 2100,
- * //   calculated_fee_usd: "21.00",
- * //   store_tier: "enterprise",
- * //   transaction_type: "product",
- * // }
  */
 export function getFeeBreakdown(
   totalCents: number,
@@ -238,23 +218,40 @@ export function getFeeBreakdown(
   const basePlusPct = percentageCalc + config.baseFeeCents;
   const fee = calculateFee(totalCents, store, transactionType);
 
-  return {
-    total_cents: totalCents,
-    total_usd: (totalCents / 100).toFixed(2),
-    percentage: config.percentFeeDecimal * 100,
+  const breakdown = {
+    // Transaction details
+    transaction_total_cents: totalCents,
+    transaction_total_usd: (totalCents / 100).toFixed(2),
+
+    // Fee components
+    percentage_rate: (config.percentFeeDecimal * 100).toFixed(2),
+    percentage_calc_cents: percentageCalc,
+    percentage_calc_usd: (percentageCalc / 100).toFixed(2),
+
     base_fee_cents: config.baseFeeCents,
     base_fee_usd: (config.baseFeeCents / 100).toFixed(2),
+
+    base_plus_percentage_cents: basePlusPct,
+    base_plus_percentage_usd: (basePlusPct / 100).toFixed(2),
+
     fee_minimum_cents: config.feeMinimumCents || 0,
     fee_minimum_usd: config.feeMinimumCents ? (config.feeMinimumCents / 100).toFixed(2) : '0.00',
-    percentage_fee_calc: percentageCalc,
-    percentage_fee_usd: (percentageCalc / 100).toFixed(2),
-    base_plus_percentage: basePlusPct,
-    base_plus_percentage_usd: (basePlusPct / 100).toFixed(2),
-    calculated_fee_cents: fee,
-    calculated_fee_usd: (fee / 100).toFixed(2),
-    max_fee_cents: config.maxAppFeeCents,
-    max_fee_usd: (config.maxAppFeeCents / 100).toFixed(2),
+    minimum_applied: config.feeMinimumCents && fee === config.feeMinimumCents,
+
+    // Final fee (no cap)
+    final_platform_fee_cents: fee,
+    final_platform_fee_usd: (fee / 100).toFixed(2),
+    final_platform_fee_percent: ((fee / totalCents) * 100).toFixed(2),
+
+    // Configuration info
+    max_fee_cents: config.maxAppFeeCents || null,
+    max_fee_usd: config.maxAppFeeCents ? (config.maxAppFeeCents / 100).toFixed(2) : 'NO CAP',
+    cap_applied: false, // Always false now
+
+    // Metadata
     store_tier: store?.settings?.meta?.['payouts:stripe']?.tier || 'default',
     transaction_type: transactionType,
   };
+
+  return breakdown;
 }

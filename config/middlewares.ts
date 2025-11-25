@@ -32,9 +32,14 @@ export default [
   {
     name: 'strapi::body',
     config: {
-      patchKoa: true,
-      multipart: true,
       includeUnparsed: true,
+      jsonLimit: '10mb',
+      formLimit: '10mb',
+      textLimit: '10mb',
+      encoding: 'utf-8',
+      formidable: {
+        maxFileSize: 200 * 1024 * 1024, // 200mb
+      },
     },
   },
   'strapi::session',

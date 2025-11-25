@@ -1,32 +1,32 @@
-# 🤖 AI Agent Guidelines for Markketplace
+# AI Agent Guidelines for Markketplace
 
-> **Essential practices for working with this Strapi v5 + Stripe marketplace codebase**
+Essential practices for working with this Strapi v5 + Stripe marketplace codebase.
 
-## 🎯 **Core Principles**
+## Core Principles
 
-### **1. Always Check Schema First** 🔍
-- **Read existing content-type schemas** before suggesting changes
-- **Verify field names & capitalization** (e.g., `Name` not `name`, `PRICES` not `prices`)
-- **Check relationship structures** and field types
-- **Understand data flow** between Strapi and external services
+### 1. Always Check Schema First
+- Read existing content-type schemas before suggesting changes
+- Verify field names and capitalization (e.g., `Name` not `name`, `PRICES` not `prices`)
+- Check relationship structures and field types
+- Understand data flow between Strapi and external services
 
-### **2. Strapi v5 Patterns Only** 📚
-- Use **Document Service API**: `strapi.documents('api::content.type')`
-- **NOT Entity Service**: ~~`strapi.entityService`~~ (v4 pattern)
-- **Document Service Middleware**: `strapi.documents.use()` for lifecycle hooks
-- **NOT Lifecycle Files**: ~~`lifecycles.ts`~~ (deprecated in v5)
-- **Proper publishing**: Always call `.publish()` after updates
+### 2. Strapi v5 Patterns Only
+- Use Document Service API: `strapi.documents('api::content.type')`
+- NOT Entity Service: `strapi.entityService` (v4 pattern)
+- Document Service Middleware: `strapi.documents.use()` for lifecycle hooks
+- NOT Lifecycle Files: `lifecycles.ts` (deprecated in v5)
+- Proper publishing: Always call `.publish()` after updates
 
-### **3. Security First** 🛡️
-- **Validate all inputs** before processing
-- **Sanitize data for logging** - never log sensitive IDs/keys in production
-- **Rate limiting** - add delays and limits for external API calls
-- **Race condition protection** - prevent concurrent operations
-- **Error boundaries** - graceful degradation when services fail
+### 3. Security First
+- Validate all inputs before processing
+- Sanitize data for logging - never log sensitive IDs/keys in production
+- Rate limiting - add delays and limits for external API calls
+- Race condition protection - prevent concurrent operations
+- Error boundaries - graceful degradation when services fail
 
-## 📁 **Architecture Standards**
+## Architecture Standards
 
-### **Service Layer Pattern**
+### Service Layer Pattern
 ```typescript
 src/
 ├── services/              # Business logic & external integrations
@@ -40,52 +40,46 @@ src/
 └── index.ts             # Clean registration only
 ```
 
-### **Separation of Concerns** 🏗️
-- **Core utilities** → `services/[name].ts`
-- **Business logic** → `services/[name]-[feature].ts`
-- **Security & validation** → `services/[name]-security.ts`
-- **Orchestration** → `services/[name]-sync.ts`
-- **Middleware registration** → `middlewares/[name].ts`
-- **App bootstrap** → `index.ts` (minimal)
+### Separation of Concerns
+- Core utilities → `services/[name].ts`
+- Business logic → `services/[name]-[feature].ts`
+- Security & validation → `services/[name]-security.ts`
+- Orchestration → `services/[name]-sync.ts`
+- Middleware registration → `middlewares/[name].ts`
+- App bootstrap → `index.ts` (minimal)
 
-## 🔒 **Security Practices**
+## Security Practices
 
-### **Input Validation**
+### Input Validation
 ```typescript
-// ✅ ALWAYS validate inputs
 function validateProductData(product: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-
-  if (!product?.documentId) {
-    errors.push('Product documentId is required');
-  }
-
+  if (!product?.documentId) errors.push('Product documentId is required');
   if (!product?.Name || typeof product.Name !== 'string') {
     errors.push('Product name is required and must be a string');
   }
-
   return { valid: errors.length === 0, errors };
 }
 ```
 
-### **Secure Logging**
+### Secure Logging
 ```typescript
-// ✅ Safe logging - no sensitive data
+// Safe logging - no sensitive data
 console.log('[SERVICE_NAME] Operation completed successfully');
 console.log('[SERVICE_NAME] Updated product with new references');
 
-// ❌ Never log sensitive data
-console.log('Stripe ID:', product.SKU); // NEVER!
-console.log('Product:', product); // NEVER!
+// Never log sensitive data
+console.log('Stripe ID:', product.SKU); // NEVER
+console.log('Product:', product); // NEVER
 ```
 
-### **Rate Limiting & Debouncing**
+### Rate Limiting & Debouncing
 ```typescript
-// ✅ Prevent rapid API calls
+// Prevent rapid API calls
 const updateDebounce = new Map<string, NodeJS.Timeout>();
 const DEBOUNCE_DELAY = 500; // Fast but safe
 
-// ✅ Concurrency protection
+// Concurrency protection
 const activeSyncs = new Set<string>();
 if (activeSyncs.has(syncKey)) {
   console.log('Operation already in progress, skipping');
@@ -93,17 +87,17 @@ if (activeSyncs.has(syncKey)) {
 }
 ```
 
-## 📝 **Logging Standards**
+## Logging Standards
 
-### **Professional Log Format**
+### Professional Log Format
 ```typescript
-// ✅ Consistent, searchable format
+// Consistent, searchable format
 console.log('[SERVICE_NAME] Starting operation...');
 console.log('[SERVICE_NAME] Operation completed successfully');
 console.error('[SERVICE_NAME] Failed to process:', error.message);
 console.warn('[SERVICE_NAME] Fallback behavior activated');
 
-// ✅ Structured data for debugging
+// Structured data for debugging
 console.log('[SERVICE_NAME] Processing summary:', {
   hasRequiredField: !!data.field,
   itemCount: array.length,
@@ -111,18 +105,18 @@ console.log('[SERVICE_NAME] Processing summary:', {
 });
 ```
 
-### **Log Levels & Context**
+### Log Levels & Context
 - **`console.log`**: Normal operations, success states
 - **`console.warn`**: Fallback behaviors, non-critical issues
 - **`console.error`**: Failures, validation errors
-- **Always include service name** in brackets: `[SERVICE_NAME]`
-- **No emojis in production logs** - keep professional
+- Always include service name in brackets: `[SERVICE_NAME]`
+- No emojis in production logs - keep professional
 
-## 🔄 **Strapi v5 Document Service**
+## Strapi v5 Document Service
 
-### **Middleware Registration**
+### Middleware Registration
 ```typescript
-// ✅ CORRECT v5 pattern
+// CORRECT v5 pattern
 export function registerMiddleware({ strapi }: { strapi: any }) {
   strapi.documents.use(async (context: any, next: any) => {
     const result = await next();
@@ -134,9 +128,9 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
 }
 ```
 
-### **Document Operations**
+### Document Operations
 ```typescript
-// ✅ v5 Document Service API
+// v5 Document Service API
 const product = await strapi.documents('api::product.product').create({
   data: { Name: 'Product Name' }
 });
@@ -152,9 +146,9 @@ await strapi.documents('api::product.product').publish({
 });
 ```
 
-### **Prevent Infinite Loops**
+### Prevent Infinite Loops
 ```typescript
-// ✅ Detect middleware-initiated updates
+// Detect middleware-initiated updates
 const dataKeys = Object.keys(context.data);
 const isSystemUpdate = dataKeys.every(key =>
   ['SKU', 'PRICES', 'updatedAt', 'publishedAt'].includes(key)
@@ -166,28 +160,28 @@ if (isSystemUpdate) {
 }
 ```
 
-## 🚨 **Critical Checks**
+## Critical Checks
 
-### **Before Making Changes**
-1. **📋 Read the schema** - Check field names and types
-2. **🔍 Search existing code** - Look for similar patterns
-3. **🧪 Validate assumptions** - Check if field exists in content type
-4. **⚡ Consider performance** - Will this scale?
-5. **🛡️ Security review** - Any sensitive data exposure?
-6. **🔄 Race conditions** - Could this conflict with other operations?
+### Before Making Changes
+1. Read the schema - Check field names and types
+2. Search existing code - Look for similar patterns
+3. Validate assumptions - Check if field exists in content type
+4. Consider performance - Will this scale?
+5. Security review - Any sensitive data exposure?
+6. Race conditions - Could this conflict with other operations?
 
-### **Field Name Verification**
+### Field Name Verification
 ```typescript
-// ✅ Always verify schema first
+// Always verify schema first
 // Check if field is "Name" or "name"
 // Check if field is "PRICES" or "prices"
 // Check if relationship field exists
 // Verify field types (string, number, relation, etc.)
 ```
 
-### **Error Handling**
+### Error Handling
 ```typescript
-// ✅ Comprehensive error handling
+// Comprehensive error handling
 try {
   const result = await externalService.call();
   return result;
@@ -200,43 +194,43 @@ try {
 }
 ```
 
-## 🎨 **Code Style**
+## Code Style
 
-### **TypeScript Best Practices**
-- **Explicit types** for function parameters and returns
-- **Interface definitions** for complex objects
-- **Null checks** before accessing properties
-- **Optional chaining** for nested properties: `object?.property?.nested`
+### TypeScript Best Practices
+- Explicit types for function parameters and returns
+- Interface definitions for complex objects
+- Null checks before accessing properties
+- Optional chaining for nested properties: `object?.property?.nested`
 
-### **Function Design**
-- **Single responsibility** - one function, one purpose
-- **Pure functions** where possible - no side effects
-- **Async/await** over Promises - cleaner error handling
-- **Early returns** for validation - reduce nesting
+### Function Design
+- Single responsibility - one function, one purpose
+- Pure functions where possible - no side effects
+- Async/await over Promises - cleaner error handling
+- Early returns for validation - reduce nesting
 
-### **Naming Conventions**
-- **Services**: `kebab-case` filenames, `camelCase` functions
-- **Constants**: `UPPER_SNAKE_CASE`
-- **Log prefixes**: `[SERVICE_NAME]` in brackets
-- **Boolean flags**: `has`, `is`, `should` prefixes
+### Naming Conventions
+- Services: `kebab-case` filenames, `camelCase` functions
+- Constants: `UPPER_SNAKE_CASE`
+- Log prefixes: `[SERVICE_NAME]` in brackets
+- Boolean flags: `has`, `is`, `should` prefixes
 
-## 🚀 **Performance Guidelines**
+## Performance Guidelines
 
-### **External API Calls**
-- **Batch operations** when possible
-- **Implement retries** with exponential backoff
-- **Cache responses** for repeated calls
-- **Timeout protection** for slow services
+### External API Calls
+- Batch operations when possible
+- Implement retries with exponential backoff
+- Cache responses for repeated calls
+- Timeout protection for slow services
 
-### **Database Operations**
-- **Minimize queries** - fetch related data efficiently
-- **Batch updates** when updating multiple records
-- **Use transactions** for multi-step operations
-- **Publish only after all changes** complete
+### Database Operations
+- Minimize queries - fetch related data efficiently
+- Batch updates when updating multiple records
+- Use transactions for multi-step operations
+- Publish only after all changes complete
 
-## 📚 **Common Patterns**
+## Common Patterns
 
-### **Validation Pattern**
+### Validation Pattern
 ```typescript
 export function validateInput(data: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -247,7 +241,7 @@ export function validateInput(data: any): { valid: boolean; errors: string[] } {
 }
 ```
 
-### **Service Pattern**
+### Service Pattern
 ```typescript
 export async function performOperation(input: any): Promise<Result | null> {
   // 1. Validate input
@@ -269,7 +263,7 @@ export async function performOperation(input: any): Promise<Result | null> {
 }
 ```
 
-### **Middleware Pattern**
+### Middleware Pattern
 ```typescript
 export function registerMiddleware({ strapi }: { strapi: any }) {
   strapi.documents.use(async (context: any, next: any) => {
@@ -297,11 +291,11 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
 
 ---
 
-## 🔗 **URL Shortener & SEO Optimization Patterns**
+## URL Shortener & SEO Optimization Patterns
 
-*Learnings from successful shortner implementation that contributed to funding success*
+Learnings from successful shortner implementation that contributed to funding success
 
-### **Bot Detection and SEO Strategy** 🤖
+### Bot Detection and SEO Strategy
 ```typescript
 // Professional bot detection for social media optimization
 const BOT_USER_AGENTS = [
@@ -336,7 +330,7 @@ function generateSEOHTML(data: any): string {
 }
 ```
 
-### **Root-Level Route Implementation** 🛣️
+### Root-Level Route Implementation
 ```typescript
 // Elegant root-level routing pattern for clean URLs
 {
@@ -365,7 +359,7 @@ async function handleShortUrlRedirect(ctx, next) {
 }
 ```
 
-### **Cryptographically Secure Slug Generation** 🔐
+### Cryptographically Secure Slug Generation
 ```typescript
 // Production-grade slug generation with crypto security
 import * as crypto from 'crypto';
@@ -395,7 +389,7 @@ export function isValidSlug(slug: string): boolean {
 }
 ```
 
-### **Atomic Visit Tracking** ⚡
+### Atomic Visit Tracking
 ```typescript
 // Race condition-safe visit counting
 async function incrementVisitCount(documentId: string, currentCount: number) {
@@ -411,7 +405,7 @@ async function incrementVisitCount(documentId: string, currentCount: number) {
 }
 ```
 
-### **Multi-Route API Design** 🌐
+### Multi-Route API Design
 ```typescript
 // Professional API structure with multiple access patterns
 const routes = [
@@ -428,7 +422,7 @@ const routes = [
 ];
 ```
 
-### **Fallback Store Logic** 🏪
+### Fallback Store Logic
 ```typescript
 // Professional store resolution with fallbacks
 async function resolveStore(storeId?: string) {
@@ -457,7 +451,7 @@ async function resolveStore(storeId?: string) {
 }
 ```
 
-### **Collision-Resistant Slug Generation** 🎯
+### Collision-Resistant Slug Generation
 ```typescript
 // Production-ready collision handling
 async function generateUniqueSlug(customAlias?: string): Promise<string> {
@@ -502,280 +496,75 @@ async function generateUniqueSlug(customAlias?: string): Promise<string> {
 
 ---
 
-## 🔌 **Third-Party Service Integration**
+## Stripe Webhook Integration
 
-*Server-side integration patterns to reduce client exposure and leverage official SDKs*
-
-### **Official SDK First Policy** 📚
+### Webhook Event Selection
 ```typescript
-// ✅ ALWAYS use official SDKs - they include best practices
-import Stripe from 'stripe';
-import { Resend } from 'resend';
-import { createClient } from '@supabase/supabase-js';
-
-// ❌ Never build custom API clients for well-supported services
-// ❌ Don't use community wrappers when official SDKs exist
+// Enable for complete payment tracking
+charge.succeeded                 // Best source for balance_transaction fees
+charge.captured                  // For authorized charges (manual capture)
+checkout.session.completed       // Create/update order
+payment_intent.succeeded         // Payment completed
+charge.failed                    // Track payment failures
+checkout.session.expired         // Abandoned carts
 ```
 
-### **Server-Side Proxy Pattern** 🛡️
+### Fee Retrieval Architecture
 ```typescript
-// ✅ Keep all third-party credentials server-side
-// Client sends minimal data, server handles API complexity
+// Multi-source fee retrieval with fallbacks
 
-// Client request
-POST /api/payments/create-intent
-{
-  "amount": 2000,
-  "currency": "usd",
-  "productId": "doc_123"
+// 1. Primary: charge.succeeded webhook
+if (charge?.balance_transaction) {
+  const balanceTxn = await stripe.balanceTransactions.retrieve(charge.balance_transaction);
 }
 
-// Server handles Stripe complexity
-export async function createPaymentIntent(ctx) {
-  const { amount, currency, productId } = ctx.request.body;
+// 2. Fallback: payment_intent.succeeded webhook
+if (paymentIntent?.charges?.data?.length > 0) {
+  const charge = paymentIntent.charges.data[0];
+}
 
-  // Server-side validation and enrichment
-  const product = await strapi.documents('api::product.product').findOne({
-    documentId: productId
+// 3. Deferred: Async retry after 2 seconds
+setTimeout(() => {
+  retrieveAndStoreActualFees(orderId, paymentIntent, isTest);
+}, 2000);
+```
+
+### Webhook Handler Pattern
+```typescript
+async function handleWebhook(ctx) {
+  const signature = ctx.request.headers['stripe-signature'];
+  const is_test = body.data?.object?.id?.startsWith('cs_test_');
+  const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
+
+  const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
+  if (!event) return ctx.badRequest('Invalid signature');
+
+  const charge = event.data?.object;
+  console.log('[STRIPE_WEBHOOK] Event processed', {
+    eventType: event.type,
+    resourceId: charge?.id?.substring(0, 10) + '...',
   });
 
-  // Full Stripe integration with all metadata
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount,
-    currency,
-    metadata: {
-      product_id: product.documentId,
-      store_id: product.store?.documentId,
-      // Rich server-side context
-    }
-  });
-
-  // Return minimal client-safe data
-  return { client_secret: paymentIntent.client_secret };
+  return ctx.send({ received: true });
 }
 ```
 
-### **Environment-Based Client Configuration** ⚙️
+### Fee Data Structure
 ```typescript
-// ✅ Smart environment detection with fallbacks
-export function createStripeClient(): Stripe {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const apiKey = isProduction
-    ? process.env.STRIPE_SECRET_KEY
-    : process.env.STRIPE_SECRET_KEY_TEST;
-
-  if (!apiKey) {
-    throw new Error(`Stripe API key not found for ${isProduction ? 'production' : 'test'} environment`);
-  }
-
-  return new Stripe(apiKey, {
-    apiVersion: '2024-06-20', // Pin to stable version
-    typescript: true,
-    telemetry: false, // Disable for security
-  });
+interface ActualStripeFees {
+  fees_cents: number;
+  fees_usd: string;
+  net_cents: number;
+  net_usd: string;
+  amount_cents: number;
+  amount_usd: string;
+  source: string;
+  retrieved_at: string;
+  [key: string]: string | number;
 }
 
-// ✅ Service-specific clients with proper typing
-const stripe = createStripeClient();
-const resend = new Resend(process.env.RESEND_API_KEY);
+order.extra = {
+  stripe_actual_fees: actualStripeFees,
+  fees_retrieval_status: 'success_from_charge_webhook'
+};
 ```
-
-### **Community Knowledge Integration** 🌐
-```typescript
-// ✅ Follow established patterns from official docs and community
-// Example: Stripe webhook handling with official best practices
-
-export async function handleStripeWebhook(ctx) {
-  const sig = ctx.request.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  try {
-    // Use official verification method
-    const event = stripe.webhooks.constructEvent(
-      ctx.request.body,
-      sig,
-      endpointSecret
-    );
-
-    // Follow Stripe's recommended event handling patterns
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        await handlePaymentSuccess(event.data.object);
-        break;
-      case 'payment_intent.payment_failed':
-        await handlePaymentFailure(event.data.object);
-        break;
-      default:
-        console.log(`[STRIPE] Unhandled event type: ${event.type}`);
-    }
-
-    return ctx.send({ received: true });
-  } catch (err) {
-    console.error('[STRIPE] Webhook signature verification failed:', err.message);
-    return ctx.badRequest('Invalid signature');
-  }
-}
-```
-
-### **Client Data Minimization** 🔐
-```typescript
-// ✅ Expose only necessary data to client
-export function sanitizeForClient(stripeProduct: Stripe.Product) {
-  return {
-    id: stripeProduct.id,
-    name: stripeProduct.name,
-    description: stripeProduct.description,
-    images: stripeProduct.images,
-    // ❌ Never expose: metadata, created timestamps, internal IDs
-  };
-}
-
-// ✅ Create secure client configuration objects
-export function createClientConfig() {
-  return {
-    stripe: {
-      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-      // No secret keys or sensitive configuration
-    },
-    app: {
-      baseUrl: process.env.MARKKET_API_URL,
-      // Only public configuration
-    }
-  };
-}
-```
-
-### **Future Plugin Architecture** 🔌
-```typescript
-// ✅ Design for extensibility - prepare for plugin extraction
-// Structure services to be easily moved to plugins later
-
-interface ThirdPartyService {
-  name: string;
-  initialize(config: any): Promise<void>;
-  healthCheck(): Promise<boolean>;
-}
-
-class StripeService implements ThirdPartyService {
-  name = 'stripe';
-  private client: Stripe;
-
-  async initialize(config: StripeConfig) {
-    this.client = new Stripe(config.secretKey, config.options);
-  }
-
-  async healthCheck(): Promise<boolean> {
-    try {
-      await this.client.accounts.retrieve();
-      return true;
-    } catch {
-      return false;
-    }
-  }
-}
-
-// ✅ Registry pattern for easy plugin conversion
-const serviceRegistry = new Map<string, ThirdPartyService>();
-serviceRegistry.set('stripe', new StripeService());
-```
-
-### **Error Handling & Monitoring** 📊
-```typescript
-// ✅ Service-specific error handling with context
-export async function safeStripeCall<T>(
-  operation: () => Promise<T>,
-  context: string
-): Promise<T | null> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (error instanceof Stripe.errors.StripeError) {
-      console.error(`[STRIPE] ${context} failed:`, {
-        type: error.type,
-        code: error.code,
-        message: error.message,
-        // Don't log sensitive request details
-      });
-    } else {
-      console.error(`[STRIPE] ${context} unexpected error:`, error.message);
-    }
-    return null;
-  }
-}
-
-// Usage with context
-const product = await safeStripeCall(
-  () => stripe.products.create(productData),
-  'Product creation'
-);
-```
-
-### **API Version Management** 📋
-```typescript
-// ✅ Pin API versions and handle upgrades systematically
-const API_VERSIONS = {
-  stripe: '2024-06-20',
-  resend: '1.0.0',
-  // Track all third-party API versions
-} as const;
-
-// ✅ Version compatibility checks
-export function validateApiVersions() {
-  const warnings: string[] = [];
-
-  // Check for upcoming deprecations
-  if (API_VERSIONS.stripe < '2024-06-20') {
-    warnings.push('Stripe API version is outdated, consider upgrading');
-  }
-
-  return warnings;
-}
-```
-
-### **Testing with Third-Party Services** 🧪
-```typescript
-// ✅ Use test modes and mock high-level operations
-export function createTestStripeClient(): Stripe {
-  return new Stripe(process.env.STRIPE_SECRET_KEY_TEST!, {
-    apiVersion: '2024-06-20',
-  });
-}
-
-// ✅ Mock external calls in unit tests
-jest.mock('stripe', () => ({
-  default: jest.fn(() => ({
-    products: {
-      create: jest.fn().mockResolvedValue(mockStripeProduct),
-      update: jest.fn().mockResolvedValue(mockStripeProduct),
-    }
-  }))
-}));
-```
-
-### **Migration Strategy for Plugins** 🚀
-```typescript
-// ✅ Design current services for easy plugin extraction
-
-// Current: /src/services/stripe.ts
-// Future: /src/plugins/stripe/server/services/stripe.ts
-
-// Keep interface consistent for smooth migration
-export interface PaymentService {
-  createProduct(data: ProductData): Promise<ExternalProduct>;
-  updateProduct(id: string, data: Partial<ProductData>): Promise<ExternalProduct>;
-  deleteProduct(id: string): Promise<void>;
-}
-
-// Implementation can move to plugin without changing consumers
-export class StripePaymentService implements PaymentService {
-  // Service implementation
-}
-```
-
----
-
-## 🎯 **Remember**
-
-> **Quality over speed** - Take time to understand the schema, validate inputs, and implement proper error handling. A robust, secure implementation is worth more than a quick hack.
-
-**Happy coding!** 🚀

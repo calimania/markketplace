@@ -396,14 +396,43 @@ export async function buildConnectPaymentLink(
 
   const breakdown = getFeeBreakdown(totalCents, store, transactionType);
 
-  console.log('[STRIPE_CONNECT] Fee breakdown complete', {
-    ...breakdown,
-    store_settings_applied: !!store?.settings?.meta?.['payouts:stripe'],
-    fee_config_used: {
-      percent: feeConfig.percentFeeDecimal * 100,
-      base: feeConfig.baseFeeCents / 100,
-      max: feeConfig.maxAppFeeCents / 100,
-    }
+  console.log('[STRIPE_CONNECT] Fee breakdown - Transaction Analysis', {
+    transaction_usd: breakdown.transaction_total_usd,
+
+    // Platform fee breakdown
+    platform_fee: {
+      percentage_rate: breakdown.percentage_rate,
+      percentage_calc: breakdown.percentage_calc_usd,
+      base_fee: breakdown.base_fee_usd,
+      before_minimum: breakdown.base_plus_percentage_usd,
+      final: breakdown.final_platform_fee_usd,
+      final_percent_of_transaction: breakdown.final_platform_fee_percent,
+      minimum_applied: breakdown.minimum_applied,
+    },
+
+    // Stripe's fees (informational - estimated)
+    stripe_fees_estimate: {
+      note: 'Estimate only - actual varies by card type',
+      percent_rate: '3.5%',
+      fixed: '$0.30',
+      estimated_total: ((totalCents * 0.035 + 30) / 100).toFixed(2)
+    },
+
+    // Combined impact
+    total_fees: {
+      platform_plus_stripe_estimate: (
+        (applicationFeeAmount + Math.round(totalCents * 0.035 + 30)) / 100
+      ).toFixed(2),
+      seller_receives: (
+        (totalCents - applicationFeeAmount - Math.round(totalCents * 0.035 + 30)) / 100
+      ).toFixed(2),
+      seller_net_percent: (
+        ((totalCents - applicationFeeAmount - Math.round(totalCents * 0.035 + 30)) / totalCents) * 100
+      ).toFixed(2),
+    },
+
+    config_source: store?.settings?.meta?.['payouts:stripe'] ? 'store-override' : 'env-defaults',
+    store_tier: breakdown.store_tier,
   });
 
   const paymentLinkParams: Stripe.PaymentLinkCreateParams = {
