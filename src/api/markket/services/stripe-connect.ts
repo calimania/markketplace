@@ -45,11 +45,13 @@ import {
  * @typedef {Object} ConnectFeeConfig
  * @property {number} percentFeeDecimal - Percentage as decimal (0.033 = 3.3%)
  * @property {number} baseFeeCents - Fixed fee in cents (33 = $0.33)
+ * @property {number} [feeMinimumCents] - Minimum fee floor in cents (optional)
  * @property {number} maxAppFeeCents - Maximum fee cap in cents (9999 = $99.99)
  */
 interface ConnectFeeConfig {
   percentFeeDecimal: number;
   baseFeeCents: number;
+  feeMinimumCents?: number;
   maxAppFeeCents: number;
 }
 
@@ -199,6 +201,7 @@ export function resolveConnectFeeConfig(
     defaults_being_used: {
       percent: defaults.percentFeeDecimal * 100,
       base: defaults.baseFeeCents / 100,
+      minimum: defaults.feeMinimumCents ? (defaults.feeMinimumCents / 100) : 'none',
       max: defaults.maxAppFeeCents / 100,
     }
   });
@@ -219,6 +222,11 @@ export function resolveConnectFeeConfig(
     console.log('[STRIPE_CONNECT] Override base fee:', payoutsStripe.base_fee);
   }
 
+  if (typeof payoutsStripe.fee_minimum === 'number' && payoutsStripe.fee_minimum >= 0) {
+    config.feeMinimumCents = Math.round(payoutsStripe.fee_minimum * 100);
+    console.log('[STRIPE_CONNECT] Override fee minimum:', payoutsStripe.fee_minimum);
+  }
+
   if (typeof payoutsStripe.max_application_fee === 'number' && payoutsStripe.max_application_fee >= 0) {
     config.maxAppFeeCents = Math.round(payoutsStripe.max_application_fee * 100);
     console.log('[STRIPE_CONNECT] Override max fee:', payoutsStripe.max_application_fee);
@@ -227,6 +235,7 @@ export function resolveConnectFeeConfig(
   console.log('[STRIPE_CONNECT] Final fee config', {
     percent: config.percentFeeDecimal * 100,
     base: config.baseFeeCents / 100,
+    minimum: config.feeMinimumCents ? (config.feeMinimumCents / 100) : 'none',
     max: config.maxAppFeeCents / 100,
   });
 
@@ -272,6 +281,11 @@ export function calculateApplicationFee(
   // Apply cap
   if (applicationFee > config.maxAppFeeCents) {
     applicationFee = config.maxAppFeeCents;
+  }
+
+  // Apply minimum fee floor if configured
+  if (config.feeMinimumCents && applicationFee < config.feeMinimumCents) {
+    applicationFee = config.feeMinimumCents;
   }
 
   return applicationFee;
@@ -382,14 +396,43 @@ export async function buildConnectPaymentLink(
 
   const breakdown = getFeeBreakdown(totalCents, store, transactionType);
 
-  console.log('[STRIPE_CONNECT] Fee breakdown complete', {
-    ...breakdown,
-    store_settings_applied: !!store?.settings?.meta?.['payouts:stripe'],
-    fee_config_used: {
-      percent: feeConfig.percentFeeDecimal * 100,
-      base: feeConfig.baseFeeCents / 100,
-      max: feeConfig.maxAppFeeCents / 100,
-    }
+  console.log('[STRIPE_CONNECT] Fee breakdown - Transaction Analysis', {
+    transaction_usd: breakdown.transaction_total_usd,
+
+    // Platform fee breakdown
+    platform_fee: {
+      percentage_rate: breakdown.percentage_rate,
+      percentage_calc: breakdown.percentage_calc_usd,
+      base_fee: breakdown.base_fee_usd,
+      before_minimum: breakdown.base_plus_percentage_usd,
+      final: breakdown.final_platform_fee_usd,
+      final_percent_of_transaction: breakdown.final_platform_fee_percent,
+      minimum_applied: breakdown.minimum_applied,
+    },
+
+    // Stripe's fees (informational - estimated)
+    stripe_fees_estimate: {
+      note: 'Estimate only - actual varies by card type',
+      percent_rate: '3.5%',
+      fixed: '$0.30',
+      estimated_total: ((totalCents * 0.035 + 30) / 100).toFixed(2)
+    },
+
+    // Combined impact
+    total_fees: {
+      platform_plus_stripe_estimate: (
+        (applicationFeeAmount + Math.round(totalCents * 0.035 + 30)) / 100
+      ).toFixed(2),
+      seller_receives: (
+        (totalCents - applicationFeeAmount - Math.round(totalCents * 0.035 + 30)) / 100
+      ).toFixed(2),
+      seller_net_percent: (
+        ((totalCents - applicationFeeAmount - Math.round(totalCents * 0.035 + 30)) / totalCents) * 100
+      ).toFixed(2),
+    },
+
+    config_source: store?.settings?.meta?.['payouts:stripe'] ? 'store-override' : 'env-defaults',
+    store_tier: breakdown.store_tier,
   });
 
   const paymentLinkParams: Stripe.PaymentLinkCreateParams = {

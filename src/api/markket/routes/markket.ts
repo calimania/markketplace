@@ -41,5 +41,23 @@ module.exports = {
         middlewares: [],
       },
     },
+    {
+      method: 'POST',
+      path: '/markket/refresh-fees/:orderId',
+      handler: 'markket.refreshFees',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/markket/debug-fees/:orderId',
+      handler: 'markket.debugFees',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

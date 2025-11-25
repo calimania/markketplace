@@ -17,16 +17,21 @@ import * as crypto from 'crypto';
 const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
 
-import { createPaymentLinkWithPriceIds, getSessionById, getAccount, verifyStripeWebhook } from '../services/stripe';
-import { sendOrderNotification, notifyStoreOfPurchase } from '../services/notification';
+import {
+  createPaymentLinkWithPriceIds,
+  verifyStripeWebhook,
+  getAccount,
+  getStripeClient,
+} from '../services/stripe';
+import { handleCheckoutSessionCompleted } from '../services/stripe-webhook-handler';
+import { retrieveAndStoreActualFees } from '../services/stripe-fees-retriever';
 import { emailLayout } from '../services/notification/email.template';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || 'n/a';
-const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || 'n/a';
+const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || '';
+const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
-
 
 /**
  * Verify Twilio webhook signature to ensure authenticity
@@ -335,6 +340,16 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       user_agent: ctx.request.headers['user-agent'] || null,
     };
 
+    if (body?.action === 'stripe.account') {
+      const response = await getAccount(body?.store_id);
+      return ctx.send({
+        message: 'stripe account retrieved',
+        data: {
+          info: response,
+        }
+      })
+    }
+
     if (body?.action === 'stripe.link') {
       const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
 
@@ -392,7 +407,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           extra: {
             ...extraMeta,
             link_creation_debug: {
-              requested_total: total,  // ✅ FIXED: Use 'total'
+              requested_total: total,
               calculated_total: prices?.reduce((sum: number, p: any) => sum + ((p.unit_amount || 0) * (p.quantity || 1)), 0),
             }
           },
@@ -414,14 +429,6 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       const is_test = !!body.data?.object?.id?.startsWith('cs_test_');
       const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
 
-      // Simple debug log
-      console.log('stripe:webhook', {
-        has_sig: !!signature,
-        has_raw: !!(rawBody?.toString()),
-        session: body.data?.object?.id
-      });
-
-      // Verify webhook
       const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
 
       if (!event) {
@@ -430,167 +437,261 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
 
       const session = event.data?.object;
 
-      console.log('stripe:session', {
-        id: session?.id,
-        payment_link: session?.payment_link,
-        has_shipping: !!session?.shipping,
-        has_customer: !!session?.customer_details
+      console.log('[MARKKET_CONTROLLER] Processing checkout session', {
+        sessionId: session?.id,
+        mode: is_test ? 'test' : 'production'
       });
 
-      const paymentLinkId = session.payment_link;
-      const shipping = session.shipping_details || session.customer_details || session?.shipping;
-      const buyer_email = session.customer_details?.email || body.customer_email;
-      const storeUsers = [];
+      try {
+        const order = await handleCheckoutSessionCompleted(session, is_test);
 
-      // Try to find the order linked to this payment
-      let order = paymentLinkId ? await strapi.db.query('api::order.order').findOne({
-        where: { STRIPE_PAYMENT_ID: paymentLinkId },
-        populate: ['store.users', 'store.settings', 'Shipping_Address', 'buyer']
-      }) : null;
+        console.log('[MARKKET_CONTROLLER] Checkout session processed', {
+          orderId: order.documentId,
+          amount: order.Amount
+        });
 
-      if (!order) {
-        console.warn('stripe:order.creating', { session_id: session?.id });
+        link = { body, order };
+        message = `order:${order.documentId}`;
+      } catch (error) {
+        console.error('[MARKKET_CONTROLLER] Checkout session handling failed:', error?.message);
+        return ctx.internalServerError('Failed to process checkout session');
+      }
+    }
 
-        const defaultOrder = {
-          data: {
-            STRIPE_PAYMENT_ID: session.id,
-            Amount: session.amount_total ? session.amount_total / 100 : 0,
-            Currency: session.currency?.toUpperCase() || 'USD',
-            Status: 'complete',
-            store: session.metadata?.store_id || null,
-            Shipping_Address: {
-              name: shipping.name || session.customer_details?.name,
-              email: buyer_email,
-              street: shipping.address?.line1 || shipping.line1,
-              street_2: shipping.address?.line2 || shipping.line2,
-              city: shipping.address?.city || shipping.city,
-              state: shipping.address?.state || shipping.state,
-              zipcode: shipping.address?.postal_code || shipping.postal_code,
-              country: shipping.address?.country || shipping.country,
+    // Stripe webhooks: Use balance_transaction.created instead
+    if (body?.action === 'stripe:balance_transaction.created' || body?.type === 'balance_transaction.created') {
+      const signature = ctx.request.headers['stripe-signature'];
+      const is_test = !!body.data?.object?.id?.startsWith('txn_test_');
+      const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
+
+      const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
+      if (!event) return ctx.badRequest('Invalid webhook signature');
+
+      const txn = event.data?.object;
+
+      console.log('[STRIPE_WEBHOOK] Balance transaction created', {
+        transactionId: txn?.id?.substring(0, 10) + '...',
+        type: txn?.type,
+        amount_usd: (txn?.amount / 100).toFixed(2),
+        fee_usd: (txn?.fee / 100).toFixed(2),
+        net_usd: (txn?.net / 100).toFixed(2),
+        source: txn?.source?.substring(0, 10) + '...',
+        description: txn?.description
+      });
+
+      // Try to find order by source (charge/payment intent)
+      if (txn?.source) {
+        try {
+          let orders = await strapi.db.query('api::order.order').findMany({
+            where: {
+              $or: [
+                {
+                  extra: {
+                    stripe_payment_intent: txn.source
+                  }
+                },
+                {
+                  STRIPE_PAYMENT_ID: txn.source
+                }
+              ]
             },
-            Payment_attempts: [{
-              Timestampt: new Date(),
-              buyer_email,
-              Status: 'Succeeded',
-              reason: '',
-              session_id: session.id,
-              amount: session.amount_total ? session.amount_total / 100 : 0,
-              currency: session.currency?.toUpperCase() || 'USD'
-            }],
-            Details: session.line_items?.data?.map((item: any) => ({
-              Price: (item.amount_total || 0) / 100,
-              product: item.price?.product || null,
-              Quantity: item.quantity || 1,
-              Name: item.description || item.price?.product?.name || '',
-              Metadata: item.price?.metadata || {}
-            })) || [],
-            extra: {
-              stripe_session_id: session.id,
-              stripe_payment_link: paymentLinkId,
-              stripe_payment_intent: session.payment_intent,
-              stripe_customer: session.customer,
-              stripe_customer_details: session.customer_details,
-              stripe_payment_status: session.payment_status,
-              stripe_mode: session.mode,
-              created_from: 'webhook_fallback',
-              created_at: new Date().toISOString(),
-              is_test: session.id.startsWith('cs_test_'),
-              session_metadata: session.metadata || {}
+            limit: 1
+          });
+
+          if (orders && orders.length > 0) {
+            const order = orders[0];
+            const existingExtra = (order.extra as Record<string, any>) || {};
+
+            await strapi.documents('api::order.order').update({
+              documentId: order.documentId,
+              data: {
+                extra: {
+                  ...existingExtra,
+                  stripe_actual_fees: {
+                    fees_cents: txn.fee,
+                    fees_usd: (txn.fee / 100).toFixed(2),
+                    net_cents: txn.net,
+                    net_usd: (txn.net / 100).toFixed(2),
+                    amount_cents: txn.amount,
+                    amount_usd: (txn.amount / 100).toFixed(2),
+                    source: 'balance_transaction_webhook',
+                    retrieved_at: new Date().toISOString(),
+                  },
+                  fees_retrieval_status: 'success_from_balance_webhook'
+                }
+              }
+            });
+
+            console.log('[STRIPE_WEBHOOK] Order updated with actual fees', {
+              orderId: order.documentId.substring(0, 10) + '...',
+              stripeFeeUsd: (txn.fee / 100).toFixed(2)
+            });
+          } else {
+            console.log('[STRIPE_WEBHOOK] No matching order found', {
+              source: txn.source?.substring(0, 10) + '...'
+            });
+          }
+        } catch (error) {
+          console.error('[STRIPE_WEBHOOK] Failed to update order:', error?.message);
+        }
+      }
+    }
+
+    // Stripe webhooks: Extract actual fees from charge.succeeded
+    if (body?.action === 'stripe:charge.succeeded' || body?.type === 'charge.succeeded' ||
+        body?.action === 'stripe:charge.captured' || body?.type === 'charge.captured') {
+      const signature = ctx.request.headers['stripe-signature'];
+      const is_test = !!body.data?.object?.id?.startsWith('ch_test_');
+      const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
+
+      console.log('[STRIPE_WEBHOOK] Verifying charge webhook', {
+        hasSignature: !!signature,
+        hasRawBody: !!rawBody,
+        rawBodyType: typeof rawBody,
+        isTest: is_test,
+        hasSymbol: !!ctx.request.body[Symbol.for('unparsedBody')],
+      });
+
+      const event = verifyStripeWebhook(signature, rawBody, is_test);
+
+      if (!event) {
+        console.warn('[STRIPE_WEBHOOK] Signature verification failed - using deferred fee retrieval as fallback');
+        // Don't return error - let deferred retrieval handle it
+        return ctx.send({ received: true, fallback: 'deferred_retrieval' });
+      }
+
+      const charge = event.data?.object;
+
+      console.log('[STRIPE_WEBHOOK] Charge succeeded/captured', {
+        chargeId: charge?.id?.substring(0, 10) + '...',
+        amount_usd: (charge?.amount / 100).toFixed(2),
+        status: charge?.status,
+        paymentIntent: charge?.payment_intent?.substring(0, 10) + '...',
+        eventType: body?.type,
+        hasBalanceTxn: !!charge?.balance_transaction
+      });
+
+      // Extract fees from balance_transaction if available
+      if (charge?.balance_transaction && charge?.payment_intent) {
+        try {
+          const stripe = getStripeClient(is_test);
+          const balanceTxn = await stripe?.balanceTransactions.retrieve(
+            charge.balance_transaction as string
+          );
+
+          if (balanceTxn) {
+            console.log('[STRIPE_WEBHOOK] Balance transaction retrieved from charge', {
+              txnId: balanceTxn.id.substring(0, 10) + '...',
+              fee_usd: (balanceTxn.fee / 100).toFixed(2),
+              net_usd: (balanceTxn.net / 100).toFixed(2)
+            });
+
+            // Find and update order
+            const orders = await strapi.db.query('api::order.order').findMany({
+              where: {
+                $or: [
+                  {
+                    extra: {
+                      stripe_payment_intent: charge.payment_intent
+                    }
+                  },
+                  {
+                    STRIPE_PAYMENT_ID: charge.payment_link
+                  }
+                ]
+              },
+              limit: 1
+            });
+
+            if (orders && orders.length > 0) {
+              const order = orders[0];
+              const existingExtra = (order.extra as Record<string, any>) || {};
+
+              await strapi.documents('api::order.order').update({
+                documentId: order.documentId,
+                data: {
+                  extra: {
+                    ...existingExtra,
+                    stripe_actual_fees: {
+                      fees_cents: balanceTxn.fee,
+                      fees_usd: (balanceTxn.fee / 100).toFixed(2),
+                      net_cents: balanceTxn.net,
+                      net_usd: (balanceTxn.net / 100).toFixed(2),
+                      amount_cents: balanceTxn.amount,
+                      amount_usd: (balanceTxn.amount / 100).toFixed(2),
+                      source: 'charge_webhook_balance_txn',
+                      retrieved_at: new Date().toISOString(),
+                    },
+                    fees_retrieval_status: 'success_from_charge_webhook'
+                  }
+                }
+              });
+
+              console.log('[STRIPE_WEBHOOK] Order updated with actual fees from charge', {
+                orderId: order.documentId.substring(0, 10) + '...',
+                stripeFeeUsd: (balanceTxn.fee / 100).toFixed(2)
+              });
             }
           }
-        };
-
-        console.log('stripe:webhook:default-order:', {
-          session_id: session.id,
-          amount: defaultOrder.data.Amount,
-          currency: defaultOrder.data.Currency,
-          has_shipping: !!shipping,
-          has_items: defaultOrder.data.Details?.length || 0
-        });
-
-        order = await strapi.service('api::order.order').create(defaultOrder);
-      }
-
-      console.log(`stripe:checkout.session.completed:order:${order.documentId}`);
-
-      if (order) {
-        const prevAttempts = Array.isArray(order.Payment_attempts) ? order.Payment_attempts : [];
-        const newAttempt = {
-          Timestampt: new Date(),
-          buyer_email,
-          Status: 'Succeeded',
-          reason: '',
-          session_id: session.id,
-        };
-
-        const update = await strapi.service('api::order.order').update(order.documentId, {
-          populate: [
-            'Shipping_Address', 'store'
-          ],
-          data: {
-            Status: 'complete',
-            Payment_attempts: [
-              ...prevAttempts,
-              newAttempt
-            ],
-            Shipping_Address: {
-              name: shipping.name || session.customer_details?.name || order.Shipping_Address?.name,
-              email: buyer_email || session.Shipping_Address?.email,
-              street: shipping.address?.line1 || shipping.line1,
-              street_2: shipping.address?.line2 || shipping.line2,
-              city: shipping.address?.city || shipping.city,
-              state: shipping.address?.state || shipping.state,
-              zipcode: shipping.address?.postal_code || shipping.postal_code,
-              country: shipping.address?.country || shipping.country,
-            },
-            product: body?.product || order.product,
-            extra: {
-              ...extraMeta,
-              stripe_session_id: session.id,
-              stripe_payment_intent: session.payment_intent
-            },
-          }
-        });
-
-        console.log(`updating:order:${update.documentId}`);
-
-        if (order?.store?.documentId) {
-          storeUsers.push(...order?.store?.users);
-          const emails = new Set(storeUsers.filter(user => user.confirmed).map(user => user.email));
-          const store_settings_email = order.store?.settings?.support_email || order.store?.settings?.reply_to_email;
-
-          if (store_settings_email) {
-            emails.add(store_settings_email)
-          }
-
-          if (emails?.size > 0) {
-            const destinations = [...emails];
-            await notifyStoreOfPurchase({ strapi, order: update, emails: destinations, store: order?.store as any });
-          }
+        } catch (error) {
+          console.error('[STRIPE_WEBHOOK] Failed to retrieve balance transaction:', error?.message);
         }
-
-        const response = await sendOrderNotification({ strapi, order: update, store: order.store });
-        link = { body, response };
       }
     }
 
-    if (body?.action === 'stripe.account') {
-      const response = await getAccount(body?.store_id);
-      return ctx.send({
-        message: 'stripe account retrieved',
+    // Stripe webhook: Capture charge.failed - for error tracking
+    if (body?.action === 'stripe:charge.failed' || body?.type === 'charge.failed') {
+      const signature = ctx.request.headers['stripe-signature'];
+      const is_test = !!body.data?.object?.id?.startsWith('ch_test_');
+      const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
+
+      const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
+      if (!event) return ctx.badRequest('Invalid webhook signature');
+
+      const charge = event.data?.object;
+
+      console.log('[STRIPE_WEBHOOK] Charge failed', {
+        chargeId: charge?.id?.substring(0, 10) + '...',
+        amount_usd: (charge?.amount / 100).toFixed(2),
+        failure_code: charge?.failure_code,
+        failure_message: charge?.failure_message,
+        paymentIntent: charge?.payment_intent?.substring(0, 10) + '...'
+      });
+
+      // Log failure for analysis
+      await strapi.service(modelId).create({
+        locale: 'en',
         data: {
-          info: response,
-        },
+          Key: 'stripe.charge.failed',
+          Content: {
+            chargeId: charge?.id,
+            amount: (charge?.amount / 100).toFixed(2),
+            failureCode: charge?.failure_code,
+            failureMessage: charge?.failure_message,
+            timestamp: new Date().toISOString()
+          },
+          user_key_or_id: 'error_tracking'
+        }
       });
     }
 
-    if (body?.action === 'stripe.receipt' && body?.session_id) {
-      const response = await getSessionById(body?.session_id, body?.session_id?.includes('cs_test'));
-      link = {
-        response,
-        body,
-      };
-      message = 'stripe session retrieved';
+    // Stripe webhook: Capture payout.paid - seller receives money
+    if (body?.action === 'stripe:payout.paid' || body?.type === 'payout.paid') {
+      const signature = ctx.request.headers['stripe-signature'];
+      const is_test = !!body.data?.object?.id?.startsWith('po_test_');
+      const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
+
+      const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
+      if (!event) return ctx.badRequest('Invalid webhook signature');
+
+      const payout = event.data?.object;
+
+      console.log('[STRIPE_WEBHOOK] Payout paid', {
+        payoutId: payout?.id?.substring(0, 10) + '...',
+        amount_usd: (payout?.amount / 100).toFixed(2),
+        arrivalDate: new Date(payout?.arrival_date * 1000).toISOString(),
+        status: payout?.status
+      });
     }
 
     // Create a markket transaction record
@@ -617,5 +718,135 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         ...extraMeta,
       },
     });
-  }
+  },
+
+  /**
+   * POST /api/markket/refresh-fees/:orderId
+   * Manually trigger fee retrieval for an order
+   */
+  async refreshFees(ctx: any) {
+    const { orderId } = ctx.params;
+
+    if (!orderId) {
+      return ctx.badRequest('Order ID required');
+    }
+
+    try {
+      // Get order with payment intent
+      const order = await strapi.documents('api::order.order').findOne({
+        documentId: orderId
+      });
+
+      if (!order) {
+        return ctx.notFound('Order not found');
+      }
+
+      const extraData = order.extra as Record<string, any>;
+      const paymentIntent = extraData?.stripe_payment_intent;
+      const isTest = !!extraData?.is_test;
+
+      if (!paymentIntent) {
+        return ctx.badRequest('Order has no payment intent');
+      }
+
+      console.log('[MARKKET_CONTROLLER] Manually refreshing fees', {
+        orderId: orderId.substring(0, 10) + '...',
+        paymentIntent: paymentIntent.substring(0, 10) + '...'
+      });
+
+      // Trigger fee retrieval
+      await retrieveAndStoreActualFees(orderId, paymentIntent, isTest);
+
+      // Fetch updated order
+      const updatedOrder = await strapi.documents('api::order.order').findOne({
+        documentId: orderId
+      });
+
+      return ctx.send({
+        message: 'Fee refresh triggered',
+        data: {
+          orderId,
+          stripe_actual_fees: (updatedOrder.extra as Record<string, any>)?.stripe_actual_fees || null,
+          retrieval_status: (updatedOrder.extra as Record<string, any>)?.fees_retrieval_status || 'pending'
+        }
+      });
+
+    } catch (error) {
+      console.error('[MARKKET_CONTROLLER] Fee refresh failed:', error?.message);
+      return ctx.internalServerError('Fee refresh failed');
+    }
+  },
+  /**
+   * GET /api/markket/debug-fees/:orderId
+   * Debug fee retrieval status
+   */
+  async debugFees(ctx: any) {
+    const { orderId } = ctx.params;
+
+    const order = await strapi.documents('api::order.order').findOne({
+      documentId: orderId
+    });
+
+    if (!order) {
+      return ctx.notFound('Order not found');
+    }
+
+    const extraData = order.extra as Record<string, any>;
+
+    return ctx.send({
+      order_id: orderId,
+      payment_intent: extraData?.stripe_payment_intent || 'missing',
+      current_fees: extraData?.stripe_actual_fees || null,
+      retrieval_status: extraData?.fees_retrieval_status || 'not_attempted',
+      is_test: extraData?.is_test || false,
+      recommendations: [
+        extraData?.stripe_payment_intent
+          ? 'Payment intent found - can trigger manual refresh'
+          : 'No payment intent - cannot retrieve fees',
+        extraData?.stripe_actual_fees?.source === 'charge_lookup'
+          ? 'Using fallback data - wait for balance transaction webhook'
+          : 'Fee data should be complete'
+      ]
+    });
+  },
+  /**
+   * POST /api/markket/stripe-webhook
+   * Dedicated webhook endpoint with raw body handling
+   */
+  async stripeWebhook(ctx: any) {
+    const signature = ctx.request.headers['stripe-signature'];
+    const rawBody = ctx.request.body[Symbol.for('unparsedBody')]
+      || ctx.request.body[Symbol.for('rawBody')]
+      || ctx.req; // Last resort: read from Node req stream
+
+    console.log('[STRIPE_WEBHOOK] Received webhook', {
+      hasSignature: !!signature,
+      rawBodySymbol: !!ctx.request.body[Symbol.for('unparsedBody')],
+      hasReq: !!ctx.req,
+    });
+
+    // If Symbol.for doesn't work, read raw stream
+    if (!ctx.request.body[Symbol.for('unparsedBody')]) {
+      return ctx.badRequest('Raw body not available - check middleware config');
+    }
+
+    const body = JSON.parse(rawBody.toString());
+    const is_test = !!body.data?.object?.id?.match(/_(test_|live_)/);
+
+    const event = verifyStripeWebhook(signature, rawBody, is_test);
+
+    if (!event) {
+      console.error('[STRIPE_WEBHOOK] Verification failed');
+      return ctx.badRequest('Invalid signature');
+    }
+
+    // Route to appropriate handler based on event type
+    console.log('[STRIPE_WEBHOOK] Processing event:', event.type);
+
+    // Handle charge.succeeded, etc.
+    // ... your existing webhook logic ...
+
+    return ctx.send({ received: true });
+  },
+
 }));
