@@ -22,6 +22,7 @@ import {
   verifyStripeWebhook,
   getAccount,
   getStripeClient,
+  getSessionById,
 } from '../services/stripe';
 import { handleCheckoutSessionCompleted } from '../services/stripe-webhook-handler';
 import { retrieveAndStoreActualFees } from '../services/stripe-fees-retriever';
@@ -423,6 +424,15 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       message = `order:${order.documentId}`;
     }
 
+
+    if (body?.action === 'stripe.receipt' && body?.session_id) {
+      const response = await getSessionById(body?.session_id, body?.session_id?.includes('cs_test'));
+      link = {
+        response,
+        body,
+      };
+      message = 'stripe session retrieved';
+    }
 
     if (body?.action === 'stripe:checkout.session.completed') {
       const signature = ctx.request.headers['stripe-signature'];
