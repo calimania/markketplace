@@ -482,7 +482,7 @@ async function createStandardPaymentLink(
 export const getSessionById = async (
   session_id: string,
   stripe_test: boolean
-): Promise<Stripe.Checkout.Session | null> => {  // ✅ FIXED: Added return type
+): Promise<Stripe.Checkout.Session | null> => {
   if (!session_id) {
     return null;
   }
