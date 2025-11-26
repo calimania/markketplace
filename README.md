@@ -264,3 +264,8 @@ Feel free to check out the [Strapi GitHub repository](https://github.com/strapi/
 ---
 
 <sub>🤫 Psst! [Strapi is hiring](https://strapi.io/careers).</sub>
+
+## Upgrading
+```bash
+yarn add @strapi/strapi@5.31.2 @strapi/plugin-cloud@5.31.2 @strapi/plugin-users-permissions@5.31.2~
+```
