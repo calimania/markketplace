@@ -170,6 +170,21 @@ if (isSystemUpdate) {
 5. Security review - Any sensitive data exposure?
 6. Race conditions - Could this conflict with other operations?
 
+### Content Type Model Names (CRITICAL)
+```typescript
+// ACTUAL model names in this codebase - ALWAYS verify before using:
+'api::article.article'  // NOT 'api::post.post'
+'api::event.event'      // NOT 'api::events.events'
+'api::page.page'        // Correct
+'api::product.product'  // Correct
+'api::category.category' // Correct
+'api::order.order'      // Correct
+'api::store.store'      // Correct
+
+// DO NOT assume plural/singular - CHECK THE SCHEMA FILES:
+// src/api/[name]/content-types/[name]/schema.json
+```
+
 ### Field Name Verification
 ```typescript
 // Always verify schema first

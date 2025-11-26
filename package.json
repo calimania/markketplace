@@ -10,7 +10,9 @@
     "build:plugin": "echo 'skipping plugin npm run build --prefix src/plugins/markketplace'",
     "build": "yarn run build:plugin && strapi build",
     "strapi": "strapi",
-    "deploy": "strapi deploy"
+    "deploy": "strapi deploy",
+    "api:docs": "node scripts/api-docs.js",
+    "api:test": "node scripts/api-test.js"
   },
   "dependencies": {
     "@strapi-community/plugin-healthcheck": "^1.0.5",
@@ -36,7 +38,7 @@
     "uuid": "d945c243-b70c-4ef4-83b0-45bdf201fb89"
   },
   "engines": {
-    "node": ">=18.0.0 <=20.x.x",
+    "node": ">=20.18.1",
     "npm": ">=9.0.0"
   },
   "license": "SEE LICENSE IN LICENSE",

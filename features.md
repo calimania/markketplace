@@ -33,6 +33,7 @@
 - [ ] (product).settings overrides store or ENV fees
 - [ ] (store|product).settings inventory options
 - [ ] (store|product).settings shipping options
+- [x] store.stats endpoints
 - [x] store.settings.transaction_percentage
 - [x] create stripe link use store.settings if present
 
