@@ -230,6 +230,7 @@ export async function getRecentActivity(storeId: string, limit: number = 10) {
 /**
  * Get quick stats for homepage hero
  * PUBLIC endpoint - no sensitive sales data
+ * or a page with the correct slug has been created
  */
 export async function getQuickStats(storeId: string) {
   const counts = await getContentCounts(storeId);
@@ -244,17 +245,123 @@ export async function getQuickStats(storeId: string) {
 }
 
 /**
+ * Magic slugs that control navigation visibility
+ * Store can create pages with these slugs to enable sections
+ */
+const MAGIC_SLUGS = {
+  about: ['about', 'acerca', 'sobre', 'nosotros'],
+  blog: ['blog', 'articles', 'articulos', 'noticias'],
+  shop: ['products', 'shop', 'tienda', 'catalogo'],
+  events: ['events', 'eventos', 'calendario'],
+  newsletter: ['newsletter', 'subscribe', 'suscribirse'],
+  home: ['home', 'inicio', 'portada'],
+};
+
+/**
  * Get UI visibility flags for conditional rendering
+ *
+ * Priority system:
+ * 1. Store settings override (settings.meta.navigation.show_*)
+ * 2. Magic page slugs (page exists = show button)
+ * 3. Content existence (has articles = show blog)
+ *
+ * Smart homepage navigation for de.markket.place/store/:slug
  */
 export async function getVisibilityFlags(storeId: string) {
-  const [counts,] = await Promise.all([
+  const now = new Date();
+  const twoDaysAgo = new Date(now.getTime() - (2 * 24 * 60 * 60 * 1000));
+
+  const [counts, store, magicPages, upcomingEvents] = await Promise.all([
     getContentCounts(storeId),
+    strapi.documents('api::store.store').findOne({
+      documentId: storeId,
+      populate: ['settings'],
+    }),
+    strapi.documents('api::page.page').findMany({
+      filters: {
+        store: { documentId: storeId },
+        Active: true,
+        slug: {
+          $in: Object.values(MAGIC_SLUGS).flat()
+        },
+      },
+      fields: ['slug'],
+    }),
+    strapi.documents('api::event.event').count({
+      filters: {
+        stores: { documentId: storeId },
+        $or: [
+          {
+            endDate: { $gte: now.toISOString() }
+          },
+          {
+            $and: [
+              { startDate: { $gte: twoDaysAgo.toISOString() } }
+            ]
+          },
+        ]
+      }
+    }),
   ]);
 
+  const settings = (store?.settings || {}) as Record<string, any>;
+  const navigationSettings = settings?.meta?.navigation || {};
+
+  const foundSlugs = new Set(
+    magicPages.map((p: any) => p.slug?.toLowerCase()).filter(Boolean)
+  );
+
+  const hasAboutPage = MAGIC_SLUGS.about.some(slug => foundSlugs.has(slug));
+  const hasBlogPage = MAGIC_SLUGS.blog.some(slug => foundSlugs.has(slug));
+  const hasShopPage = MAGIC_SLUGS.shop.some(slug => foundSlugs.has(slug));
+  const hasEventsPage = MAGIC_SLUGS.events.some(slug => foundSlugs.has(slug));
+  const hasNewsletterPage = MAGIC_SLUGS.newsletter.some(slug => foundSlugs.has(slug));
+  const hasHomePage = MAGIC_SLUGS.home.some(slug => foundSlugs.has(slug));
+
   return {
-    show_blog: counts.articles > 0,
-    show_events: counts.events > 0,
-    show_shop: counts.products > 0,
-    show_pages: counts.pages > 0,
+    show_blog:
+      navigationSettings.show_blog ??
+      hasBlogPage ??
+      counts.articles > 0,
+
+    show_events:
+      navigationSettings.show_events ??
+      hasEventsPage ??
+      counts.events > 0,
+
+    show_shop:
+      navigationSettings.show_shop ??
+      hasShopPage ??
+      counts.products > 0,
+
+    show_about:
+      navigationSettings.show_about ??
+      hasAboutPage ??
+      false,
+
+    show_newsletter:
+      navigationSettings.show_newsletter ??
+      hasNewsletterPage ??
+      false,
+
+    show_home:
+      navigationSettings.show_home ??
+      hasHomePage ??
+      false,
+
+    has_upcoming_events: upcomingEvents > 0,
+    has_events: counts.events > 0,
+
+    content_summary: {
+      articles_count: counts.articles,
+      products_count: counts.products,
+      events_count: counts.events,
+      upcoming_events_count: upcomingEvents,
+      pages_count: counts.pages,
+    },
+
+    magic_pages_detected: Array.from(foundSlugs),
+
+    settings_overrides: Object.keys(navigationSettings).filter(k => k.startsWith('show_')),
   };
 }
