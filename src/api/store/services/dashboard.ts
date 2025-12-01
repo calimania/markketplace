@@ -141,21 +141,30 @@ export function calculateOnboardingProgress(store: any, counts: ContentCounts, s
   // Check SEO completeness (shows metadata understanding)
   const hasSEOTitle = !!(store?.SEO?.metaTitle && store.SEO.metaTitle.length > 10);
   const hasSEODescription = !!(store?.SEO?.metaDescription && store.SEO.metaDescription.length > 50);
-  const hasSEOImage = !!store?.SEO?.socialImage;
+  const hasSEOImage = !!store?.SEO?.socialImage?.id;
   const hasSEOComplete = hasSEOTitle && hasSEODescription;
 
-  // Count images (shows media literacy)
+  // Debug logging to see what we actually get
+  console.log('[Dashboard] Image debug', {
+    store: store?.id,
+    Logo: store?.Logo ? { id: store.Logo.id, url: store.Logo.url } : null,
+    Cover: store?.Cover ? { id: store.Cover.id, url: store.Cover.url } : null,
+    Favicon: store?.Favicon ? { id: store.Favicon.id, url: store.Favicon.url } : null,
+    SEO_socialImage: store?.SEO?.socialImage ? { id: store.SEO.socialImage.id } : null,
+  });
+
+  // Count images - populated media have .id and .url
   const imageCount = [
-    store?.Logo,
-    store?.Cover,
-    store?.Favicon,
-    store?.SEO?.socialImage,
+    store?.Logo?.id,
+    store?.Cover?.id,
+    store?.Favicon?.id,
+    store?.SEO?.socialImage?.id,
   ].filter(Boolean).length;
 
   const checks = {
     // Required (critical path)
     has_description: !!(store?.Description && store.Description.length > 20),
-    has_logo: !!store?.Logo,
+    has_logo: !!store?.Logo?.id,
     has_stripe: !!store?.STRIPE_CUSTOMER_ID,
 
     // Content (growth indicators)
@@ -163,10 +172,10 @@ export function calculateOnboardingProgress(store: any, counts: ContentCounts, s
     has_products: counts.products > 0,
 
     // Optional (nice-to-have)
-    has_cover: !!store?.Cover,
+    has_cover: !!store?.Cover?.id,
     has_social: !!(store?.URLS && store.URLS.length > 0),
     has_settings: !!store?.settings,
-    has_favicon: !!store?.Favicon,
+    has_favicon: !!store?.Favicon?.id,
 
     // SEO sophistication
     has_seo_basics: hasSEOComplete,
@@ -229,9 +238,9 @@ export function calculateOnboardingProgress(store: any, counts: ContentCounts, s
     // Image usage breakdown (for UI decisions)
     media_usage: {
       total_images: imageCount,
-      has_logo: !!store?.Logo,
-      has_cover: !!store?.Cover,
-      has_favicon: !!store?.Favicon,
+      has_logo: !!store?.Logo?.id,
+      has_cover: !!store?.Cover?.id,
+      has_favicon: !!store?.Favicon?.id,
       has_seo_image: hasSEOImage,
     },
 
@@ -256,13 +265,38 @@ export async function getDashboardData(storeId: string) {
     getRecentOrders(storeId, 5),
     strapi.documents('api::store.store').findOne({
       documentId: storeId,
-      populate: ['Logo', 'Cover', 'Favicon', 'settings', 'URLS', 'SEO.socialImage'],
+      populate: {
+        Logo: true,
+        Cover: true,
+        Favicon: true,
+        settings: true,
+        URLS: true,
+        SEO: {
+          populate: {
+            socialImage: true
+          }
+        }
+      },
     }),
   ]);
+
+  console.log('[DASHBOARD]store', {
+    hasStore: !!store,
+    hasLogo: !!store?.Logo,
+    hasCover: !!store?.Cover,
+    hasFavicon: !!store?.Favicon,
+    hasSEO: !!store?.SEO,
+    Logo_structure: store?.Logo ? Object.keys(store.Logo) : null,
+  });
 
   const onboarding = calculateOnboardingProgress(store, contentCounts, salesSummary);
 
   return {
+    store: {
+      documentId: store?.documentId,
+      title: store?.title,
+      slug: store?.slug,
+    },
     content: contentCounts,
     sales: salesSummary,
     recent_orders: recentOrders,
@@ -281,11 +315,13 @@ export async function getDashboardData(storeId: string) {
     },
 
     store_metadata: {
-      has_logo: !!store?.Logo,
-      has_cover: !!store?.Cover,
+      has_logo: !!store?.Logo?.id,
+      has_cover: !!store?.Cover?.id,
+      has_favicon: !!store?.Favicon?.id,
       logo_url: store?.Logo?.url || null,
       cover_url: store?.Cover?.url || null,
-      store_name: store?.title || 'Untitled Store',
+      favicon_url: store?.Favicon?.url || null,
+      store_name: store?.title || '/Untitled/',
       store_slug: store?.slug,
     },
   };
