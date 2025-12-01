@@ -23,6 +23,26 @@ export interface CommonAddress extends Struct.ComponentSchema {
   };
 }
 
+export interface CommonExtension extends Struct.ComponentSchema {
+  collectionName: 'components_common_extensions';
+  info: {
+    description: 'Flexible extension system for integrations (Odoo, Stripe, Sendgrid, PostHog, webhooks, etc.)';
+    displayName: 'Extension';
+    icon: 'plug';
+  };
+  attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    config: Schema.Attribute.JSON;
+    credentials: Schema.Attribute.JSON;
+    key: Schema.Attribute.String & Schema.Attribute.Required;
+    last_run: Schema.Attribute.DateTime;
+    meta: Schema.Attribute.JSON;
+    run_count: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    triggers: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    url: Schema.Attribute.String;
+  };
+}
+
 export interface CommonPaymentAttempts extends Struct.ComponentSchema {
   collectionName: 'components_common_payment_attempts';
   info: {
@@ -57,6 +77,7 @@ export interface CommonPrices extends Struct.ComponentSchema {
   attributes: {
     Currency: Schema.Attribute.String;
     Description: Schema.Attribute.Text;
+    extensions: Schema.Attribute.Component<'common.extension', true>;
     extra: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
     hidden: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     inventory: Schema.Attribute.Integer;
@@ -156,6 +177,7 @@ declare module '@strapi/strapi' {
   export module Public {
     export interface ComponentSchemas {
       'common.address': CommonAddress;
+      'common.extension': CommonExtension;
       'common.payment-attempts': CommonPaymentAttempts;
       'common.prices': CommonPrices;
       'common.product-snapshop': CommonProductSnapshop;

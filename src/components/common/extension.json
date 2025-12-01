@@ -1,0 +1,50 @@
+{
+  "collectionName": "components_common_extensions",
+  "info": {
+    "displayName": "Extension",
+    "icon": "plug",
+    "description": "Flexible extension system for integrations (Odoo, Stripe, Sendgrid, PostHog, webhooks, etc.)"
+  },
+  "options": {},
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": false,
+      "regex": "^[a-z0-9]+:[a-z0-9-]+(?::[a-z0-9-]+)?$"
+    },
+    "triggers": {
+      "type": "json",
+      "required": false,
+      "default": []
+    },
+    "credentials": {
+      "type": "json",
+      "required": false
+    },
+    "config": {
+      "type": "json",
+      "required": false
+    },
+    "url": {
+      "type": "string",
+      "required": false
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_run": {
+      "type": "datetime",
+      "required": false
+    },
+    "run_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "meta": {
+      "type": "json",
+      "required": false
+    }
+  }
+}

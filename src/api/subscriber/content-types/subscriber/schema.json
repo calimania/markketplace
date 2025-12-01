@@ -31,6 +31,11 @@
     },
     "EmailVerified": {
       "type": "datetime"
+    },
+    "extensions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.extension"
     }
   }
 }
