@@ -135,19 +135,195 @@ export async function getRecentOrders(storeId: string, limit: number = 10): Prom
 }
 
 /**
+ * Use content signals to calculate onboarding completeness
+ */
+export function calculateOnboardingProgress(store: any, counts: ContentCounts, salesSummary: SalesSummary) {
+  // Check SEO completeness (shows metadata understanding)
+  const hasSEOTitle = !!(store?.SEO?.metaTitle && store.SEO.metaTitle.length > 10);
+  const hasSEODescription = !!(store?.SEO?.metaDescription && store.SEO.metaDescription.length > 50);
+  const hasSEOImage = !!store?.SEO?.socialImage?.id;
+  const hasSEOComplete = hasSEOTitle && hasSEODescription;
+
+  // Debug logging to see what we actually get
+  console.log('[Dashboard] Image debug', {
+    store: store?.id,
+    Logo: store?.Logo ? { id: store.Logo.id, url: store.Logo.url } : null,
+    Cover: store?.Cover ? { id: store.Cover.id, url: store.Cover.url } : null,
+    Favicon: store?.Favicon ? { id: store.Favicon.id, url: store.Favicon.url } : null,
+    SEO_socialImage: store?.SEO?.socialImage ? { id: store.SEO.socialImage.id } : null,
+  });
+
+  // Count images - populated media have .id and .url
+  const imageCount = [
+    store?.Logo?.id,
+    store?.Cover?.id,
+    store?.Favicon?.id,
+    store?.SEO?.socialImage?.id,
+  ].filter(Boolean).length;
+
+  const checks = {
+    // Required (critical path)
+    has_description: !!(store?.Description && store.Description.length > 20),
+    has_logo: !!store?.Logo?.id,
+    has_stripe: !!store?.STRIPE_CUSTOMER_ID,
+
+    // Content (growth indicators)
+    has_content: (counts.articles + counts.pages) > 0,
+    has_products: counts.products > 0,
+
+    // Optional (nice-to-have)
+    has_cover: !!store?.Cover?.id,
+    has_social: !!(store?.URLS && store.URLS.length > 0),
+    has_settings: !!store?.settings,
+    has_favicon: !!store?.Favicon?.id,
+
+    // SEO sophistication
+    has_seo_basics: hasSEOComplete,
+    has_seo_image: hasSEOImage,
+
+    // Success metric
+    has_sales: salesSummary.total_orders > 0,
+  };
+
+  const completed = Object.values(checks).filter(Boolean).length;
+  const total = Object.keys(checks).length;
+
+  let phase: 'setup' | 'content' | 'launch' | 'growth' | 'established';
+
+  if (!checks.has_description || !checks.has_logo || !checks.has_stripe) {
+    phase = 'setup';
+  } else if (!checks.has_content && !checks.has_products) {
+    phase = 'content';
+  } else if (!checks.has_sales) {
+    phase = 'launch';
+  } else if (salesSummary.total_orders < 10) {
+    phase = 'growth';
+  } else {
+    phase = 'established';
+  }
+
+  // UX sophistication indicators
+  const user_sophistication = {
+    is_beginner: phase === 'setup' || phase === 'content',
+    is_intermediate: phase === 'launch' || phase === 'growth',
+    is_advanced: phase === 'established',
+
+    // Show simplified UI if true
+    show_simplified_interface: !checks.has_content && !checks.has_products && !checks.has_settings,
+
+    // Has explored CMS features
+    has_cms_experience: checks.has_content || counts.pages > 2 || hasSEOComplete,
+
+    // Comfortable with images (knows how to upload/manage media)
+    has_image_literacy: imageCount >= 2,
+    show_simple_image_ui: imageCount === 0 || imageCount === 1, // Single upload button
+    show_advanced_image_ui: imageCount >= 3, // Gallery, cropping, etc.
+
+    // Understanding of SEO/metadata (advanced user)
+    understands_seo: hasSEOComplete,
+
+    // Ready for advanced features
+    show_advanced_features: checks.has_sales && checks.has_settings,
+  };
+
+  return {
+    checks,
+    completed_count: completed,
+    total_count: total,
+    percentage: Math.round((completed / total) * 100),
+    phase,
+    ready_to_sell: checks.has_stripe && (checks.has_content || checks.has_products),
+    user_sophistication,
+
+    // Image usage breakdown (for UI decisions)
+    media_usage: {
+      total_images: imageCount,
+      has_logo: !!store?.Logo?.id,
+      has_cover: !!store?.Cover?.id,
+      has_favicon: !!store?.Favicon?.id,
+      has_seo_image: hasSEOImage,
+    },
+
+    // SEO completeness (for advanced user detection)
+    seo_completeness: {
+      has_title: hasSEOTitle,
+      has_description: hasSEODescription,
+      has_image: hasSEOImage,
+      has_keywords: !!(store?.SEO?.metaKeywords),
+      is_complete: hasSEOComplete && hasSEOImage,
+    },
+  };
+}
+
+/**
  * Get complete dashboard data in a single call
  */
 export async function getDashboardData(storeId: string) {
-  const [contentCounts, salesSummary, recentOrders] = await Promise.all([
+  const [contentCounts, salesSummary, recentOrders, store] = await Promise.all([
     getContentCounts(storeId),
     getSalesSummary(storeId, 30),
     getRecentOrders(storeId, 5),
+    strapi.documents('api::store.store').findOne({
+      documentId: storeId,
+      populate: {
+        Logo: true,
+        Cover: true,
+        Favicon: true,
+        settings: true,
+        URLS: true,
+        SEO: {
+          populate: {
+            socialImage: true
+          }
+        }
+      },
+    }),
   ]);
 
+  console.log('[DASHBOARD]store', {
+    hasStore: !!store,
+    hasLogo: !!store?.Logo,
+    hasCover: !!store?.Cover,
+    hasFavicon: !!store?.Favicon,
+    hasSEO: !!store?.SEO,
+    Logo_structure: store?.Logo ? Object.keys(store.Logo) : null,
+  });
+
+  const onboarding = calculateOnboardingProgress(store, contentCounts, salesSummary);
+
   return {
+    store: {
+      documentId: store?.documentId,
+      title: store?.title,
+      slug: store?.slug,
+    },
     content: contentCounts,
     sales: salesSummary,
     recent_orders: recentOrders,
+
+    onboarding: {
+      phase: onboarding.phase,
+      progress_percentage: onboarding.percentage,
+      completed_checks: onboarding.completed_count,
+      total_checks: onboarding.total_count,
+      ready_to_sell: onboarding.ready_to_sell,
+
+      status: onboarding.checks,
+      user_sophistication: onboarding.user_sophistication,
+      media_usage: onboarding.media_usage,
+      seo_completeness: onboarding.seo_completeness,
+    },
+
+    store_metadata: {
+      has_logo: !!store?.Logo?.id,
+      has_cover: !!store?.Cover?.id,
+      has_favicon: !!store?.Favicon?.id,
+      logo_url: store?.Logo?.url || null,
+      cover_url: store?.Cover?.url || null,
+      favicon_url: store?.Favicon?.url || null,
+      store_name: store?.title || '/Untitled/',
+      store_slug: store?.slug,
+    },
   };
 }
 
@@ -230,6 +406,7 @@ export async function getRecentActivity(storeId: string, limit: number = 10) {
 /**
  * Get quick stats for homepage hero
  * PUBLIC endpoint - no sensitive sales data
+ * or a page with the correct slug has been created
  */
 export async function getQuickStats(storeId: string) {
   const counts = await getContentCounts(storeId);
@@ -244,17 +421,203 @@ export async function getQuickStats(storeId: string) {
 }
 
 /**
+ * Magic slugs that control navigation visibility
+ * Store can create pages with these slugs to enable sections
+ */
+const MAGIC_SLUGS = {
+  about: ['about', 'acerca', 'sobre', 'nosotros'],
+  blog: ['blog', 'articles', 'articulos', 'noticias'],
+  shop: ['products', 'shop', 'tienda', 'catalogo'],
+  events: ['events', 'eventos', 'calendario'],
+  newsletter: ['newsletter', 'subscribe', 'suscribirse'],
+  home: ['home', 'inicio', 'portada'],
+};
+
+/**
  * Get UI visibility flags for conditional rendering
+ *
+ * Priority system:
+ * 1. Store settings override (settings.meta.navigation.show_*)
+ * 2. Magic page slugs (page exists = show button)
+ * 3. Content existence (has articles = show blog)
+ *
+ * Smart homepage navigation for de.markket.place/store/:slug
  */
 export async function getVisibilityFlags(storeId: string) {
-  const [counts,] = await Promise.all([
+  console.log('[DASHBOARD] visibility flags', { storeId: storeId.substring(0, 10) + '...' });
+
+  const now = new Date();
+  const twoDaysAgo = new Date(now.getTime() - (2 * 24 * 60 * 60 * 1000));
+
+  const [counts, store, magicPages, upcomingEvents] = await Promise.all([
     getContentCounts(storeId),
+    strapi.documents('api::store.store').findOne({
+      documentId: storeId,
+      populate: ['settings'],
+    }),
+    strapi.documents('api::page.page').findMany({
+      filters: {
+        store: { documentId: storeId },
+        Active: true,
+        slug: {
+          $in: Object.values(MAGIC_SLUGS).flat()
+        },
+      },
+      fields: ['slug'],
+    }),
+    strapi.documents('api::event.event').count({
+      filters: {
+        stores: { documentId: storeId },
+        $or: [
+          {
+            endDate: { $gte: now.toISOString() }
+          },
+          {
+            $and: [
+              { startDate: { $gte: twoDaysAgo.toISOString() } }
+            ]
+          },
+        ]
+      }
+    }),
   ]);
 
+  console.log('[DASHBOARD] Content counts fetched', {
+    articles: counts.articles,
+    products: counts.products,
+    events: counts.events,
+    pages: counts.pages,
+  });
+
+  const settings = (store?.settings || {}) as Record<string, any>;
+  const navigationSettings = settings?.meta?.navigation || {};
+
+  console.log('[DASHBOARD] Navigation settings', {
+    hasSettings: !!store?.settings,
+    hasMeta: !!settings?.meta,
+    hasNavigation: !!navigationSettings,
+    navigationKeys: Object.keys(navigationSettings),
+  });
+
+  const foundSlugs = new Set(
+    magicPages.map((p: any) => p.slug?.toLowerCase()).filter(Boolean)
+  );
+
+  console.log('[DASHBOARD] Magic pages found', {
+    totalMagicPages: magicPages.length,
+    slugs: Array.from(foundSlugs),
+  });
+
+  const hasAboutPage = MAGIC_SLUGS.about.some(slug => foundSlugs.has(slug));
+  const hasBlogPage = MAGIC_SLUGS.blog.some(slug => foundSlugs.has(slug));
+  const hasShopPage = MAGIC_SLUGS.shop.some(slug => foundSlugs.has(slug));
+  const hasEventsPage = MAGIC_SLUGS.events.some(slug => foundSlugs.has(slug));
+  const hasNewsletterPage = MAGIC_SLUGS.newsletter.some(slug => foundSlugs.has(slug));
+  const hasHomePage = MAGIC_SLUGS.home.some(slug => foundSlugs.has(slug));
+
+  // Helper function - only use setting if it's explicitly a boolean
+  const resolveVisibility = (
+    settingValue: any,
+    hasMagicPage: boolean,
+    hasContent: boolean
+  ): boolean => {
+    // If setting is explicitly set to true or false, respect it
+    if (typeof settingValue === 'boolean') {
+      console.log('[DASHBOARD] Using explicit setting override', { settingValue });
+      return settingValue;
+    }
+
+    // Otherwise fall through to magic page or content
+    const result = hasMagicPage || hasContent;
+    console.log('[DASHBOARD] Using fallback logic', { hasMagicPage, hasContent, result });
+    return result;
+  };
+
+  const show_blog = resolveVisibility(
+    navigationSettings.show_blog,
+    hasBlogPage,
+    counts.articles > 0 || counts.pages > 0  // Show if has articles OR pages
+  );
+
+  const show_events = resolveVisibility(
+    navigationSettings.show_events,
+    hasEventsPage,
+    counts.events > 0
+  );
+
+  const show_shop = resolveVisibility(
+    navigationSettings.show_shop,
+    hasShopPage,
+    counts.products > 0
+  );
+
+  const show_about = resolveVisibility(
+    navigationSettings.show_about,
+    hasAboutPage,
+    counts.pages > 0  // Show if has any pages
+  );
+
+  const show_newsletter = resolveVisibility(
+    navigationSettings.show_newsletter,
+    hasNewsletterPage,
+    false
+  );
+
+  const show_home = resolveVisibility(
+    navigationSettings.show_home,
+    hasHomePage,
+    counts.pages > 0  // Show if has any pages
+  );
+
+  console.log('[DASHBOARD] Final visibility flags', {
+    show_blog,
+    show_events,
+    show_shop,
+    show_about,
+    show_newsletter,
+    show_home,
+  });
+
   return {
-    show_blog: counts.articles > 0,
-    show_events: counts.events > 0,
-    show_shop: counts.products > 0,
-    show_pages: counts.pages > 0,
+    show_blog,
+    show_events,
+    show_shop,
+    show_about,
+    show_newsletter,
+    show_home,
+
+    has_upcoming_events: upcomingEvents > 0,
+    has_events: counts.events > 0,
+
+    content_summary: {
+      articles_count: counts.articles,
+      products_count: counts.products,
+      events_count: counts.events,
+      upcoming_events_count: upcomingEvents,
+      pages_count: counts.pages,
+    },
+
+    magic_pages_detected: Array.from(foundSlugs),
+    settings_overrides: Object.keys(navigationSettings).filter(k => k.startsWith('show_')),
+
+    // Debug information for troubleshooting
+    _debug: {
+      store_has_settings: !!store?.settings,
+      navigation_settings: navigationSettings,
+      magic_page_checks: {
+        about: hasAboutPage,
+        blog: hasBlogPage,
+        shop: hasShopPage,
+        events: hasEventsPage,
+        newsletter: hasNewsletterPage,
+        home: hasHomePage,
+      },
+      content_checks: {
+        has_articles: counts.articles > 0,
+        has_products: counts.products > 0,
+        has_events: counts.events > 0,
+        has_pages: counts.pages > 0,
+      },
+    },
   };
 }
