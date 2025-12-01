@@ -444,6 +444,8 @@ const MAGIC_SLUGS = {
  * Smart homepage navigation for de.markket.place/store/:slug
  */
 export async function getVisibilityFlags(storeId: string) {
+  console.log('[DASHBOARD] visibility flags', { storeId: storeId.substring(0, 10) + '...' });
+
   const now = new Date();
   const twoDaysAgo = new Date(now.getTime() - (2 * 24 * 60 * 60 * 1000));
 
@@ -480,12 +482,31 @@ export async function getVisibilityFlags(storeId: string) {
     }),
   ]);
 
+  console.log('[DASHBOARD] Content counts fetched', {
+    articles: counts.articles,
+    products: counts.products,
+    events: counts.events,
+    pages: counts.pages,
+  });
+
   const settings = (store?.settings || {}) as Record<string, any>;
   const navigationSettings = settings?.meta?.navigation || {};
+
+  console.log('[DASHBOARD] Navigation settings', {
+    hasSettings: !!store?.settings,
+    hasMeta: !!settings?.meta,
+    hasNavigation: !!navigationSettings,
+    navigationKeys: Object.keys(navigationSettings),
+  });
 
   const foundSlugs = new Set(
     magicPages.map((p: any) => p.slug?.toLowerCase()).filter(Boolean)
   );
+
+  console.log('[DASHBOARD] Magic pages found', {
+    totalMagicPages: magicPages.length,
+    slugs: Array.from(foundSlugs),
+  });
 
   const hasAboutPage = MAGIC_SLUGS.about.some(slug => foundSlugs.has(slug));
   const hasBlogPage = MAGIC_SLUGS.blog.some(slug => foundSlugs.has(slug));
@@ -494,36 +515,76 @@ export async function getVisibilityFlags(storeId: string) {
   const hasNewsletterPage = MAGIC_SLUGS.newsletter.some(slug => foundSlugs.has(slug));
   const hasHomePage = MAGIC_SLUGS.home.some(slug => foundSlugs.has(slug));
 
+  // Helper function - only use setting if it's explicitly a boolean
+  const resolveVisibility = (
+    settingValue: any,
+    hasMagicPage: boolean,
+    hasContent: boolean
+  ): boolean => {
+    // If setting is explicitly set to true or false, respect it
+    if (typeof settingValue === 'boolean') {
+      console.log('[DASHBOARD] Using explicit setting override', { settingValue });
+      return settingValue;
+    }
+
+    // Otherwise fall through to magic page or content
+    const result = hasMagicPage || hasContent;
+    console.log('[DASHBOARD] Using fallback logic', { hasMagicPage, hasContent, result });
+    return result;
+  };
+
+  const show_blog = resolveVisibility(
+    navigationSettings.show_blog,
+    hasBlogPage,
+    counts.articles > 0 || counts.pages > 0  // Show if has articles OR pages
+  );
+
+  const show_events = resolveVisibility(
+    navigationSettings.show_events,
+    hasEventsPage,
+    counts.events > 0
+  );
+
+  const show_shop = resolveVisibility(
+    navigationSettings.show_shop,
+    hasShopPage,
+    counts.products > 0
+  );
+
+  const show_about = resolveVisibility(
+    navigationSettings.show_about,
+    hasAboutPage,
+    counts.pages > 0  // Show if has any pages
+  );
+
+  const show_newsletter = resolveVisibility(
+    navigationSettings.show_newsletter,
+    hasNewsletterPage,
+    false
+  );
+
+  const show_home = resolveVisibility(
+    navigationSettings.show_home,
+    hasHomePage,
+    counts.pages > 0  // Show if has any pages
+  );
+
+  console.log('[DASHBOARD] Final visibility flags', {
+    show_blog,
+    show_events,
+    show_shop,
+    show_about,
+    show_newsletter,
+    show_home,
+  });
+
   return {
-    show_blog:
-      navigationSettings.show_blog ??
-      hasBlogPage ??
-      counts.articles > 0,
-
-    show_events:
-      navigationSettings.show_events ??
-      hasEventsPage ??
-      counts.events > 0,
-
-    show_shop:
-      navigationSettings.show_shop ??
-      hasShopPage ??
-      counts.products > 0,
-
-    show_about:
-      navigationSettings.show_about ??
-      hasAboutPage ??
-      false,
-
-    show_newsletter:
-      navigationSettings.show_newsletter ??
-      hasNewsletterPage ??
-      false,
-
-    show_home:
-      navigationSettings.show_home ??
-      hasHomePage ??
-      false,
+    show_blog,
+    show_events,
+    show_shop,
+    show_about,
+    show_newsletter,
+    show_home,
 
     has_upcoming_events: upcomingEvents > 0,
     has_events: counts.events > 0,
@@ -537,7 +598,26 @@ export async function getVisibilityFlags(storeId: string) {
     },
 
     magic_pages_detected: Array.from(foundSlugs),
-
     settings_overrides: Object.keys(navigationSettings).filter(k => k.startsWith('show_')),
+
+    // Debug information for troubleshooting
+    _debug: {
+      store_has_settings: !!store?.settings,
+      navigation_settings: navigationSettings,
+      magic_page_checks: {
+        about: hasAboutPage,
+        blog: hasBlogPage,
+        shop: hasShopPage,
+        events: hasEventsPage,
+        newsletter: hasNewsletterPage,
+        home: hasHomePage,
+      },
+      content_checks: {
+        has_articles: counts.articles > 0,
+        has_products: counts.products > 0,
+        has_events: counts.events > 0,
+        has_pages: counts.pages > 0,
+      },
+    },
   };
 }
