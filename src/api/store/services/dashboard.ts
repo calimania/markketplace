@@ -135,19 +135,159 @@ export async function getRecentOrders(storeId: string, limit: number = 10): Prom
 }
 
 /**
+ * Use content signals to calculate onboarding completeness
+ */
+export function calculateOnboardingProgress(store: any, counts: ContentCounts, salesSummary: SalesSummary) {
+  // Check SEO completeness (shows metadata understanding)
+  const hasSEOTitle = !!(store?.SEO?.metaTitle && store.SEO.metaTitle.length > 10);
+  const hasSEODescription = !!(store?.SEO?.metaDescription && store.SEO.metaDescription.length > 50);
+  const hasSEOImage = !!store?.SEO?.socialImage;
+  const hasSEOComplete = hasSEOTitle && hasSEODescription;
+
+  // Count images (shows media literacy)
+  const imageCount = [
+    store?.Logo,
+    store?.Cover,
+    store?.Favicon,
+    store?.SEO?.socialImage,
+  ].filter(Boolean).length;
+
+  const checks = {
+    // Required (critical path)
+    has_description: !!(store?.Description && store.Description.length > 20),
+    has_logo: !!store?.Logo,
+    has_stripe: !!store?.STRIPE_CUSTOMER_ID,
+
+    // Content (growth indicators)
+    has_content: (counts.articles + counts.pages) > 0,
+    has_products: counts.products > 0,
+
+    // Optional (nice-to-have)
+    has_cover: !!store?.Cover,
+    has_social: !!(store?.URLS && store.URLS.length > 0),
+    has_settings: !!store?.settings,
+    has_favicon: !!store?.Favicon,
+
+    // SEO sophistication
+    has_seo_basics: hasSEOComplete,
+    has_seo_image: hasSEOImage,
+
+    // Success metric
+    has_sales: salesSummary.total_orders > 0,
+  };
+
+  const completed = Object.values(checks).filter(Boolean).length;
+  const total = Object.keys(checks).length;
+
+  let phase: 'setup' | 'content' | 'launch' | 'growth' | 'established';
+
+  if (!checks.has_description || !checks.has_logo || !checks.has_stripe) {
+    phase = 'setup';
+  } else if (!checks.has_content && !checks.has_products) {
+    phase = 'content';
+  } else if (!checks.has_sales) {
+    phase = 'launch';
+  } else if (salesSummary.total_orders < 10) {
+    phase = 'growth';
+  } else {
+    phase = 'established';
+  }
+
+  // UX sophistication indicators
+  const user_sophistication = {
+    is_beginner: phase === 'setup' || phase === 'content',
+    is_intermediate: phase === 'launch' || phase === 'growth',
+    is_advanced: phase === 'established',
+
+    // Show simplified UI if true
+    show_simplified_interface: !checks.has_content && !checks.has_products && !checks.has_settings,
+
+    // Has explored CMS features
+    has_cms_experience: checks.has_content || counts.pages > 2 || hasSEOComplete,
+
+    // Comfortable with images (knows how to upload/manage media)
+    has_image_literacy: imageCount >= 2,
+    show_simple_image_ui: imageCount === 0 || imageCount === 1, // Single upload button
+    show_advanced_image_ui: imageCount >= 3, // Gallery, cropping, etc.
+
+    // Understanding of SEO/metadata (advanced user)
+    understands_seo: hasSEOComplete,
+
+    // Ready for advanced features
+    show_advanced_features: checks.has_sales && checks.has_settings,
+  };
+
+  return {
+    checks,
+    completed_count: completed,
+    total_count: total,
+    percentage: Math.round((completed / total) * 100),
+    phase,
+    ready_to_sell: checks.has_stripe && (checks.has_content || checks.has_products),
+    user_sophistication,
+
+    // Image usage breakdown (for UI decisions)
+    media_usage: {
+      total_images: imageCount,
+      has_logo: !!store?.Logo,
+      has_cover: !!store?.Cover,
+      has_favicon: !!store?.Favicon,
+      has_seo_image: hasSEOImage,
+    },
+
+    // SEO completeness (for advanced user detection)
+    seo_completeness: {
+      has_title: hasSEOTitle,
+      has_description: hasSEODescription,
+      has_image: hasSEOImage,
+      has_keywords: !!(store?.SEO?.metaKeywords),
+      is_complete: hasSEOComplete && hasSEOImage,
+    },
+  };
+}
+
+/**
  * Get complete dashboard data in a single call
  */
 export async function getDashboardData(storeId: string) {
-  const [contentCounts, salesSummary, recentOrders] = await Promise.all([
+  const [contentCounts, salesSummary, recentOrders, store] = await Promise.all([
     getContentCounts(storeId),
     getSalesSummary(storeId, 30),
     getRecentOrders(storeId, 5),
+    strapi.documents('api::store.store').findOne({
+      documentId: storeId,
+      populate: ['Logo', 'Cover', 'Favicon', 'settings', 'URLS', 'SEO.socialImage'],
+    }),
   ]);
+
+  const onboarding = calculateOnboardingProgress(store, contentCounts, salesSummary);
 
   return {
     content: contentCounts,
     sales: salesSummary,
     recent_orders: recentOrders,
+
+    onboarding: {
+      phase: onboarding.phase,
+      progress_percentage: onboarding.percentage,
+      completed_checks: onboarding.completed_count,
+      total_checks: onboarding.total_count,
+      ready_to_sell: onboarding.ready_to_sell,
+
+      status: onboarding.checks,
+      user_sophistication: onboarding.user_sophistication,
+      media_usage: onboarding.media_usage,
+      seo_completeness: onboarding.seo_completeness,
+    },
+
+    store_metadata: {
+      has_logo: !!store?.Logo,
+      has_cover: !!store?.Cover,
+      logo_url: store?.Logo?.url || null,
+      cover_url: store?.Cover?.url || null,
+      store_name: store?.title || 'Untitled Store',
+      store_slug: store?.slug,
+    },
   };
 }
 
