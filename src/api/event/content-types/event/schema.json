@@ -117,8 +117,8 @@
           "localized": true
         }
       },
-      "type": "uid",
-      "targetField": "Name"
+      "type": "string",
+      "required": true
     },
     "SEO": {
       "type": "component",
