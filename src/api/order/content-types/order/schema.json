@@ -74,6 +74,11 @@
     "extra": {
       "type": "json",
       "default": {}
+    },
+    "extensions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.extension"
     }
   }
 }

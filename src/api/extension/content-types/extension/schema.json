@@ -4,7 +4,8 @@
   "info": {
     "singularName": "extension",
     "pluralName": "extensions",
-    "displayName": "Extension"
+    "displayName": "Instance Settings",
+    "description": "Instance details & additional configuration"
   },
   "options": {
     "draftAndPublish": true
@@ -22,6 +23,16 @@
         }
       },
       "type": "json"
+    },
+    "extensions": {
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      },
+      "component": "common.extension"
     }
   }
 }

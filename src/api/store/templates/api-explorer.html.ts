@@ -319,6 +319,33 @@ export const ApiExplorerHTML = `
   </div>
 
   <div class="section">
+    <h2>🔐 Debug & Security Endpoints</h2>
+
+    <div class="endpoint">
+      <span class="method get">GET</span>
+      <span class="path">/api/stores/:id/extensions-debug</span>
+      <span class="badge" style="background: #8b5cf6;">Hybrid</span>
+      <p class="description">🔍 Debug extension encryption - Public: Limited info | Auth: Full details</p>
+      <p class="description" style="font-size: 12px; color: #94a3b8;">
+        <strong>Without auth:</strong> Extension count + public info<br>
+        <strong>With auth:</strong> Full credentials analysis showing 🔐 ENCRYPTED vs ⚠️ PLAIN TEXT status
+      </p>
+      <div class="input-group">
+        <label>Store ID:</label>
+        <input type="text" id="ext-store-id" placeholder="Store document ID">
+      </div>
+      <div class="input-group">
+        <label>JWT Token (optional for full access):</label>
+        <input type="password" id="ext-token" placeholder="Leave empty for public view">
+      </div>
+      <button data-action="testExtensionsDebug">Test Endpoint</button>
+      <p class="description" style="font-size: 11px; color: #f59e0b; margin-top: 10px;">
+        💡 <strong>Tip:</strong> Check console logs for detailed encryption analysis!
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
     <h2>Protected Endpoints - Owner Access Only</h2>
 
     <div class="endpoint">

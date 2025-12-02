@@ -697,6 +697,12 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
         };
       }>;
     endDate: Schema.Attribute.DateTime;
+    extensions: Schema.Attribute.Component<'common.extension', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: false;
+        };
+      }>;
     locale: Schema.Attribute.String;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::event.event'>;
     maxCapacity: Schema.Attribute.Integer &
@@ -731,7 +737,8 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
-    slug: Schema.Attribute.UID<'Name'> &
+    slug: Schema.Attribute.String &
+      Schema.Attribute.Required &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
@@ -773,7 +780,8 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
 export interface ApiExtensionExtension extends Struct.SingleTypeSchema {
   collectionName: 'extensions';
   info: {
-    displayName: 'Extension';
+    description: 'Instance details & additional configuration';
+    displayName: 'Instance Settings';
     pluralName: 'extensions';
     singularName: 'extension';
   };
@@ -789,6 +797,12 @@ export interface ApiExtensionExtension extends Struct.SingleTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    extensions: Schema.Attribute.Component<'common.extension', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: false;
+        };
+      }>;
     list: Schema.Attribute.JSON &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
@@ -961,6 +975,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     Currency: Schema.Attribute.String;
     Details: Schema.Attribute.Component<'common.product-snapshop', true>;
+    extensions: Schema.Attribute.Component<'common.extension', true>;
     extra: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::order.order'> &
@@ -1112,6 +1127,12 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       Schema.Attribute.SetPluginOptions<{
         i18n: {
           localized: true;
+        };
+      }>;
+    extensions: Schema.Attribute.Component<'common.extension', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: false;
         };
       }>;
     locale: Schema.Attribute.String;
@@ -1373,6 +1394,12 @@ export interface ApiStoreStore extends Struct.CollectionTypeSchema {
           localized: true;
         };
       }>;
+    extensions: Schema.Attribute.Component<'common.extension', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: false;
+        };
+      }>;
     Favicon: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
@@ -1511,6 +1538,7 @@ export interface ApiSubscriberSubscriber extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     Email: Schema.Attribute.Email & Schema.Attribute.Required;
     EmailVerified: Schema.Attribute.DateTime;
+    extensions: Schema.Attribute.Component<'common.extension', true>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',

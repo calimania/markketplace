@@ -176,6 +176,16 @@
       "relation": "oneToOne",
       "target": "api::store.store-setting",
       "inversedBy": "store"
+    },
+    "extensions": {
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {
+        "i18n": {
+          "localized": false
+        }
+      },
+      "component": "common.extension"
     }
   }
 }

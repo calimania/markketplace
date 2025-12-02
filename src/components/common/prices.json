@@ -33,6 +33,11 @@
     "inventory": {
       "type": "integer",
       "default": null
+    },
+    "extensions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.extension"
     }
   }
 }
