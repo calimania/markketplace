@@ -1,8 +1,8 @@
-# Adding Encrypted Fields - Quick Guide
+# Adding Encrypted Fields
 
-## Current Setup (Extensions)
+## Current Setup
 
-Currently, **extension credentials** are auto-encrypted when you save them in the admin panel.
+Currently, **extension credentials** are auto-encrypted when you save them in the admin panel
 
 **What this means today:**
 
@@ -11,9 +11,9 @@ Currently, **extension credentials** are auto-encrypted when you save them in th
 - They're automatically encrypted before saving to database
 - You see encrypted values when viewing (can't reverse them)
 
-## Adding More Encrypted Fields (Future)
+## Adding More Encrypted Fields
 
-When you need to encrypt other fields, just update the middleware config.
+Update the middleware config to add new fields
 
 ### Step 1: Identify What Needs Encryption
 
@@ -229,6 +229,7 @@ const ENCRYPTED_FIELDS = {
 If you already have data and want to add encryption:
 
 ### Option 1: Fresh Start (Development)
+
 Just add the field to config - new data will be encrypted
 
 ### Option 2: Migrate Existing Data (Production)
@@ -277,6 +278,7 @@ const ENCRYPTED_FIELDS = {
 - Custom webhooks
 
 ### Later (When You Need It)
+
 ```typescript
 const ENCRYPTED_FIELDS = {
   '*': { 'extensions': 'component' },

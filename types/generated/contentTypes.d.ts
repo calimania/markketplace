@@ -780,7 +780,8 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
 export interface ApiExtensionExtension extends Struct.SingleTypeSchema {
   collectionName: 'extensions';
   info: {
-    displayName: 'Extension';
+    description: 'Instance details & additional configuration';
+    displayName: 'Instance Settings';
     pluralName: 'extensions';
     singularName: 'extension';
   };
@@ -796,6 +797,12 @@ export interface ApiExtensionExtension extends Struct.SingleTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    extensions: Schema.Attribute.Component<'common.extension', true> &
+      Schema.Attribute.SetPluginOptions<{
+        i18n: {
+          localized: false;
+        };
+      }>;
     list: Schema.Attribute.JSON &
       Schema.Attribute.SetPluginOptions<{
         i18n: {
