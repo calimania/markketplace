@@ -15,6 +15,7 @@ import {
 } from '../services/dashboard';
 import { ApiExplorerHTML } from '../templates/api-explorer.html';
 import { ApiExplorerJS } from '../templates/api-explorer.js';
+import { decryptCredentials, sensitiveFields } from '../../../services/encryption';
 
 /** Checks for store record for user and user_admin records */
 async function checkUserStoreAccess(
@@ -475,6 +476,9 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
     console.log('[EXTENSIONS_DEBUG] Store:', storeName, '- Extensions:', extensionsCount);
 
+    // Fields that should be encrypted (matches SENSITIVE_FIELDS in encryption.ts)
+    const SENSITIVE_FIELDS = sensitiveFields;
+
     const analyzeCredentials = (credentials: any) => {
       if (!credentials || typeof credentials !== 'object') return null;
 
@@ -483,13 +487,28 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
         const value = credentials[key];
         if (typeof value === 'string') {
           const isEncrypted = /^[0-9a-f]{32}:[0-9a-f]+$/i.test(value);
+          const shouldBeEncrypted = SENSITIVE_FIELDS.includes(key);
+
           analysis[key] = {
-            encrypted: isEncrypted,
+            should_encrypt: shouldBeEncrypted,
+            is_encrypted: isEncrypted,
+            status: shouldBeEncrypted
+              ? (isEncrypted ? 'secure' : 'needs_encryption')
+              : (isEncrypted ? 'over_encrypted' : 'plain_ok'),
             length: value.length,
             preview: isEncrypted ? value.substring(0, 16) + '...' : '[REDACTED]'
           };
 
-          console.log(`[EXTENSIONS_DEBUG] ${key}:`, isEncrypted ? 'ENCRYPTED' : 'PLAIN', `(${value.length} chars)`);
+          const statusIcon = shouldBeEncrypted
+            ? (isEncrypted ? '✓' : '✗')
+            : (isEncrypted ? '⚠' : '○');
+
+          console.log(`[EXTENSIONS_DEBUG] ${key}:`,
+            statusIcon,
+            shouldBeEncrypted ? 'SENSITIVE' : 'PLAIN',
+            isEncrypted ? 'ENCRYPTED' : 'PLAIN',
+            `(${value.length} chars)`
+          );
         }
       });
       return analysis;
@@ -497,18 +516,28 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
     const extensions = storeData.extensions?.map((ext: any) => {
       const credAnalysis = analyzeCredentials(ext.credentials);
-      const allEncrypted = credAnalysis
-        ? Object.values(credAnalysis).every((c: any) => c.encrypted)
-        : null;
 
-      console.log('[EXTENSIONS_DEBUG]', ext.key, '-', ext.active ? 'active' : 'inactive',
-        credAnalysis ? (allEncrypted ? 'secure' : 'needs encryption') : 'no credentials');
+      // Check if all sensitive fields are encrypted
+      const sensitiveFieldsSecure = credAnalysis
+        ? Object.entries(credAnalysis).every(([key, analysis]: [string, any]) =>
+          !analysis.should_encrypt || analysis.is_encrypted
+        )
+        : true;
+
+      const statusMsg = credAnalysis
+        ? (sensitiveFieldsSecure ? 'secure' : 'needs encryption')
+        : 'no credentials';
+
+      console.log('[EXTENSIONS_DEBUG]', ext.key, '-',
+        ext.active ? 'active' : 'inactive',
+        statusMsg
+      );
 
       return {
         key: ext.key,
         active: ext.active,
         triggers: ext.triggers?.length || 0,
-        credentials_status: credAnalysis ? (allEncrypted ? 'encrypted' : 'partial') : 'none',
+        credentials_status: credAnalysis ? (sensitiveFieldsSecure ? 'encrypted' : 'partial') : 'none',
         credentials_analysis: credAnalysis,
         last_run: ext.last_run,
         run_count: ext.run_count || 0
@@ -524,6 +553,195 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
     return ctx.send({
       store: storeName,
       extensions_count: extensionsCount,
+      security_status: allSecure ? 'secure' : 'needs_review'
+    });
+  },
+
+  /**
+   * POST /api/stores/:id/test-extension
+   * Test extension credentials by making a real API call
+   * PROTECTED: Store owner only
+   */
+  async testExtension(ctx: any) {
+    const { id } = ctx.params;
+    const { extensionKey } = ctx.request.body || {};
+    const userId = ctx.state.user?.id;
+
+    console.log('[TEST_EXTENSION] Request received', {
+      storeId: id?.substring(0, 10) + '...',
+      extensionKey,
+      authenticated: !!userId
+    });
+
+    if (!userId) {
+      return ctx.unauthorized('Authentication required');
+    }
+
+    if (!extensionKey) {
+      return ctx.badRequest('Extension key is required in request body');
+    }
+
+    const { hasAccess } = await checkUserStoreAccess(strapi, userId, id);
+
+    if (!hasAccess) {
+      return ctx.forbidden('Access denied');
+    }
+
+    const storeData = await strapi.documents('api::store.store').findOne({
+      documentId: id,
+      populate: ['extensions']
+    });
+
+    if (!storeData?.extensions?.length) {
+      return ctx.notFound('No extensions configured for this store');
+    }
+
+    const extension = storeData.extensions.find((ext: any) => ext.key === extensionKey);
+
+    if (!extension) {
+      return ctx.notFound(`Extension ${extensionKey} not found`);
+    }
+
+    if (!extension.credentials) {
+      return ctx.badRequest('Extension has no credentials configured');
+    }
+
+    // Decrypt credentials
+    let credentials: any;
+
+    try {
+      credentials = decryptCredentials(extension.credentials);
+    } catch (error: any) {
+      console.error('[TEST_EXTENSION] Decryption failed:', error.message);
+      return ctx.send({
+        success: false,
+        error: 'Failed to decrypt credentials',
+        message: 'Invalid or corrupted credentials'
+      });
+    }
+
+    const config = extension.config as Record<string, any> || {};
+
+    console.log('[TEST_EXTENSION] Testing extension', {
+      key: extension.key,
+      hasUrl: !!credentials.url,
+      hasDatabase: !!credentials.database,
+      hasApiKey: !!credentials.api_key,
+      configuredCompanyId: config.company_id
+    });
+
+    // Validate required Odoo credentials
+    if (!credentials.url || !credentials.database || !credentials.api_key || !config.company_id) {
+      return ctx.badRequest('Missing required Odoo credentials (url, database, api_key)');
+    }
+
+    // Test Odoo connection
+    if (extensionKey.includes('odoo')) {
+      try {
+        const companyId = config.company_id;
+
+        const response = await fetch(`${credentials.url}/jsonrpc`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'call',
+            params: {
+              service: 'object',
+              method: 'execute',
+              args: [
+                credentials.database,
+                2, // uid (dummy, validated by api_key)
+                credentials.api_key,
+                'res.partner',
+                'search_read',
+                [['id', '=', companyId]], // ✅ Single array, not nested
+                ['id', 'name', 'email', 'phone', 'company_id']
+              ]
+            },
+            id: Date.now()
+          })
+        });
+
+        if (!response.ok) {
+          return ctx.send({
+            success: false,
+            error: `HTTP ${response.status}: ${response.statusText}`,
+            message: 'Failed to connect to Odoo server'
+          });
+        }
+
+        const result = await response.json() as {
+          error?: {
+            message?: string;
+            code?: number;
+            data?: { message?: string };
+          };
+          result?: any[];
+          id?: number;
+        };
+
+        console.log('[TEST_EXTENSION] Odoo response received', {
+          success: !result.error,
+          hasResult: !!result.result,
+          resultCount: Array.isArray(result.result) ? result.result.length : 0
+        });
+
+        if (result.error) {
+          console.error('[TEST_EXTENSION] Odoo error:', result.error);
+          return ctx.send({
+            success: false,
+            error: result.error.message || result.error.data?.message || 'Unknown Odoo error',
+            code: result.error.code,
+            message: 'Authentication failed or invalid credentials'
+          });
+        }
+
+        if (!result.result || !Array.isArray(result.result) || result.result.length === 0) {
+          return ctx.send({
+            success: false,
+            message: `Company ID ${companyId} not found in Odoo database`,
+            tested_company_id: companyId,
+            odoo_url: credentials.url,
+            odoo_database: credentials.database
+          });
+        }
+
+        const partner = result.result[0];
+
+        return ctx.send({
+          success: true,
+          message: 'Odoo connection successful',
+          data: {
+            partner_id: partner.id,
+            partner_name: partner.name,
+            partner_email: partner.email || null,
+            partner_phone: partner.phone || null,
+            company_id: partner.company_id,
+            configured_company_id: companyId,
+            company_id_matches: partner.id === companyId,
+            odoo_url: credentials.url,
+            odoo_database: credentials.database
+          }
+        });
+
+      } catch (error: any) {
+        console.error('[TEST_EXTENSION] Odoo test failed:', error.message);
+        return ctx.send({
+          success: false,
+          error: error.message,
+          message: 'Failed to connect to Odoo - check URL and network connectivity'
+        });
+      }
+    }
+
+    // Generic test for other extensions
+    return ctx.send({
+      success: false,
+      message: `Test not implemented for extension type: ${extensionKey}`,
+      available_tests: ['markket:odoo:*']
     });
   },
 }));

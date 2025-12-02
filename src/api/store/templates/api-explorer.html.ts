@@ -227,6 +227,53 @@ export const ApiExplorerHTML = `
     .dev-tools-hint strong {
       color: #78350f;
     }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .form-group {
+      margin: 16px 0;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #334155;
+      font-size: 14px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #003893;
+      box-shadow: 0 0 0 3px rgba(0,56,147,0.1);
+    }
+    .result {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .result.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #c6f6d5;
+    }
+    .result.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fbcfe8;
+    }
+    .result.loading {
+      color: #4a5568;
+    }
   </style>
 </head>
 <body>
@@ -391,17 +438,43 @@ export const ApiExplorerHTML = `
     </div>
   </div>
 
-  <div id="response">
-    <div id="response-header">
-      <h3>
-        <span id="response-title">Response</span>
+  <div class="section">
+    <h2>🔌 Test Extension Credentials</h2>
+    <p class="description">Validate extension credentials by making a real API call</p>
+
+    <div class="form-group">
+      <label for="extensionStoreId">Store ID</label>
+      <input type="text" id="extensionStoreId" placeholder="Enter store documentId">
+    </div>
+
+    <div class="form-group">
+      <label for="extensionKey">Extension Key</label>
+      <input type="text" id="extensionKey" placeholder="markket:odoo:crm" value="markket:odoo:crm">
+      <small>Common keys: markket:odoo:crm, markket:odoo:newsletter</small>
+    </div>
+
+    <div class="form-group">
+      <label for="extensionToken">JWT Token</label>
+      <input type="password" id="extensionToken" placeholder="Paste your JWT token">
+    </div>
+
+    <button data-action="testExtension">Test Extension</button>
+
+    <div id="extensionResult" class="result"></div>
+  </div>
+
+  <div id="response" class="result">
+    <div id="response-header" class="response-header">
+      <h3 id="response-title">Response</h3>
+      <div>
         <span id="response-status"></span>
-      </h3>
-      <button id="response-toggle">Minimize</button>
+        <button id="response-toggle" class="toggle-btn">Minimize</button>
+      </div>
     </div>
     <div id="response-body"></div>
   </div>
 
+  <!-- External JS - CSP compliant -->
   <script src="/api/api-explorer.js"></script>
 </body>
 </html>
