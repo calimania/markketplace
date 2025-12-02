@@ -3,7 +3,7 @@
   "info": {
     "displayName": "Extension",
     "icon": "plug",
-    "description": "Flexible extension system for integrations (Odoo, Stripe, Sendgrid, PostHog, webhooks, etc.)"
+    "description": "Flexible extension system for integrations. Handlers live in markket-next. Use encryption service for credentials."
   },
   "options": {},
   "attributes": {

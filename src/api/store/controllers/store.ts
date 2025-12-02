@@ -17,52 +17,90 @@ import { ApiExplorerHTML } from '../templates/api-explorer.html';
 import { ApiExplorerJS } from '../templates/api-explorer.js';
 
 /** Checks for store record for user and user_admin records */
-async function checkUserStoreAccess(strapi: any, userId: string, storeId: string) {
+async function checkUserStoreAccess(
+  strapi: any,
+  userId: string,
+  id: string,
+) {
   if (!userId) {
     console.log('[STORE_ACCESS] No user ID provided');
-    return { hasAccess: false, store: null };
   }
 
-  const store = await strapi.documents('api::store.store').findOne({
-    documentId: storeId,
-    populate: ['users', 'admin_users', 'settings'],
-  }) as any;
+  try {
 
-  if (!store) {
-    console.log('[STORE_ACCESS] Store not found', { storeId });
-    return { hasAccess: false, store: null };
+    const store = await strapi.documents('api::store.store').findOne({
+      documentId: id,
+      populate: ['users', 'admin_users', 'settings'],
+    }) as any;
+
+    if (!store) {
+      console.log('[STORE_ACCESS] Store not found in database', {
+        documentId: id,
+        queryWorked: true,
+        resultWasNull: true
+      });
+      return { hasAccess: false, store: null };
+    }
+
+    if (!userId) {
+      return { hasAccess: false, store };
+    }
+
+    const userIdNum = parseInt(userId, 10);
+    const isStoreUser = store.users?.some((user: any) => user?.id === userIdNum);
+    const isAdminUser = store.admin_users?.some((admin: any) => admin?.id === userIdNum);
+
+    console.log('[STORE_ACCESS] Access check', {
+      storeId: id.substring(0, 10) + '...',
+      storeName: store.title,
+      userId: userIdNum,
+      isStoreUser,
+      isAdminUser,
+      hasAccess: isStoreUser || isAdminUser,
+    });
+
+    return {
+      hasAccess: isStoreUser || isAdminUser,
+      store,
+      isAdmin: isAdminUser
+    };
+  } catch (error) {
+    console.error('[STORE_ACCESS] Database query failed', {
+      documentId: id,
+      error: error.message,
+      stack: error.stack
+    });
+    return { hasAccess: false, store: null, error: error.message };
   }
-
-  // Convert to number for comparison (Strapi stores relation IDs as integers)
-  const userIdNum = parseInt(userId, 10);
-
-  // Debug: Log what we found
-  console.log('[STORE_ACCESS] Store relation check', {
-    storeId: storeId.substring(0, 10) + '...',
-    userId: userIdNum,
-    users: store.users?.map((u: any) => ({ id: u.id, username: u.username })),
-    admin_users: store.admin_users?.map((u: any) => ({ id: u.id, username: u.username })),
-  });
-
-  const isStoreUser = store.users?.some((user: any) => user.id === userIdNum);
-  const isAdminUser = store.admin_users?.some((admin: any) => admin.id === userIdNum);
-
-  console.log('[STORE_ACCESS] Access result', {
-    userIdNum,
-    isStoreUser,
-    isAdminUser,
-    hasAccess: isStoreUser || isAdminUser,
-  });
-
-  return {
-    hasAccess: isStoreUser || isAdminUser,
-    store,
-    isAdmin: isAdminUser
-  };
 }
 
 export default factories.createCoreController('api::store.store', ({ strapi }) => ({
   ...factories.createCoreController('api::store.store'),
+
+  /**
+   * Override find to exclude extensions from client responses
+   */
+  async find(ctx) {
+    const { data, meta } = await super.find(ctx);
+    // Remove extensions field from all results
+    const sanitized = Array.isArray(data) ? data.map(item => {
+      const { extensions, ...rest } = item;
+      return rest;
+    }) : data;
+    return { data: sanitized, meta };
+  },
+
+  /**
+   * Override findOne to exclude extensions from client responses
+   */
+  async findOne(ctx) {
+    const { data, meta } = await super.findOne(ctx);
+    if (data) {
+      const { extensions, ...rest } = data;
+      return { data: rest, meta };
+    }
+    return { data, meta };
+  },
 
   /**
    * GET /api/stores/:id/settings
@@ -410,4 +448,82 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
     ctx.body = js;
   },
 
+  /**
+   * GET /api/stores/:documentId/extensions-debug
+   * Quick check: Are extensions present? Are credentials encrypted?
+   */
+  async debugExtensions(ctx: any) {
+    const { id } = ctx.params;
+    const userId = ctx.state.user?.id;
+
+    console.log('[EXTENSIONS_DEBUG]', {
+      storeId: id?.substring(0, 10) + '...',
+      authenticated: !!userId,
+    });
+
+    const storeData = await strapi.documents('api::store.store').findOne({
+      documentId: id,
+      populate: ['extensions']
+    });
+
+    if (!storeData) {
+      return ctx.notFound('Store not found');
+    }
+
+    const storeName = storeData.title;
+    const extensionsCount = storeData.extensions?.length || 0;
+
+    console.log('[EXTENSIONS_DEBUG] Store:', storeName, '- Extensions:', extensionsCount);
+
+    const analyzeCredentials = (credentials: any) => {
+      if (!credentials || typeof credentials !== 'object') return null;
+
+      const analysis: Record<string, any> = {};
+      Object.keys(credentials).forEach(key => {
+        const value = credentials[key];
+        if (typeof value === 'string') {
+          const isEncrypted = /^[0-9a-f]{32}:[0-9a-f]+$/i.test(value);
+          analysis[key] = {
+            encrypted: isEncrypted,
+            length: value.length,
+            preview: isEncrypted ? value.substring(0, 16) + '...' : '[REDACTED]'
+          };
+
+          console.log(`[EXTENSIONS_DEBUG] ${key}:`, isEncrypted ? 'ENCRYPTED' : 'PLAIN', `(${value.length} chars)`);
+        }
+      });
+      return analysis;
+    };
+
+    const extensions = storeData.extensions?.map((ext: any) => {
+      const credAnalysis = analyzeCredentials(ext.credentials);
+      const allEncrypted = credAnalysis
+        ? Object.values(credAnalysis).every((c: any) => c.encrypted)
+        : null;
+
+      console.log('[EXTENSIONS_DEBUG]', ext.key, '-', ext.active ? 'active' : 'inactive',
+        credAnalysis ? (allEncrypted ? 'secure' : 'needs encryption') : 'no credentials');
+
+      return {
+        key: ext.key,
+        active: ext.active,
+        triggers: ext.triggers?.length || 0,
+        credentials_status: credAnalysis ? (allEncrypted ? 'encrypted' : 'partial') : 'none',
+        credentials_analysis: credAnalysis,
+        last_run: ext.last_run,
+        run_count: ext.run_count || 0
+      };
+    }) || [];
+
+    const allSecure = extensions.every(ext =>
+      ext.credentials_status === 'encrypted' || ext.credentials_status === 'none'
+    );
+
+    console.log('[EXTENSIONS_DEBUG] Security status:', allSecure ? 'All secure' : 'Review needed');
+
+    return ctx.send({
+      store: storeName,
+      extensions_count: extensionsCount,
+    });
+  },
 }));

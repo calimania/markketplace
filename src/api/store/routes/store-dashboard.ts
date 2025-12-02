@@ -65,5 +65,15 @@ export default {
       handler: 'store.getVisibilityFlags',
       config: { auth: false },
     },
+    {
+      method: 'GET',
+      path: '/stores/:id/extensions-debug',
+      handler: 'store.debugExtensions',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

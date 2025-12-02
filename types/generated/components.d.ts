@@ -26,7 +26,7 @@ export interface CommonAddress extends Struct.ComponentSchema {
 export interface CommonExtension extends Struct.ComponentSchema {
   collectionName: 'components_common_extensions';
   info: {
-    description: 'Flexible extension system for integrations (Odoo, Stripe, Sendgrid, PostHog, webhooks, etc.)';
+    description: 'Flexible extension system for integrations. Handlers live in markket-next. Use encryption service for credentials.';
     displayName: 'Extension';
     icon: 'plug';
   };

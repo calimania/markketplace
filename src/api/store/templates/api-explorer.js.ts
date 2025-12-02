@@ -96,6 +96,20 @@ function testStoreInfo() {
   apiCall('/api/stores/' + slug + '/info');
 }
 
+function testExtensionsDebug() {
+  const storeId = document.getElementById('ext-store-id').value;
+  const token = document.getElementById('ext-token').value;
+  if (!storeId) return alert('Store ID required');
+  saveStoreId(storeId);
+
+  console.log('🔍 Testing Extensions Debug Endpoint');
+  console.log('Store ID:', storeId);
+  console.log('Auth:', token ? '✅ Authenticated (full access)' : '⚠️  Unauthenticated (limited view)');
+  console.log('Watch console for detailed encryption analysis...');
+
+  apiCall('/api/stores/' + storeId + '/extensions-debug', token);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const savedId = loadStoreId();
   if (savedId) {
@@ -132,6 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
       case 'testSalesSummary': testSalesSummary(); break;
       case 'testStripeStatus': testStripeStatus(); break;
       case 'testStoreInfo': testStoreInfo(); break;
+      case 'testExtensionsDebug': testExtensionsDebug(); break;
     }
   });
 });
