@@ -4,11 +4,6 @@
  * Current use cases:
  * - Extension credentials (api_key, password, token fields)
  *
- * Future expansion:
- * - Any content type can have encrypted fields
- * - Just add field names to ENCRYPTED_FIELDS map
- * - Works for JSON fields, component fields, or direct fields
- *
  * Admin experience:
  * - Admins write plain text values in admin panel
  * - Auto-encrypted on save before hitting database
@@ -17,15 +12,6 @@
  */
 
 import { encryptCredentials } from '../services/encryption';
-
-/**
- * Define which fields should be auto-encrypted per content type
- */
-const ENCRYPTED_FIELDS = {
-  '*': {
-    'extensions': 'component'
-  },
-};
 
 export function registerMiddleware({ strapi }: { strapi: any }) {
   console.log('[ENCRYPT_MIDDLEWARE] Registering auto-encryption middleware');

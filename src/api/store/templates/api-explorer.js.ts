@@ -110,6 +110,78 @@ function testExtensionsDebug() {
   apiCall('/api/stores/' + storeId + '/extensions-debug', token);
 }
 
+async function testExtension() {
+  const storeId = document.getElementById('extensionStoreId').value.trim();
+  const extensionKey = document.getElementById('extensionKey').value.trim();
+  const token = document.getElementById('extensionToken').value.trim();
+
+  if (!storeId || !extensionKey || !token) {
+    return alert('Please fill in all fields (Store ID, Extension Key, and Token)');
+  }
+
+  saveStoreId(storeId);
+
+  const responseEl = document.getElementById('response');
+  const responseBody = document.getElementById('response-body');
+  const responseTitle = document.getElementById('response-title');
+  const responseStatus = document.getElementById('response-status');
+
+  responseEl.classList.add('show');
+  responseEl.classList.remove('minimized');
+  document.getElementById('response-toggle').textContent = 'Minimize';
+
+  responseBody.innerHTML = '<p style="color: #64748b;">Testing extension credentials...</p>';
+  responseTitle.textContent = 'Extension Test Response';
+  responseStatus.innerHTML = '';
+
+  console.log('Testing Extension:', extensionKey);
+
+  try {
+    const res = await fetch('/api/stores/' + storeId + '/test-extension', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        extensionKey: extensionKey
+      })
+    });
+
+    const data = await res.json();
+
+    const statusClass = data.success ? 'status-success' : 'status-error';
+    const statusIcon = data.success ? '✅' : '❌';
+
+    responseStatus.innerHTML = '<span class="status-badge ' + statusClass + '">' +
+      statusIcon + ' ' + res.status + ' ' + res.statusText + '</span>';
+
+    if (data.success) {
+      responseBody.innerHTML = '<div style="background: #d1fae5; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">' +
+        '<h4 style="color: #065f46; margin: 0 0 0.5rem 0;">✅ Connection Successful!</h4>' +
+        '<p style="color: #047857; margin: 0;"><strong>Message:</strong> ' + data.message + '</p>' +
+        '</div>' +
+        '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+    } else {
+      responseBody.innerHTML = '<div style="background: #fee2e2; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">' +
+        '<h4 style="color: #991b1b; margin: 0 0 0.5rem 0;">❌ Connection Failed</h4>' +
+        '<p style="color: #dc2626; margin: 0 0 0.5rem 0;"><strong>Message:</strong> ' + (data.message || 'Unknown error') + '</p>' +
+        (data.error ? '<p style="color: #dc2626; margin: 0;"><strong>Error:</strong> ' + data.error + '</p>' : '') +
+        '</div>' +
+        '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+    }
+
+    console.log('Extension Test Response:', data);
+  } catch (err) {
+    responseStatus.innerHTML = '<span class="status-badge status-error">Network Error</span>';
+    responseBody.innerHTML = '<div style="background: #fee2e2; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">' +
+      '<h4 style="color: #991b1b; margin: 0 0 0.5rem 0;">Network Error</h4>' +
+      '<p style="color: #dc2626; margin: 0;">' + err.message + '</p>' +
+      '</div>';
+    console.error('Extension Test Error:', err);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const savedId = loadStoreId();
   if (savedId) {
@@ -147,6 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
       case 'testStripeStatus': testStripeStatus(); break;
       case 'testStoreInfo': testStoreInfo(); break;
       case 'testExtensionsDebug': testExtensionsDebug(); break;
+      case 'testExtension': testExtension(); break;
     }
   });
 });

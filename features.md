@@ -4,35 +4,41 @@
 
 @NEXT:
 - [ ] webhook transaction complete finds store for default orders
-- [ ] Content type POST and social media scheduling
 - [ ] Using and deployment an Astro [slug]  docs
 - [ ] read existing tags in posts and displays in settings
-- [ ] SocialPost content-type for a social feed
-- [ ] Newsletter content-type and functionality
-- [ ] Use sendgrid API to manage marketing lists (calendar, store, )
-- [ ] Use Stripe API to better display information directly in dashboard
+- [ ] SocialPost content-type for a social feed, scheduling with third party
+- [ ] Sendgrid API to manage marketing lists (calendar, store, )
+- [ ] Odoo API to manage marketing lists (calendar, store, )
 - [ ] Valkey caching
 - [ ] User: verify new email for a store or login
 - [ ] User: add email to account created with phone number
 - [ ] POST /markket/sms to send text to an user on a sms|whatsapp
-- [ ] product schema, is digital, better stripe link creation
-- [ ] orders decrease inventory amount
 - [ ] Content type Review, for product reviews and comments in articles?
 - [ ] Content type Appointment for digital product meeting?
 - [ ] Content type Customer/Subscriber for managing CRM contacts
 - [ ] SEO generate endpoint [product|page|article|store]
 - [ ] save Inbox with order associated
-- [ ] create Extension schema
-- [ ] create store.extensions.notifications association
 - [ ] forward Inbox to Odoo, with associated order|customer
-- [ ] forward order to Odoo
+- [ ] forward order to Odoo for participating stores
 - [ ] order, better tracking | title in schema
 - [ ] odoo webhook application
 
-@NOVEMBER:
+@DECEMBER:
 - [ ] (product).settings overrides store or ENV fees
-- [ ] (store|product).settings inventory options
-- [ ] (store|product).settings shipping options
+- [ ] Newsletter content-type and functionality
+- [ ] Use Stripe API to better display information directly in dashboard
+- [ ] product extensions schema, is digital, better stripe link creation
+- [ ] orders decrease inventory amount
+- [ ] (store|product|prices).extensions inventory options
+- [ ] (store|product|prices).extensions shipping options
+- [ ] email lists with strapi.email, content type Newsletter delivery
+- [ ] url resolver extension (update company contact in odoo)
+- [ ] test odoo connection using instance.extensions.credentials
+- [x] test odoo connection using store.extensions.credentials
+- [x] create Extension schema
+- [x] create store.extensions.notifications association
+
+@NOVEMBER:
 - [x] store.stats endpoints
 - [x] store.settings.transaction_percentage
 - [x] create stripe link use store.settings if present

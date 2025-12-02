@@ -75,5 +75,14 @@ export default {
         middlewares: [],
       },
     },
+    {
+      method: 'POST',
+      path: '/stores/:id/test-extension',
+      handler: 'store.testExtension',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

@@ -115,6 +115,9 @@ export function decrypt(text: string): string {
   }
 }
 
+
+export const sensitiveFields = ['api_key', 'password', 'secret', 'token', 'access_token', 'refresh_token'];
+
 /**
  * Encrypt sensitive fields in credentials object
  *
@@ -133,7 +136,6 @@ export function encryptCredentials(credentials: any): any {
   }
 
   const encrypted = { ...credentials };
-  const sensitiveFields = ['api_key', 'password', 'secret', 'token', 'access_token', 'refresh_token'];
 
   for (const field of sensitiveFields) {
     if (encrypted[field] && typeof encrypted[field] === 'string') {
