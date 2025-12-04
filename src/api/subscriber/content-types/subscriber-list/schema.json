@@ -1,0 +1,119 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscriber_lists",
+  "info": {
+    "singularName": "subscriber-list",
+    "pluralName": "subscriber-lists",
+    "displayName": "Subscriber List",
+    "description": "Email lists synced with SendGrid - one default per store"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "list_type": {
+      "type": "enumeration",
+      "enum": ["default", "segment", "campaign", "custom"],
+      "default": "default"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store",
+      "required": true
+    },
+    "subscribers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::subscriber.subscriber",
+      "mappedBy": "lists"
+    },
+    "sendgrid_list_id": {
+      "type": "string",
+      "unique": true
+    },
+    "sendgrid_list_name": {
+      "type": "string"
+    },
+    "auto_subscribe_rules": {
+      "type": "json",
+      "default": {
+        "enabled": false,
+        "match_preferences": [],
+        "match_tags": []
+      }
+    },
+    "welcome_email": {
+      "type": "json",
+      "default": {
+        "enabled": false,
+        "template_id": null,
+        "delay_hours": 0
+      }
+    },
+    "unsubscribe_settings": {
+      "type": "json",
+      "default": {
+        "unsubscribe_group_id": null,
+        "confirmation_page_url": null,
+        "use_sendgrid_groups": true,
+        "custom_unsubscribe_url": null
+      }
+    },
+    "stats": {
+      "type": "json",
+      "default": {
+        "total_subscribers": 0,
+        "active_subscribers": 0,
+        "unsubscribed": 0,
+        "bounced": 0,
+        "complained": 0,
+        "last_campaign_sent": null,
+        "total_campaigns_sent": 0,
+        "avg_open_rate": 0,
+        "avg_click_rate": 0,
+        "avg_bounce_rate": 0,
+        "deliverability_score": 100
+      }
+    },
+    "health": {
+      "type": "enumeration",
+      "enum": ["excellent", "good", "fair", "poor", "critical"],
+      "default": "excellent"
+    },
+    "extensions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.extension"
+    },
+    "last_synced_at": {
+      "type": "datetime"
+    },
+    "sync_status": {
+      "type": "enumeration",
+      "enum": ["pending", "synced", "failed"],
+      "default": "pending"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "kind": "collectionType",
+  "collectionName": "newsletter_events",
+  "info": {
+    "singularName": "newsletter-event",
+    "pluralName": "newsletter-events",
+    "displayName": "Newsletter Event",
+    "description": "Track individual email events from SendGrid webhooks"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "event_type": {
+      "type": "enumeration",
+      "enum": [
+        "processed",
+        "dropped",
+        "delivered",
+        "deferred",
+        "bounce",
+        "open",
+        "click",
+        "spam_report",
+        "unsubscribe",
+        "group_unsubscribe",
+        "group_resubscribe"
+      ],
+      "required": true
+    },
+    "newsletter": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscriber.newsletter"
+    },
+    "subscriber": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscriber.subscriber"
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "timestamp": {
+      "type": "datetime",
+      "required": true
+    },
+    "sendgrid_event_id": {
+      "type": "string",
+      "unique": true
+    },
+    "sendgrid_message_id": {
+      "type": "string"
+    },
+    "user_agent": {
+      "type": "string"
+    },
+    "ip": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "bounce_reason": {
+      "type": "text"
+    },
+    "bounce_type": {
+      "type": "enumeration",
+      "enum": ["hard", "soft", "block"]
+    },
+    "unsubscribe_reason": {
+      "type": "text"
+    },
+    "event_data": {
+      "type": "json"
+    },
+    "processed": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

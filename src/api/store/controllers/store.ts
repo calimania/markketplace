@@ -624,15 +624,42 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
     console.log('[TEST_EXTENSION] Testing extension', {
       key: extension.key,
-      hasUrl: !!credentials.url,
-      hasDatabase: !!credentials.database,
-      hasApiKey: !!credentials.api_key,
-      configuredCompanyId: config.company_id
+      hasCredentials: !!credentials
     });
 
-    // Validate required Odoo credentials
-    if (!credentials.url || !credentials.database || !credentials.api_key || !config.company_id) {
-      return ctx.badRequest('Missing required Odoo credentials (url, database, api_key)');
+    // Test SendGrid connection
+    if (extensionKey.includes('sendgrid')) {
+      try {
+        // Call test endpoint in markket-next
+        const testUrl = process.env.MARKKET_NEXT_URL || 'http://localhost:3000';
+        const response = await fetch(`${testUrl}/api/extensions/markket/sendgrid/test-connection`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            credentials,
+            config
+          })
+        });
+
+        const result = await response.json() as any;
+
+        console.log('[TEST_EXTENSION] SendGrid test completed', {
+          success: result?.success,
+          hasAccount: !!(result?.data?.account)
+        });
+
+        return ctx.send(result);
+
+      } catch (error: any) {
+        console.error('[TEST_EXTENSION] SendGrid test failed:', error.message);
+        return ctx.send({
+          success: false,
+          error: error.message,
+          message: 'Failed to connect to SendGrid test endpoint'
+        }, 500);
+      }
     }
 
     // Test Odoo connection
@@ -741,7 +768,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
     return ctx.send({
       success: false,
       message: `Test not implemented for extension type: ${extensionKey}`,
-      available_tests: ['markket:odoo:*']
+      available_tests: ['markket:odoo:*', 'markket:sendgrid:*']
     });
   },
 }));

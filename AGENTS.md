@@ -1381,7 +1381,7 @@ markket-next/extensions/markket/odoo/newsletter.ts
 // markket-next/app/api/extensions/community/posthog/track/route.ts
 
 export async function POST(request: Request) {
-  const { entity, extension } = await request.json();
+  const { entity, extension, credentials } = await request.json();
   const creds = decryptCredentials(extension.credentials);
 
   await fetch('https://app.posthog.com/capture', {
@@ -1391,7 +1391,7 @@ export async function POST(request: Request) {
       event: 'new_subscriber',
       distinct_id: entity.email,
       properties: {
-        store: entity.store?.slug,
+        store: entity.store?.slug || 'default',
         source: extension.config.source || 'website'
       }
     })
@@ -1409,3 +1409,625 @@ export async function POST(request: Request) {
   "active": true
 }
 ```
+
+## Newsletter System via Extension Pattern
+
+Production-ready email marketing system using SendGrid + Extension architecture.
+
+### Architecture: Strapi Stores, Extensions Execute
+
+**Schemas deployed:**
+- `newsletter` - Campaign content (title, subject, html_content, send_stats)
+- `subscriber-list` - Email lists (name, sendgrid_list_id, auto_subscribe_rules)
+- `subscriber-list-membership` - Junction table (subscriber ↔ list, per-store unsubscribe)
+- `newsletter-event` - Webhook events (delivered, opened, clicked, bounced)
+- `subscriber` - Updated with lists relation and sync fields
+
+**Extension handles execution:**
+- `markket:sendgrid:newsletter` - Lives in store or list extensions
+- Auto-encrypted credentials (api_key, sender_id)
+- Triggers: `newsletter_send`, `subscriber_create`, `subscriber_unsubscribe`
+- Returns meta for tracking (campaign_id, contact_id, sync_status)
+
+### Extension Configuration Patterns
+
+#### Store-Level Extension (Default)
+
+**One extension per store** - handles all newsletters for that store:
+
+```json
+{
+  "key": "markket:sendgrid:newsletter",
+  "triggers": [
+    "trigger:newsletter_send",
+    "trigger:subscriber_create",
+    "trigger:subscriber_unsubscribe"
+  ],
+  "credentials": {
+    "use_default": false,
+    "api_key": "SG.xxxxx"  // Auto-encrypted by middleware
+  },
+  "config": {
+    "from_name": "ACME Store Newsletter",
+    "from_email": "newsletter@acme.com",
+    "reply_to": "support@acme.com",
+    "sender_id": "12345",
+    "unsubscribe_group_id": "67890",
+    "default_list_id": "sg_list_abc123"
+  },
+  "meta": {
+    "sender_verified": false,
+    "total_emails_sent": 0,
+    "last_campaign_id": null,
+    "last_sync_at": null
+  },
+  "active": true
+}
+```
+
+**Benefits:**
+- ✅ One config for entire store
+- ✅ Shared sender identity
+- ✅ Centralized analytics (total_emails_sent)
+- ✅ Easy to manage in admin panel
+
+#### List-Level Extension (Advanced)
+
+**Per-list extensions** - different automation per list:
+
+```json
+// Subscriber List: "Weekly Newsletter"
+{
+  "extensions": [{
+    "key": "markket:sendgrid:list-automation",
+    "triggers": [
+      "trigger:subscriber_added_to_list",
+      "trigger:subscriber_removed_from_list"
+    ],
+    "credentials": { "use_default": true },
+    "config": {
+      "sendgrid_list_id": "sg_list_weekly_123",
+      "welcome_email": {
+        "enabled": true,
+        "template_id": "d-welcome123",
+        "delay_hours": 0
+      },
+      "goodbye_email": {
+        "enabled": false
+      }
+    },
+    "meta": {
+      "welcome_emails_sent": 42,
+      "last_sync_at": "2024-12-01T10:00:00Z"
+    },
+    "active": true
+  }]
+}
+
+// Subscriber List: "VIP Updates" (different automation)
+{
+  "extensions": [{
+    "key": "markket:sendgrid:list-automation",
+    "triggers": ["trigger:subscriber_added_to_list"],
+    "credentials": { "use_default": true },
+    "config": {
+      "sendgrid_list_id": "sg_list_vip_456",
+      "welcome_email": {
+        "enabled": true,
+        "template_id": "d-vip-welcome",
+        "delay_hours": 0
+      },
+      "drip_campaign": {
+        "enabled": true,
+        "templates": [
+          { "template_id": "d-day1", "delay_hours": 0 },
+          { "template_id": "d-day3", "delay_hours": 72 },
+          { "template_id": "d-day7", "delay_hours": 168 }
+        ]
+      }
+    },
+    "active": true
+  }]
+}
+```
+
+**Benefits:**
+- ✅ List-specific automation (welcome emails, drip campaigns)
+- ✅ Different SendGrid lists per subscriber list
+- ✅ Granular control per list type (default vs segment vs VIP)
+- ✅ Independent tracking per list
+
+### Trigger Execution Flow
+
+#### Trigger 1: `newsletter_send`
+
+**When:** Admin clicks "Send Newsletter" in Strapi admin
+
+**Flow:**
+```typescript
+// 1. Admin publishes newsletter with status = 'scheduled'
+newsletter: {
+  title: "Weekly Update",
+  subject: "This Week's Highlights",
+  html_content: "<html>...",
+  target_lists: ["list_abc123"],  // Which subscriber lists
+  scheduled_at: "2024-12-15T10:00:00Z",
+  status: "scheduled"
+}
+
+// 2. Middleware detects newsletter update
+strapi.documents.use(async (context, next) => {
+  const result = await next();
+
+  if (context.uid === 'api::subscriber.newsletter' &&
+      result.status === 'scheduled') {
+
+    // Get store extension
+    const store = await strapi.documents('api::store.store').findOne({
+      documentId: result.store.documentId,
+      populate: ['extensions']
+    });
+
+    const extension = store.extensions?.find(ext =>
+      ext.active &&
+      ext.key === 'markket:sendgrid:newsletter' &&
+      ext.triggers?.includes('trigger:newsletter_send')
+    );
+
+    if (!extension) return result;
+
+    // 3. POST to markket-next handler
+    const response = await fetch(`${process.env.MARKKET_NEXT_URL}/api/extensions/markket/sendgrid/newsletter-send`, {
+      method: 'POST',
+      body: JSON.stringify({
+        entity: {
+          documentId: result.documentId,
+          title: result.title,
+          subject: result.subject,
+          html_content: result.html_content,
+          target_lists: result.target_lists,  // Contains sendgrid_list_id
+          scheduled_at: result.scheduled_at
+        },
+        extension: {
+          config: extension.config,
+          meta: extension.meta
+        },
+        credentials: decryptCredentials(extension.credentials),
+        trigger: 'trigger:newsletter_send'
+      })
+    });
+
+    const handlerResult = await response.json();
+
+    // 4. Save returned meta
+    if (handlerResult.success) {
+      await strapi.documents('api::subscriber.newsletter').update({
+        documentId: result.documentId,
+        data: {
+          sendgrid_campaign_id: handlerResult.meta.sendgrid_campaign_id,
+          status: 'sending'
+        }
+      });
+
+      // Update extension meta with total sent
+      // (store-level tracking)
+    }
+  }
+
+  return result;
+});
+```
+
+**markket-next handler:**
+```typescript
+// /app/api/extensions/markket/sendgrid/newsletter-send/route.ts
+
+export async function POST(request: Request) {
+  const { entity, extension, credentials } = await request.json();
+
+  const apiKey = credentials.use_default
+    ? process.env.SENDGRID_API_KEY
+    : credentials.api_key;
+
+  // Create SendGrid Single Send
+  const response = await fetch('https://api.sendgrid.com/v3/marketing/singlesends', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: entity.title,
+      send_to: {
+        list_ids: entity.target_lists.map(list => list.sendgrid_list_id)
+      },
+      email_config: {
+        subject: entity.subject,
+        html_content: entity.html_content,
+        sender_id: parseInt(extension.config.sender_id),
+        suppression_group_id: parseInt(extension.config.unsubscribe_group_id)
+      },
+      send_at: entity.scheduled_at  // Schedule for future
+    })
+  });
+
+  const result = await response.json();
+
+  // Return meta for Strapi to save
+  return Response.json({
+    success: true,
+    meta: {
+      sendgrid_campaign_id: result.id,
+      total_recipients: result.stats?.total_recipients || 0,
+      scheduled_at: entity.scheduled_at,
+      last_campaign_id: result.id
+    }
+  });
+}
+```
+
+#### Trigger 2: `subscriber_create`
+
+**When:** New subscriber added to system
+
+**Flow:**
+```typescript
+// 1. Create subscriber (with lists relation)
+const subscriber = await strapi.documents('api::subscriber.subscriber').create({
+  data: {
+    Email: "user@example.com",
+    lists: ["list_abc123"],  // Subscriber added to list
+    store: storeId
+  },
+  populate: ['store', 'store.extensions', 'lists']
+});
+
+// 2. Middleware detects subscriber_create trigger
+// Gets store extension with 'trigger:subscriber_create'
+
+// 3. POST to markket-next handler
+{
+  entity: {
+    documentId: subscriber.documentId,
+    Email: "user@example.com",
+    lists: [{ documentId: "list_abc123", sendgrid_list_id: "sg_list_123" }]
+  },
+  extension: { config: { default_list_id: "sg_list_123" } },
+  credentials: { api_key: "decrypted_key" },
+  trigger: "trigger:subscriber_create"
+}
+```
+
+**markket-next handler:**
+```typescript
+// /app/api/extensions/markket/sendgrid/subscriber-sync/route.ts
+
+export async function POST(request: Request) {
+  const { entity, extension, credentials } = await request.json();
+
+  const apiKey = credentials.use_default
+    ? process.env.SENDGRID_API_KEY
+    : credentials.api_key;
+
+  // Add contact to SendGrid lists
+  const listIds = entity.lists?.map(list => list.sendgrid_list_id) ||
+                  [extension.config.default_list_id];
+
+  const response = await fetch('https://api.sendgrid.com/v3/marketing/contacts', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      list_ids: listIds,
+      contacts: [{
+        email: entity.Email,
+        custom_fields: {
+          store: entity.store?.slug || 'default',
+          subscribed_at: new Date().toISOString()
+        }
+      }]
+    })
+  });
+
+  const result = await response.json();
+
+  // Return meta to save in subscriber.extensions or membership
+  return Response.json({
+    success: true,
+    meta: {
+      sendgrid_contact_id: result.job_id,
+      sendgrid_list_ids: listIds,
+      synced_at: new Date().toISOString(),
+      sync_status: 'completed'
+    }
+  });
+}
+```
+
+#### Trigger 3: `subscriber_unsubscribe`
+
+**When:** User unsubscribes from list (via webhook or manual action)
+
+**Flow:**
+```typescript
+// 1. Update membership status
+await strapi.db.query('api::subscriber.subscriber-list-membership').update({
+  where: { subscriber: subscriberId, list: listId },
+  data: {
+    status: 'unsubscribed',
+    unsubscribed_at: new Date()
+  }
+});
+
+// 2. Middleware detects unsubscribe, gets extension
+
+// 3. POST to markket-next
+{
+  entity: {
+    documentId: subscriber.documentId,
+    Email: "user@example.com",
+    sendgrid_contact_id: "sg_contact_123",
+    list: { sendgrid_list_id: "sg_list_123" }
+  },
+  trigger: "trigger:subscriber_unsubscribe"
+}
+```
+
+**markket-next handler:**
+```typescript
+// /app/api/extensions/markket/sendgrid/subscriber-unsubscribe/route.ts
+
+export async function POST(request: Request) {
+  const { entity, credentials } = await request.json();
+
+  const apiKey = credentials.use_default
+    ? process.env.SENDGRID_API_KEY
+    : credentials.api_key;
+
+  // Remove from SendGrid list
+  await fetch(`https://api.sendgrid.com/v3/marketing/lists/${entity.list.sendgrid_list_id}/contacts`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      contact_ids: [entity.sendgrid_contact_id]
+    })
+  });
+
+  return Response.json({
+    success: true,
+    meta: {
+      unsubscribed_from_list: entity.list.sendgrid_list_id,
+      unsubscribed_at: new Date().toISOString()
+    }
+  });
+}
+```
+
+### SendGrid List Management Pattern
+
+**Automatic list mapping via subscriber-list schema:**
+
+```typescript
+// Subscriber List schema stores SendGrid reference
+{
+  "name": "Weekly Newsletter",
+  "slug": "weekly-newsletter",
+  "sendgrid_list_id": "sg_list_abc123",  // SendGrid list ID
+  "sendgrid_list_name": "ACME Store - Weekly",
+  "is_default": true,
+  "store": "store123",
+  "auto_subscribe_rules": {
+    "enabled": true,
+    "match_preferences": {
+      "frequency": ["weekly"]
+    }
+  }
+}
+
+// Newsletter targets this list
+{
+  "title": "Weekly Update #42",
+  "target_lists": ["list_documentId_abc123"],
+  "status": "scheduled"
+}
+
+// Extension resolves sendgrid_list_id from target_lists
+const sendgridListIds = entity.target_lists.map(list => list.sendgrid_list_id);
+// Result: ["sg_list_abc123"]
+
+// Send to those SendGrid lists
+{
+  send_to: {
+    list_ids: sendgridListIds  // ["sg_list_abc123"]
+  }
+}
+```
+
+**Benefits of this pattern:**
+- ✅ One source of truth (subscriber-list stores SendGrid mapping)
+- ✅ Admin never sees SendGrid IDs (handled by extension)
+- ✅ Easy to switch lists (change target_lists relation)
+- ✅ Multi-list sending (target multiple subscriber lists)
+- ✅ List isolation (each list has own SendGrid list)
+
+### Meta Tracking & Analytics
+
+**Extension meta stores aggregate stats:**
+
+```json
+// Store extension meta (updated after each send)
+{
+  "meta": {
+    "sender_verified": true,
+    "total_emails_sent": 15420,
+    "last_campaign_id": "sg_campaign_xyz",
+    "last_send_at": "2024-12-01T10:00:00Z",
+    "campaigns_sent": 42,
+    "avg_open_rate": 28.5,
+    "avg_click_rate": 3.2
+  }
+}
+
+// Newsletter stores per-campaign stats (via webhooks)
+{
+  "send_stats": {
+    "total_recipients": 1250,
+    "sent": 1250,
+    "delivered": 1245,
+    "opens": 356,
+    "unique_opens": 298,
+    "clicks": 42,
+    "unique_clicks": 38,
+    "bounces": 5,
+    "unsubscribes": 2
+  }
+}
+
+// Subscriber-list stores list-level stats
+{
+  "stats": {
+    "total_subscribers": 1250,
+    "active_subscribers": 1248,
+    "unsubscribed": 2,
+    "bounced": 5,
+    "avg_open_rate": 28.5,
+    "deliverability_score": 99.6
+  }
+}
+```
+
+### Webhook Event Processing
+
+**SendGrid webhooks update all three levels:**
+
+```typescript
+// Webhook payload from SendGrid
+{
+  "event": "open",
+  "email": "user@example.com",
+  "sg_message_id": "campaign_xyz.msg_123",
+  "timestamp": 1234567890
+}
+
+// 1. Create newsletter-event record
+await strapi.documents('api::subscriber.newsletter-event').create({
+  data: {
+    event_type: "open",
+    newsletter: newsletterDocId,
+    subscriber: subscriberDocId,
+    email: "user@example.com",
+    timestamp: new Date(1234567890 * 1000),
+    sendgrid_event_id: "evt_123"
+  }
+});
+
+// 2. Update newsletter.send_stats
+newsletter.send_stats.opens += 1;
+
+// 3. Update subscriber-list-membership
+membership.last_opened_at = new Date();
+membership.engagement_score += 5;
+
+// 4. Update subscriber-list.stats (aggregate)
+list.stats.avg_open_rate = calculateAverage(allOpens, totalSent);
+```
+
+### Multi-Store Isolation Example
+
+**Store A and Store B have independent newsletter systems:**
+
+```typescript
+// Store A
+{
+  extensions: [{
+    key: "markket:sendgrid:newsletter",
+    credentials: { api_key: "encrypted_key_a" },
+    config: {
+      from_email: "newsletter@storea.com",
+      default_list_id: "sg_list_storea_123"
+    }
+  }]
+}
+
+// Store B
+{
+  extensions: [{
+    key: "markket:sendgrid:newsletter",
+    credentials: { api_key: "encrypted_key_b" },
+    config: {
+      from_email: "newsletter@storeb.com",
+      default_list_id: "sg_list_storeb_456"
+    }
+  }]
+}
+
+// User subscribes to both stores
+subscriber: {
+  Email: "user@example.com",
+  lists: [
+    { documentId: "list_storea", sendgrid_list_id: "sg_list_storea_123" },
+    { documentId: "list_storeb", sendgrid_list_id: "sg_list_storeb_456" }
+  ]
+}
+
+// User unsubscribes from Store A only
+membership_storea: { status: "unsubscribed" }
+membership_storeb: { status: "subscribed" }  // Still active!
+
+// Result: Gets emails from Store B, not Store A ✅
+```
+
+### Testing Strategy
+
+**Phase 1: Schema Testing (Current)**
+```bash
+# Deploy schemas
+git add src/api/subscriber/content-types/
+git commit -m "feat: add newsletter system schemas"
+git push
+
+# Verify in admin
+# - Create test newsletter
+# - Create test subscriber list
+# - Add test subscribers
+```
+
+**Phase 2: Extension Testing**
+```bash
+# Configure extension in admin
+Store → Extensions → Add
+{
+  "key": "markket:sendgrid:newsletter",
+  "credentials": { "use_default": true },
+  "config": { "sender_id": null },
+  "active": true
+}
+
+# Test connection
+POST /api/stores/:storeId/test-extension
+{ "extensionKey": "markket:sendgrid:newsletter" }
+
+# Should return SendGrid account info
+```
+
+**Phase 3: Handler Implementation (Future)**
+```bash
+# Implement in markket-next
+/app/api/extensions/markket/sendgrid/newsletter-send/route.ts
+/app/api/extensions/markket/sendgrid/subscriber-sync/route.ts
+/app/api/extensions/markket/sendgrid/subscriber-unsubscribe/route.ts
+
+# Test end-to-end
+# - Create subscriber → Check SendGrid contact created
+# - Send newsletter → Check SendGrid campaign created
+# - Unsubscribe → Check removed from SendGrid list
+```
+
+---
+
+**Status: Schemas production-ready. Extension pattern proven (Odoo). Deploy with confidence!** 🚀

@@ -45,6 +45,19 @@
     "custom_scripts": { "type": "text" },
     "feature_flags": { "type": "json" },
     "notification_settings": { "type": "json" },
-    "meta": { "type": "json" }
+    "meta": {
+      "type": "json"
+    },
+    "newsletter_settings": {
+      "type": "json",
+      "default": {
+        "archive_enabled": true,
+        "archive_url_pattern": "/newsletter/{store_slug}/{newsletter_slug}",
+        "show_in_footer": true,
+        "archive_title": "Newsletter Archive",
+        "unsubscribe_page_url": "/unsubscribe",
+        "preview_template": "default"
+      }
+    }
   }
 }
