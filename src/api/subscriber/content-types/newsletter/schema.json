@@ -1,0 +1,119 @@
+{
+  "kind": "collectionType",
+  "collectionName": "newsletters",
+  "info": {
+    "singularName": "newsletter",
+    "pluralName": "newsletters",
+    "displayName": "Newsletter Edition",
+    "description": "Newsletter campaigns sent via SendGrid Marketing API"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "subject": {
+      "type": "string",
+      "required": true,
+      "maxLength": 100
+    },
+    "preview_text": {
+      "type": "string",
+      "maxLength": 150
+    },
+    "content": {
+      "type": "richtext",
+      "required": true
+    },
+    "html_content": {
+      "type": "text"
+    },
+    "plain_text_content": {
+      "type": "text"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": true
+    },
+    "archive_url": {
+      "type": "string"
+    },
+    "email_includes_archive_link": {
+      "type": "boolean",
+      "default": true
+    },
+    "archive_link_text": {
+      "type": "string",
+      "default": "View in browser"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["draft", "scheduled", "sending", "sent", "paused", "cancelled", "failed"],
+      "default": "draft"
+    },
+    "scheduled_at": {
+      "type": "datetime"
+    },
+    "sent_at": {
+      "type": "datetime"
+    },
+    "cancelled_at": {
+      "type": "datetime"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store",
+      "required": true
+    },
+    "target_lists": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::subscriber.subscriber-list"
+    },
+    "sendgrid_campaign_id": {
+      "type": "string"
+    },
+    "sendgrid_single_send_id": {
+      "type": "string"
+    },
+    "send_stats": {
+      "type": "json",
+      "default": {
+        "total_recipients": 0,
+        "sent": 0,
+        "delivered": 0,
+        "opens": 0,
+        "unique_opens": 0,
+        "clicks": 0,
+        "unique_clicks": 0,
+        "bounces": 0,
+        "bounce_rate": 0,
+        "unsubscribes": 0,
+        "spam_reports": 0,
+        "invalid_emails": 0,
+        "archive_views": 0,
+        "last_updated_at": null
+      }
+    },
+    "delivery_status": {
+      "type": "enumeration",
+      "enum": ["pending", "processing", "delivered", "partially_delivered", "failed"],
+      "default": "pending"
+    },
+    "extensions": {
+      "type": "component",
+      "repeatable": true,
+      "component": "common.extension"
+    }
+  }
+}

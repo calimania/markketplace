@@ -29,6 +29,12 @@
       "relation": "manyToMany",
       "target": "api::store.store"
     },
+    "lists": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::subscriber.subscriber-list",
+      "mappedBy": "subscribers"
+    },
     "EmailVerified": {
       "type": "datetime"
     },
@@ -36,6 +42,38 @@
       "type": "component",
       "repeatable": true,
       "component": "common.extension"
+    },
+    "newsletter_preferences": {
+      "type": "json",
+      "default": {
+        "subscribed": true,
+        "frequency": "weekly",
+        "topics": [],
+        "tags": []
+      }
+    },
+    "unsubscribed_at": {
+      "type": "datetime"
+    },
+    "sendgrid_contact_id": {
+      "type": "string"
+    },
+    "sendgrid_list_ids": {
+      "type": "json",
+      "default": []
+    },
+    "last_synced_at": {
+      "type": "datetime"
+    },
+    "sync_status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "synced",
+        "failed",
+        "unsubscribed"
+      ],
+      "default": "pending"
     }
   }
 }

@@ -1,4 +1,4 @@
-export const ApiExplorerJS = `
+
 // Markketplace API Explorer JavaScript
 function saveStoreId(storeId) {
   if (storeId) localStorage.setItem('last_store_id', storeId);
@@ -223,5 +223,3 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
-`;
-
