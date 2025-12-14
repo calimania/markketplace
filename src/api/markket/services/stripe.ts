@@ -156,6 +156,7 @@ interface LineItemInput {
  * @property {string} [store_id] - Store document ID for Stripe Connect
  * @property {string} [redirect_to_url] - Custom redirect URL after payment
  * @property {number} [total] - Total amount in dollars
+ * @property {{}} [product] - (product::product)
  */
 type PaymentLinkOptions = {
   prices: LineItemInput[];
@@ -164,6 +165,12 @@ type PaymentLinkOptions = {
   store_id?: string;
   redirect_to_url?: string;
   total?: number;
+  product?: {
+    documentId: string;
+    Name: string;
+    PRICES: [any];
+    SKU: string;
+  };
 };
 
 /**
@@ -281,7 +288,8 @@ export const createPaymentLinkWithPriceIds = async ({
   store_id,
   redirect_to_url,
   total,
-}: PaymentLinkOptions): Promise<Stripe.PaymentLink | null> => {
+  product,
+}: PaymentLinkOptions): Promise<{ link: Stripe.PaymentLink | null, details: {}[], feeInfo?: any }> => {
   const validation = validatePaymentLinkInput({
     prices,
     include_shipping,
@@ -289,6 +297,24 @@ export const createPaymentLinkWithPriceIds = async ({
     store_id,
     redirect_to_url,
     total,
+    product,
+  });
+
+  const details = prices.map((price: any) => {
+    // @TODO: review, working with elements present in the current client implementations
+    const _price = product.PRICES?.find((p: { Name: string, }) => (p.Name === price.Name));
+
+    return {
+      Name: `${product?.Name} - ${_price?.Name || price?.Name}`,
+      product: product.documentId,
+      Quantity: parseInt(price.quantity || '0', 10),
+      Unit_Price: parseFloat(_price?.Price || price.unit_amount || '0'),
+      Total_Price: parseFloat(_price?.Price || price.unit_amount || '0') * parseFloat(price.quantity || '0'),
+      Short_description: _price?.Description || price?.Name || product?.Name || 'created with stripe link',
+      Stripe_price_id: _price?.STRIPE_ID || '',
+      Stripe_product_id: product.SKU || '',
+      Currency: price.Currency || 'USD',
+    };
   });
 
   if (!validation.valid) {
@@ -311,8 +337,7 @@ export const createPaymentLinkWithPriceIds = async ({
 
   console.log('[STRIPE_SERVICE] Line items built', {
     count: lineItems.length,
-    items: lineItems.map((item: any, idx: number) => ({
-      index: idx,
+    items: lineItems.map((item: any) => ({
       has_price_id: !!item.price,
       has_price_data: !!item.price_data,
       unit_amount: item.price_data?.unit_amount || 'N/A',
@@ -344,9 +369,13 @@ export const createPaymentLinkWithPriceIds = async ({
   const baseUrl = redirect_to_url || (store?.slug ? `https://de.markket.place/store/${store.slug}/receipt` : 'https://markket.place/receipt');
   const redirectUrl = `${baseUrl}?session_id={CHECKOUT_SESSION_ID}`;
 
+  // default payment link with no connected account
   if (!store?.STRIPE_CUSTOMER_ID) {
-    // default payment link with no connected account
-    return await createStandardPaymentLink(client, lineItems, redirectUrl, include_shipping);
+    const link = await createStandardPaymentLink(client, lineItems, redirectUrl, include_shipping);
+    return {
+      link,
+      details,
+    }
   }
 
   const totalCents = Math.round((total || 0) * 100);
@@ -363,7 +392,8 @@ export const createPaymentLinkWithPriceIds = async ({
     mismatch: totalCents !== lineItems.reduce((sum: number, item: any) => sum + ((item.price_data?.unit_amount || 0) * (item.quantity || 1)), 0) ? 'MISMATCH DETECTED' : 'OK',
   });
 
-  const connectLink = await buildConnectPaymentLink({
+  // --- NEW: Get feeInfo from buildConnectPaymentLink and return it for order.extra ---
+  const connectResult = await buildConnectPaymentLink({
     client,
     connectedAccountId: store.STRIPE_CUSTOMER_ID,
     lineItems,
@@ -382,7 +412,11 @@ export const createPaymentLinkWithPriceIds = async ({
     }
   });
 
-  return connectLink;
+  return {
+    link: connectResult?.link || null,
+    details,
+    feeInfo: connectResult?.feeInfo, // <-- Save this to order.extra when creating the order
+  };
 };
 
 /**

@@ -332,41 +332,16 @@ export function estimateConnectedAccountNet(
 /**
  * Build and create a Stripe Connect payment link
  *
- * End-to-end Connect payment link creation:
- * 1. Validate connected account is ready
- * 2. Resolve fee configuration (defaults + store overrides)
- * 3. Calculate application fee
- * 4. Create payment link with transfer_data
- * 5. Log financial details for audit trail
+ * When you create a payment link, you should store key fee and payout breakdown info
+ * (application fee, estimated Stripe fee, net to seller, config source, etc.)
+ * in the order's `extra` field for later reconciliation and audit.
  *
- * The resulting payment link:
- * - Customer is charged the full amount
- * - Platform collects application_fee_amount
- * - Remainder is transferred to connected_account_id
- * - Stripe's processing fee is deducted from the transfer
- *
- * @async
- * @param {ConnectPaymentLinkOptions} options - Complete payment link configuration
- * @returns {Promise<Stripe.PaymentLink | null>} Created payment link or null on error
- * @example
- * const link = await buildConnectPaymentLink({
- *   client: stripeClient,
- *   connectedAccountId: 'acct_123',
- *   lineItems: [...],
- *   redirectUrl: 'https://example.com/receipt',
- *   totalCents: 10000,
- *   store: storeObject,
- *   defaultFeeConfig: { ... },
- *   stripeProcessingFees: { ... }
- * });
- *
- * if (link) {
- *   console.log('Payment link:', link.url);
- * }
+ * Return this info as part of the payment link creation result so the order service/controller
+ * can persist it in `order.extra`.
  */
 export async function buildConnectPaymentLink(
   options: ConnectPaymentLinkOptions
-): Promise<Stripe.PaymentLink | null> {
+): Promise<{ link: Stripe.PaymentLink | null, feeInfo: any }> {
   const {
     client,
     connectedAccountId,
@@ -383,23 +358,34 @@ export async function buildConnectPaymentLink(
   const connectedAccount = await validateConnectAccount(client, connectedAccountId);
   if (!connectedAccount) {
     console.error('[STRIPE_CONNECT] Cannot create payment link, account validation failed');
-    return null;
+    return { link: null, feeInfo: null };
   }
 
+  // --- FEE CALCULATION LOGIC ---
+  // Use cascade: ENV/defaults → store.settings['payouts:stripe'] → final config
   const feeConfig = resolveConnectFeeConfig(store, defaultFeeConfig);
-
-  const applicationFeeAmount = calculateFee(
-    totalCents,
-    store,
-    transactionType
-  );
-
+  const applicationFeeAmount = calculateApplicationFee(totalCents, feeConfig);
+  const stripePercent = stripeProcessingFees?.percentFeeDecimal ?? 0.029;
+  const stripeFixed = stripeProcessingFees?.fixedCents ?? 30;
+  const stripeFeeEstimate = Math.round(totalCents * stripePercent) + stripeFixed;
   const breakdown = getFeeBreakdown(totalCents, store, transactionType);
+
+  // Prepare fee info for order.extra
+  const feeInfo = {
+    application_fee_cents: applicationFeeAmount,
+    application_fee_usd: (applicationFeeAmount / 100).toFixed(2),
+    stripe_fee_estimate_cents: stripeFeeEstimate,
+    stripe_fee_estimate_usd: (stripeFeeEstimate / 100).toFixed(2),
+    net_to_seller_cents: totalCents - applicationFeeAmount - stripeFeeEstimate,
+    net_to_seller_usd: ((totalCents - applicationFeeAmount - stripeFeeEstimate) / 100).toFixed(2),
+    config_source: store?.settings?.meta?.['payouts:stripe'] ? 'store-override' : 'env-defaults',
+    fee_config: feeConfig,
+    stripe_processing_fees: { percent: stripePercent, fixed: stripeFixed },
+    breakdown,
+  };
 
   console.log('[STRIPE_CONNECT] Fee breakdown - Transaction Analysis', {
     transaction_usd: breakdown.transaction_total_usd,
-
-    // Platform fee breakdown
     platform_fee: {
       percentage_rate: breakdown.percentage_rate,
       percentage_calc: breakdown.percentage_calc_usd,
@@ -409,28 +395,24 @@ export async function buildConnectPaymentLink(
       final_percent_of_transaction: breakdown.final_platform_fee_percent,
       minimum_applied: breakdown.minimum_applied,
     },
-
-    // Stripe's fees (informational - estimated)
+    // Stripe's fees (informational - estimated, using stripeProcessingFees)
     stripe_fees_estimate: {
       note: 'Estimate only - actual varies by card type',
-      percent_rate: '3.5%',
-      fixed: '$0.30',
-      estimated_total: ((totalCents * 0.035 + 30) / 100).toFixed(2)
+      percent_rate: (stripePercent * 100).toFixed(2) + '%',
+      fixed: `$${(stripeFixed / 100).toFixed(2)}`,
+      estimated_total: (stripeFeeEstimate / 100).toFixed(2)
     },
-
-    // Combined impact
     total_fees: {
       platform_plus_stripe_estimate: (
-        (applicationFeeAmount + Math.round(totalCents * 0.035 + 30)) / 100
+        (applicationFeeAmount + stripeFeeEstimate) / 100
       ).toFixed(2),
       seller_receives: (
-        (totalCents - applicationFeeAmount - Math.round(totalCents * 0.035 + 30)) / 100
+        (totalCents - applicationFeeAmount - stripeFeeEstimate) / 100
       ).toFixed(2),
       seller_net_percent: (
-        ((totalCents - applicationFeeAmount - Math.round(totalCents * 0.035 + 30)) / totalCents) * 100
+        ((totalCents - applicationFeeAmount - stripeFeeEstimate) / totalCents) * 100
       ).toFixed(2),
     },
-
     config_source: store?.settings?.meta?.['payouts:stripe'] ? 'store-override' : 'env-defaults',
     store_tier: breakdown.store_tier,
   });
@@ -471,17 +453,17 @@ export async function buildConnectPaymentLink(
     console.log('[STRIPE_CONNECT] Payment link created at Stripe', {
       link_id: paymentLink.id,
       link_url: paymentLink.url.substring(0, 60) + '...',
-      line_items_data: paymentLink.line_items?.data?.map((item: any) => ({
+      line_items_data: paymentLink.line_items?.data?.map((item: Stripe.LineItem) => ({
         id: item.id,
         price: item.price?.id,
         quantity: item.quantity,
         amount_total: item.amount_total,
       })),
+      breakdown,
     });
 
-    console.log('[STRIPE_CONNECT] Payment link created', breakdown);
-
-    return paymentLink;
+    // Return both the link and feeInfo for order creation
+    return { link: paymentLink, feeInfo };
   } catch (error) {
     console.error('[STRIPE_CONNECT] Payment link creation failed:', error?.message);
     console.error('[STRIPE_CONNECT] Stripe error details:', {
@@ -490,6 +472,6 @@ export async function buildConnectPaymentLink(
       param: error?.param,
       message: error?.message,
     });
-    return null;
+    return { link: null, feeInfo };
   }
 }

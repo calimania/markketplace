@@ -16,6 +16,8 @@ import { version } from '../../../../package.json';
 import * as crypto from 'crypto';
 const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
+import { generateRandomSlug } from '../../shortner/services/slug-generator';
+import { ACTION_KEYS } from './action-keys';
 
 import {
   createPaymentLinkWithPriceIds,
@@ -350,27 +352,19 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         }
       })
     }
-
-    if (body?.action === 'stripe.link') {
+    /**
+     * Returns a valid payment link for the client, with stripe connect attribution when present
+     * Validates product and prices ids, to check for valid stripe ids
+     */
+    if (body?.action === ACTION_KEYS.stripeLink) {
       const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
 
-      console.log('[STRIPE_LINK_DEBUG] Payment link creation initiated', {
-        requested_total: total,
-        requested_total_type: typeof total,
-        prices_count: Array.isArray(prices) ? prices.length : 0,
-        prices_breakdown: prices?.map((p: any) => ({
-          price_id: p.price || 'custom',
-          unit_amount: p.unit_amount,
-          quantity: p.quantity,
-          line_total: (p.unit_amount || 0) * (p.quantity || 1)
-        })),
-        store_id,
-        includes_shipping,
-        stripe_test,
-        redirect_to_url,
-      });
+      const productData = product
+        ? await strapi.documents('api::product.product').findOne({ documentId: product, populate: ['PRICES'] })
+        : null;
 
       const response = await createPaymentLinkWithPriceIds({
+        product: productData,
         prices: body?.prices || [],
         include_shipping: !!includes_shipping,
         stripe_test: !!stripe_test,
@@ -379,18 +373,6 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         total,
       });
 
-      console.log('[STRIPE_LINK_DEBUG] Payment link response', {
-        success: !!response,
-        link_id: response?.id,
-        link_url: response?.url ? response.url.substring(0, 50) + '...' : null,
-        url_length: response?.url?.length,
-      });
-
-      link = {
-        response,
-        body,
-      };
-
       const order = await strapi.service('api::order.order').create({
         data: {
           store: body.store_id,
@@ -398,15 +380,12 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           Currency: 'USD',
           Status: 'open',
           Shipping_Address: {},
-          STRIPE_PAYMENT_ID: response?.id,
-          Details: prices.map((price: any) => ({
-            Price: parseInt(price?.unit_amount || '0', 10),
-            product,
-            Quantity: parseInt(price.quantity || '0', 10),
-            Name: price?.Name,
-          })),
+          uuid: generateRandomSlug(),
+          STRIPE_PAYMENT_ID: response?.link?.id,
+          Details: response.details,
           extra: {
             ...extraMeta,
+            fees: response?.feeInfo,
             link_creation_debug: {
               requested_total: total,
               calculated_total: prices?.reduce((sum: number, p: any) => sum + ((p.unit_amount || 0) * (p.quantity || 1)), 0),
@@ -415,16 +394,25 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         }
       });
 
-      console.log('[STRIPE_LINK_DEBUG] Order created', {
+      console.log('[STRIPE_LINK]createPaymentLink', {
+        success: !!response,
+        link_id: response?.link?.id,
+        link_url: response?.link?.url ? response?.link?.url.substring(0, 50) + '...' : null,
+        url_length: response?.link?.url?.length,
         order_id: order.documentId,
         order_amount: order.Amount,
         stripe_payment_id: order.STRIPE_PAYMENT_ID,
       });
 
+      link = {
+        response: response.link,
+        body,
+      };
       message = `order:${order.documentId}`;
     }
-
-
+    /**
+     * Retrieves transaction data to display a receipt for the buyer
+     */
     if (body?.action === 'stripe.receipt' && body?.session_id) {
       const response = await getSessionById(body?.session_id, body?.session_id?.includes('cs_test'));
       link = {
@@ -453,7 +441,29 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       });
 
       try {
+        // --- DEC: Decrement inventory after order is completed/paid ---
         const order = await handleCheckoutSessionCompleted(session, is_test);
+        const details: any[] = (order as unknown as { Details: [] }).Details || [];
+        // const extra = order.extra || {};
+        // await strapi.services['order'].updateOrderFromWebhook(order.documentId, details, extra, strapi);
+
+        await strapi.service(modelId).create({
+          data: {
+            Key: ACTION_KEYS.inventoryDecrement,
+            Content: {
+              orderId: order.documentId,
+              details: details.map(d => ({
+                product: d.product,
+                Name: d.Name,
+                Quantity: d.Quantity,
+                Stripe_price_id: d.Stripe_price_id,
+              })),
+              timestamp: new Date().toISOString(),
+              action: 'decrement_inventory_after_payment'
+            },
+            user_key_or_id: (order as unknown as { buyer: string }).buyer || '',
+          }
+        });
 
         console.log('[MARKKET_CONTROLLER] Checkout session processed', {
           orderId: order.documentId,

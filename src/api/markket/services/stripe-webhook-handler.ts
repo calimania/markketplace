@@ -159,7 +159,7 @@ export async function handleCheckoutSessionCompleted(
   // Find existing order by payment link
   let order = sessionData.paymentLinkId ? await strapi.db.query('api::order.order').findOne({
     where: { STRIPE_PAYMENT_ID: sessionData.paymentLinkId },
-    populate: ['store.users', 'store.settings', 'Shipping_Address', 'buyer']
+    populate: ['store.users', 'store.settings', 'Shipping_Address', 'buyer', 'Details', 'Payment_attempts']
   }) : null;
 
   if (!order) {
@@ -180,7 +180,7 @@ export async function handleCheckoutSessionCompleted(
     };
 
     order = await strapi.service('api::order.order').update(order.documentId, {
-      populate: ['Shipping_Address', 'store'],
+      populate: ['Shipping_Address', 'store', 'Details'],
       data: {
         Status: 'complete',
         Payment_attempts: [...prevAttempts, newAttempt],
