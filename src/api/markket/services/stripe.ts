@@ -289,7 +289,7 @@ export const createPaymentLinkWithPriceIds = async ({
   redirect_to_url,
   total,
   product,
-}: PaymentLinkOptions): Promise<{ link: Stripe.PaymentLink | null, details: {}[], feeInfo?: any }> => {
+}: PaymentLinkOptions): Promise<{ link: Stripe.PaymentLink | null, details: {}[], feeInfo?: any, connectStatus?: any }> => {
   const validation = validatePaymentLinkInput({
     prices,
     include_shipping,
@@ -354,68 +354,97 @@ export const createPaymentLinkWithPriceIds = async ({
         documentId: store_id,
         populate: ['settings'],
       });
-
     } catch (error) {
       console.error('[STRIPE_SERVICE] Store fetch failed:', error?.message);
-      return null;
-    }
-
-    if (!store) {
-      console.error('[STRIPE_SERVICE] Store not found');
-      return null;
+      store = null;
     }
   }
 
   const baseUrl = redirect_to_url || (store?.slug ? `https://de.markket.place/store/${store.slug}/receipt` : 'https://markket.place/receipt');
   const redirectUrl = `${baseUrl}?session_id={CHECKOUT_SESSION_ID}`;
 
-  // default payment link with no connected account
-  if (!store?.STRIPE_CUSTOMER_ID) {
-    const link = await createStandardPaymentLink(client, lineItems, redirectUrl, include_shipping);
-    return {
-      link,
-      details,
+  let connectStatus: any = null;
+
+  // Try to create a Connect payment link if possible
+  let connectResult: { link: Stripe.PaymentLink | null, feeInfo?: any } | null = null;
+  let triedConnect = false;
+  let connectFailedReason: string | null = null;
+
+  if (store?.STRIPE_CUSTOMER_ID) {
+    triedConnect = true;
+    connectResult = await buildConnectPaymentLink({
+      client,
+      connectedAccountId: store.STRIPE_CUSTOMER_ID,
+      lineItems,
+      redirectUrl,
+      totalCents: Math.round((total || 0) * 100),
+      store: store as any,
+      includeShipping: include_shipping,
+      defaultFeeConfig: {
+        percentFeeDecimal: DEFAULT_PERCENT_FEE / 100,
+        baseFeeCents: DEFAULT_BASE_FEE_CENTS,
+        maxAppFeeCents: DEFAULT_MAX_APP_FEE_CENTS,
+      },
+      stripeProcessingFees: {
+        percentFeeDecimal: STRIPE_PROCESSING_PERCENT / 100,
+        fixedCents: STRIPE_PROCESSING_FIXED_CENTS,
+      }
+    });
+
+    if (!connectResult?.link) {
+      connectFailedReason = 'Stripe Connect account found but charges are not enabled or account validation failed. Fallback to platform payment link.';
+      connectStatus = {
+        attempted: true,
+        failed: true,
+        reason: connectFailedReason,
+        connectedAccountId: store.STRIPE_CUSTOMER_ID,
+      };
+    } else {
+      connectStatus = {
+        attempted: true,
+        failed: false,
+        connectedAccountId: store.STRIPE_CUSTOMER_ID,
+      };
     }
   }
 
-  const totalCents = Math.round((total || 0) * 100);
+  // If Connect failed or not present, fallback to standard payment link
+  if (!connectResult?.link) {
+    const link = await createStandardPaymentLink(client, lineItems, redirectUrl, include_shipping);
 
-  console.log('[STRIPE_SERVICE] fee calculation', {
-    input_total: total,
-    input_total_type: typeof total,
-    calculated_cents: totalCents,
-    calculated_usd: (totalCents / 100).toFixed(2),
-    line_items_total_cents: lineItems.reduce((sum: number, item: any) => {
-      const itemTotal = (item.price_data?.unit_amount || 0) * (item.quantity || 1);
-      return sum + itemTotal;
-    }, 0),
-    mismatch: totalCents !== lineItems.reduce((sum: number, item: any) => sum + ((item.price_data?.unit_amount || 0) * (item.quantity || 1)), 0) ? 'MISMATCH DETECTED' : 'OK',
-  });
+    // Add connectStatus to indicate fallback in order.extra
+    return {
+      link: link || null,
+      details,
+      feeInfo: {
+        application_fee_cents: 0,
+        application_fee_usd: '0.00',
+        stripe_fee_estimate_cents: 0,
+        stripe_fee_estimate_usd: '0.00',
+        net_to_seller_cents: 0,
+        net_to_seller_usd: '0.00',
+        config_source: 'no-connected-account',
+        fee_config: null,
+        stripe_processing_fees: {
+          percent: STRIPE_PROCESSING_PERCENT / 100,
+          fixed: STRIPE_PROCESSING_FIXED_CENTS
+        },
+        breakdown: null
+      },
+      connectStatus: connectStatus || {
+        attempted: false,
+        failed: false,
+        reason: 'no-connected-account'
+      }
+    };
+  }
 
-  // --- NEW: Get feeInfo from buildConnectPaymentLink and return it for order.extra ---
-  const connectResult = await buildConnectPaymentLink({
-    client,
-    connectedAccountId: store.STRIPE_CUSTOMER_ID,
-    lineItems,
-    redirectUrl,
-    totalCents,
-    store: store as any,
-    includeShipping: include_shipping,
-    defaultFeeConfig: {
-      percentFeeDecimal: DEFAULT_PERCENT_FEE / 100,
-      baseFeeCents: DEFAULT_BASE_FEE_CENTS,
-      maxAppFeeCents: DEFAULT_MAX_APP_FEE_CENTS,
-    },
-    stripeProcessingFees: {
-      percentFeeDecimal: STRIPE_PROCESSING_PERCENT / 100,
-      fixedCents: STRIPE_PROCESSING_FIXED_CENTS,
-    }
-  });
-
+  // If Connect succeeded
   return {
-    link: connectResult?.link || null,
+    link: connectResult.link,
     details,
-    feeInfo: connectResult?.feeInfo, // <-- Save this to order.extra when creating the order
+    feeInfo: connectResult.feeInfo,
+    connectStatus
   };
 };
 

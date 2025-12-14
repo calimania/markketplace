@@ -341,7 +341,7 @@ export function estimateConnectedAccountNet(
  */
 export async function buildConnectPaymentLink(
   options: ConnectPaymentLinkOptions
-): Promise<{ link: Stripe.PaymentLink | null, feeInfo: any }> {
+): Promise<{ link: Stripe.PaymentLink | null, feeInfo: any, fallbackUsed?: boolean }> {
   const {
     client,
     connectedAccountId,
@@ -355,10 +355,47 @@ export async function buildConnectPaymentLink(
     transactionType = TransactionType.PRODUCT,
   } = options;
 
+  // Try to create a Connect payment link first
   const connectedAccount = await validateConnectAccount(client, connectedAccountId);
   if (!connectedAccount) {
+    // Only log the error once here, not in the catch below
     console.error('[STRIPE_CONNECT] Cannot create payment link, account validation failed');
-    return { link: null, feeInfo: null };
+    // Fallback: Try to create a standard payment link (platform account)
+    try {
+      const fallbackLink = await client.paymentLinks.create({
+        line_items: lineItems,
+        after_completion: {
+          type: 'redirect',
+          redirect: { url: redirectUrl },
+        },
+        ...(includeShipping && {
+          shipping_address_collection: {
+            allowed_countries: ['US', 'CO', 'MX', 'SV', 'IL'],
+          }
+        })
+      });
+
+      return {
+        link: fallbackLink,
+        feeInfo: {
+          application_fee_cents: 0,
+          application_fee_usd: '0.00',
+          stripe_fee_estimate_cents: 0,
+          stripe_fee_estimate_usd: '0.00',
+          net_to_seller_cents: 0,
+          net_to_seller_usd: '0.00',
+          config_source: 'no-connected-account',
+          fee_config: null,
+          stripe_processing_fees: stripeProcessingFees,
+          breakdown: null
+        },
+        fallbackUsed: true
+      };
+    } catch (fallbackError) {
+      // Only log fallback error here
+      console.error('[STRIPE_CONNECT] Fallback payment link creation failed:', fallbackError?.message);
+      return { link: null, feeInfo: null, fallbackUsed: true };
+    }
   }
 
   // --- FEE CALCULATION LOGIC ---
@@ -463,15 +500,11 @@ export async function buildConnectPaymentLink(
     });
 
     // Return both the link and feeInfo for order creation
-    return { link: paymentLink, feeInfo };
+    return { link: paymentLink, feeInfo, fallbackUsed: false };
   } catch (error) {
     console.error('[STRIPE_CONNECT] Payment link creation failed:', error?.message);
-    console.error('[STRIPE_CONNECT] Stripe error details:', {
-      type: error?.type,
-      code: error?.code,
-      param: error?.param,
-      message: error?.message,
-    });
-    return { link: null, feeInfo };
+    // Only fallback here if the error is NOT due to account validation (i.e., Stripe API/network error)
+    // Otherwise, fallback already handled above.
+    return { link: null, feeInfo: null, fallbackUsed: false };
   }
 }
