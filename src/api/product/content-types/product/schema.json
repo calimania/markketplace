@@ -5,7 +5,7 @@
     "singularName": "product",
     "pluralName": "products",
     "displayName": "Product",
-    "description": ""
+    "description": "Attributes and stripe information"
   },
   "options": {
     "draftAndPublish": true
@@ -31,11 +31,6 @@
       "target": "api::store.store"
     },
     "usd_price": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
       "default": 0,
       "type": "decimal"
     },
@@ -48,27 +43,12 @@
       "type": "richtext"
     },
     "quantity": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
       "type": "integer"
     },
     "amountSold": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
       "type": "integer"
     },
     "active": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
       "type": "boolean"
     },
     "attributes": {
@@ -80,11 +60,6 @@
       "type": "richtext"
     },
     "SKU": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
       "type": "string"
     },
     "Thumbnail": {
@@ -93,12 +68,7 @@
       "required": false,
       "allowedTypes": [
         "images"
-      ],
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      }
+      ]
     },
     "Slides": {
       "type": "media",
@@ -106,21 +76,10 @@
       "required": false,
       "allowedTypes": [
         "images"
-      ],
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      }
+      ]
     },
     "slug": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
-      "type": "uid",
-      "targetField": "Name"
+      "type": "string"
     },
     "SEO": {
       "type": "component",
@@ -146,11 +105,6 @@
       "displayName": "Prices",
       "type": "component",
       "repeatable": true,
-      "pluginOptions": {
-        "i18n": {
-          "localized": true
-        }
-      },
       "component": "common.prices"
     },
     "creator": {
@@ -161,11 +115,6 @@
     "extensions": {
       "type": "component",
       "repeatable": true,
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      },
       "component": "common.extension"
     }
   }

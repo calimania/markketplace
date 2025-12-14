@@ -5,10 +5,10 @@
     "singularName": "order",
     "pluralName": "orders",
     "displayName": "Order",
-    "description": ""
+    "description": "Customer promises and commitments to a product"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
@@ -45,10 +45,10 @@
       "component": "common.address"
     },
     "Details": {
-      "displayName": "PRODUCT_SNAPSHOP",
+      "displayName": "Product Snapshot",
       "type": "component",
       "repeatable": true,
-      "component": "common.product-snapshop"
+      "component": "common.product-snapshot"
     },
     "uuid": {
       "type": "uid",
@@ -60,7 +60,7 @@
       "target": "plugin::users-permissions.user"
     },
     "Payment_attempts": {
-      "displayName": "Payment_attempts",
+      "label": "Payment Attempts",
       "type": "component",
       "repeatable": true,
       "component": "common.payment-attempts"

@@ -16,6 +16,8 @@ import { version } from '../../../../package.json';
 import * as crypto from 'crypto';
 const { createCoreController } = require('@strapi/strapi').factories;
 const modelId = "api::markket.markket";
+import { generateRandomSlug } from '../../shortner/services/slug-generator';
+import { ACTION_KEYS } from './action-keys';
 
 import {
   createPaymentLinkWithPriceIds,
@@ -351,24 +353,34 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       })
     }
 
-    if (body?.action === 'stripe.link') {
+    if (body?.action === ACTION_KEYS.stripeLink) {
       const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
 
-      console.log('[STRIPE_LINK_DEBUG] Payment link creation initiated', {
-        requested_total: total,
-        requested_total_type: typeof total,
-        prices_count: Array.isArray(prices) ? prices.length : 0,
-        prices_breakdown: prices?.map((p: any) => ({
-          price_id: p.price || 'custom',
-          unit_amount: p.unit_amount,
-          quantity: p.quantity,
-          line_total: (p.unit_amount || 0) * (p.quantity || 1)
-        })),
-        store_id,
-        includes_shipping,
-        stripe_test,
-        redirect_to_url,
-      });
+      // Validate and populate product info for each price
+      const populatedPrices = await Promise.all(prices.map(async (price: any) => {
+        const productId = price.product || product;
+        const productData = productId
+          ? await strapi.documents('api::product.product').findOne({ documentId: productId })
+          : null;
+        if (!productData) {
+          throw new Error(`Product not found: ${productId}`);
+        }
+
+        return {
+          Name: `${productData?.Name} - ${price?.Name}`,
+          product: productId,
+          Quantity: parseInt(price.quantity || '0', 10),
+          Unit_Price: parseFloat(price?.unit_amount || '0'),
+          Total_Price: parseFloat(price?.unit_amount || '0') * parseFloat(price.quantity || '0'),
+          Short_description: price.Description || productData?.Name || 'created with stripe link',
+          Stripe_price_id: price.Stripe_price_id || price.stripe_price_id || price.price || '',
+          Stripe_product_id: productData.SKU || '',
+          Amount_paid: price.amount_paid || null,
+          Currency: price.currency || 'USD',
+          Stripe_fee_cents: price.stripe_fee_cents || null,
+          Net_received_cents: price.net_received_cents || null
+        };
+      }));
 
       const response = await createPaymentLinkWithPriceIds({
         prices: body?.prices || [],
@@ -398,13 +410,9 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           Currency: 'USD',
           Status: 'open',
           Shipping_Address: {},
+          uuid: generateRandomSlug(),
           STRIPE_PAYMENT_ID: response?.id,
-          Details: prices.map((price: any) => ({
-            Price: parseInt(price?.unit_amount || '0', 10),
-            product,
-            Quantity: parseInt(price.quantity || '0', 10),
-            Name: price?.Name,
-          })),
+          Details: populatedPrices,
           extra: {
             ...extraMeta,
             link_creation_debug: {
@@ -453,7 +461,29 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       });
 
       try {
+        // --- DEC: Decrement inventory after order is completed/paid ---
         const order = await handleCheckoutSessionCompleted(session, is_test);
+        const details: any[] = (order as unknown as { Details: [] }).Details || [];
+        // const extra = order.extra || {};
+        // await strapi.services['order'].updateOrderFromWebhook(order.documentId, details, extra, strapi);
+
+        await strapi.service(modelId).create({
+          data: {
+            Key: ACTION_KEYS.inventoryDecrement,
+            Content: {
+              orderId: order.documentId,
+              details: details.map(d => ({
+                product: d.product,
+                Name: d.Name,
+                Quantity: d.Quantity,
+                Stripe_price_id: d.Stripe_price_id,
+              })),
+              timestamp: new Date().toISOString(),
+              action: 'decrement_inventory_after_payment'
+            },
+            user_key_or_id: (order as unknown as { buyer: string }).buyer || '',
+          }
+        });
 
         console.log('[MARKKET_CONTROLLER] Checkout session processed', {
           orderId: order.documentId,

@@ -1,0 +1,45 @@
+{
+  "collectionName": "components_common_product_snapshots",
+  "info": {
+    "displayName": "Product Snapshot",
+    "icon": "clock"
+  },
+  "options": {},
+  "attributes": {
+    "Name": {
+      "type": "string"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::product.product"
+    },
+    "Quantity": {
+      "type": "integer"
+    },
+    "Unit_Price": {
+      "label": "Unit Price",
+      "type": "decimal"
+    },
+    "Total_Price": {
+      "label": "Total Price",
+      "type": "decimal"
+    },
+    "Short_description": {
+      "type": "string"
+    },
+    "Stripe_price_id": {
+      "type": "string",
+      "required": false,
+      "unique": false,
+      "configurable": false,
+      "description": "External Stripe price ID, optional for Stripe reconciliation, should be equal to Price_document_id.Stripe_id"
+    },
+    "Stripe_product_id": {
+      "type": "string"
+    },
+    "Currency": {
+      "type": "string"
+    }
+  }
+}

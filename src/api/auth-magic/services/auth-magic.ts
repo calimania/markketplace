@@ -88,21 +88,22 @@ export default ({ strapi }) => ({
       // If no store found or no store_id provided, use default store
       if (!store) {
         console.log('Fetching default store by slug:', DEFAULT_STORE_SLUG);
+
         const stores = await strapi.documents('api::store.store').findMany({
           filters: { slug: DEFAULT_STORE_SLUG },
           populate: ['settings', 'SEO'],
           limit: 1
         });
+
         store = stores && stores.length > 0 ? stores[0] : null;
-        console.log('📊 Default store found:', !!store, stores?.length);
+        console.log('Default store found:', !!store, stores?.length);
       }
 
-      const baseUrl = store?.settings?.domain || 'https://de.markket.place';
+      const baseUrl = store?.settings?.domain || 'https://markket.place';
       const magicUrl = `${baseUrl}/auth/magic?code=${code}`;
 
       console.log('URLs:', { baseUrl, magicUrl });
 
-      // Generate a unique alias for the short URL
       let alias = generateRandomSlug();
 
       // Check for collision (very unlikely but possible)

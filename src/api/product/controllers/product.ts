@@ -39,7 +39,6 @@ const coreController = factories.createCoreController('api::product.product', ({
       return;
     }
 
-    // Fetch product
     const product = await strapi.documents('api::product.product').findOne({
       documentId,
       populate: ['PRICES', 'Thumbnail', 'Slides']
@@ -52,7 +51,6 @@ const coreController = factories.createCoreController('api::product.product', ({
     }
 
     try {
-      // Sync with Stripe, update SKU and prices, resolve useful data
       const syncResult = await syncProductWithStripe(product, { strapi, ctx });
       ctx.body = {
         success: true,
@@ -63,8 +61,7 @@ const coreController = factories.createCoreController('api::product.product', ({
       ctx.status = 500;
       ctx.body = { error: error.message };
     }
-  }
+  },
 }));
-
 
 export default coreController;
