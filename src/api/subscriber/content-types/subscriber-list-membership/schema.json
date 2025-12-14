@@ -1,0 +1,79 @@
+{
+  "kind": "collectionType",
+  "collectionName": "subscriber_list_memberships",
+  "info": {
+    "singularName": "subscriber-list-membership",
+    "pluralName": "subscriber-list-memberships",
+    "displayName": "Subscriber List Membership",
+    "description": "Track subscription status per list - enables store-level unsubscribe"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": false
+    }
+  },
+  "attributes": {
+    "subscriber": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscriber.subscriber",
+      "required": true
+    },
+    "list": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscriber.subscriber-list",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["subscribed", "unsubscribed", "bounced", "complained", "invalid"],
+      "default": "subscribed"
+    },
+    "subscribed_at": {
+      "type": "datetime"
+    },
+    "unsubscribed_at": {
+      "type": "datetime"
+    },
+    "unsubscribe_reason": {
+      "type": "text"
+    },
+    "source": {
+      "type": "string"
+    },
+    "sendgrid_contact_id": {
+      "type": "string"
+    },
+    "bounce_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "last_bounce_at": {
+      "type": "datetime"
+    },
+    "bounce_type": {
+      "type": "enumeration",
+      "enum": ["none", "soft", "hard", "block"],
+      "default": "none"
+    },
+    "last_opened_at": {
+      "type": "datetime"
+    },
+    "last_clicked_at": {
+      "type": "datetime"
+    },
+    "engagement_score": {
+      "type": "integer",
+      "default": 100,
+      "min": 0,
+      "max": 100
+    },
+    "last_synced_at": {
+      "type": "datetime"
+    }
+  }
+}

@@ -13,9 +13,11 @@ import {
   getQuickStats,
   getVisibilityFlags,
 } from '../services/dashboard';
-import { ApiExplorerHTML } from '../templates/api-explorer.html';
-import { ApiExplorerJS } from '../templates/api-explorer.js';
 import { decryptCredentials, sensitiveFields } from '../../../services/encryption';
+import { testSendGridConnection } from '../../../services/sendgrid-marketing';
+import { testOdooConnection } from '../../../services/odoo-partner';
+import fs from 'fs';
+import path from 'path';
 
 /** Checks for store record for user and user_admin records */
 async function checkUserStoreAccess(
@@ -431,22 +433,36 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
   /**
    * GET /api/api-explorer
-   * Simple HTML API explorer for testing endpoints
+   * Serve static HTML file with clean URL
    */
   async apiExplorer(ctx: any) {
-    ctx.type = 'text/html';
-    ctx.body = ApiExplorerHTML;
+    try {
+      const filePath = path.join(process.cwd(), 'public', 'api-explorer.html');
+      const html = fs.readFileSync(filePath, 'utf8');
+
+      ctx.type = 'text/html';
+      ctx.body = html;
+    } catch (error) {
+      console.error('[API_EXPLORER] Failed to read file:', error.message);
+      return ctx.notFound('API Explorer not found');
+    }
   },
 
   /**
    * GET /api/api-explorer.js
-   * External JavaScript for API explorer (CSP compliant)
+   * Serve static JS file
    */
   async apiExplorerJS(ctx: any) {
-    const js = ApiExplorerJS;
+    try {
+      const filePath = path.join(process.cwd(), 'public', 'api-explorer.js');
+      const js = fs.readFileSync(filePath, 'utf8');
 
-    ctx.type = 'application/javascript';
-    ctx.body = js;
+      ctx.type = 'application/javascript';
+      ctx.body = js;
+    } catch (error) {
+      console.error('[API_EXPLORER] Failed to read file:', error.message);
+      return ctx.notFound('API Explorer JS not found');
+    }
   },
 
   /**
@@ -582,7 +598,6 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
     }
 
     const { hasAccess } = await checkUserStoreAccess(strapi, userId, id);
-
     if (!hasAccess) {
       return ctx.forbidden('Access denied');
     }
@@ -592,23 +607,13 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       populate: ['extensions']
     });
 
-    if (!storeData?.extensions?.length) {
-      return ctx.notFound('No extensions configured for this store');
-    }
-
     const extension = storeData.extensions.find((ext: any) => ext.key === extensionKey);
 
-    if (!extension) {
-      return ctx.notFound(`Extension ${extensionKey} not found`);
+    if (!extension || !extension.credentials) {
+      return ctx.notFound(`Extension ${extensionKey}: or credentials not found `);
     }
 
-    if (!extension.credentials) {
-      return ctx.badRequest('Extension has no credentials configured');
-    }
-
-    // Decrypt credentials
     let credentials: any;
-
     try {
       credentials = decryptCredentials(extension.credentials);
     } catch (error: any) {
@@ -620,128 +625,28 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       });
     }
 
-    const config = extension.config as Record<string, any> || {};
+    const config = (extension.config || {}) as Record<string, any>;
 
     console.log('[TEST_EXTENSION] Testing extension', {
       key: extension.key,
-      hasUrl: !!credentials.url,
-      hasDatabase: !!credentials.database,
+      hasCredentials: !!credentials,
       hasApiKey: !!credentials.api_key,
-      configuredCompanyId: config.company_id
     });
 
-    // Validate required Odoo credentials
-    if (!credentials.url || !credentials.database || !credentials.api_key || !config.company_id) {
-      return ctx.badRequest('Missing required Odoo credentials (url, database, api_key)');
+    if (extensionKey.includes('sendgrid')) {
+      const result = await testSendGridConnection(credentials, config);
+      return ctx.send(result);
     }
 
-    // Test Odoo connection
     if (extensionKey.includes('odoo')) {
-      try {
-        const companyId = config.company_id;
-
-        const response = await fetch(`${credentials.url}/jsonrpc`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'call',
-            params: {
-              service: 'object',
-              method: 'execute',
-              args: [
-                credentials.database,
-                2, // uid (dummy, validated by api_key)
-                credentials.api_key,
-                'res.partner',
-                'search_read',
-                [['id', '=', companyId]], // ✅ Single array, not nested
-                ['id', 'name', 'email', 'phone', 'company_id']
-              ]
-            },
-            id: Date.now()
-          })
-        });
-
-        if (!response.ok) {
-          return ctx.send({
-            success: false,
-            error: `HTTP ${response.status}: ${response.statusText}`,
-            message: 'Failed to connect to Odoo server'
-          });
-        }
-
-        const result = await response.json() as {
-          error?: {
-            message?: string;
-            code?: number;
-            data?: { message?: string };
-          };
-          result?: any[];
-          id?: number;
-        };
-
-        console.log('[TEST_EXTENSION] Odoo response received', {
-          success: !result.error,
-          hasResult: !!result.result,
-          resultCount: Array.isArray(result.result) ? result.result.length : 0
-        });
-
-        if (result.error) {
-          console.error('[TEST_EXTENSION] Odoo error:', result.error);
-          return ctx.send({
-            success: false,
-            error: result.error.message || result.error.data?.message || 'Unknown Odoo error',
-            code: result.error.code,
-            message: 'Authentication failed or invalid credentials'
-          });
-        }
-
-        if (!result.result || !Array.isArray(result.result) || result.result.length === 0) {
-          return ctx.send({
-            success: false,
-            message: `Company ID ${companyId} not found in Odoo database`,
-            tested_company_id: companyId,
-            odoo_url: credentials.url,
-            odoo_database: credentials.database
-          });
-        }
-
-        const partner = result.result[0];
-
-        return ctx.send({
-          success: true,
-          message: 'Odoo connection successful',
-          data: {
-            partner_id: partner.id,
-            partner_name: partner.name,
-            partner_email: partner.email || null,
-            partner_phone: partner.phone || null,
-            company_id: partner.company_id,
-            configured_company_id: companyId,
-            company_id_matches: partner.id === companyId,
-            odoo_url: credentials.url,
-            odoo_database: credentials.database
-          }
-        });
-
-      } catch (error: any) {
-        console.error('[TEST_EXTENSION] Odoo test failed:', error.message);
-        return ctx.send({
-          success: false,
-          error: error.message,
-          message: 'Failed to connect to Odoo - check URL and network connectivity'
-        });
-      }
+      const result = await testOdooConnection(credentials, config as { company_id: number });
+      return ctx.send(result);
     }
 
-    // Generic test for other extensions
     return ctx.send({
       success: false,
-      message: `Test not implemented for extension type: ${extensionKey}`,
-      available_tests: ['markket:odoo:*']
+      message: `Task failed successfully: ${extensionKey}`,
+      available_tests: ['markket:sendgrid:*', 'markket:odoo:*']
     });
   },
 }));
