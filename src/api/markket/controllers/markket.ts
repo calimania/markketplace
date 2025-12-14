@@ -352,37 +352,19 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         }
       })
     }
-
+    /**
+     * Returns a valid payment link for the client, with stripe connect attribution when present
+     * Validates product and prices ids, to check for valid stripe ids
+     */
     if (body?.action === ACTION_KEYS.stripeLink) {
       const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
 
-      // Validate and populate product info for each price
-      const populatedPrices = await Promise.all(prices.map(async (price: any) => {
-        const productId = price.product || product;
-        const productData = productId
-          ? await strapi.documents('api::product.product').findOne({ documentId: productId })
-          : null;
-        if (!productData) {
-          throw new Error(`Product not found: ${productId}`);
-        }
-
-        return {
-          Name: `${productData?.Name} - ${price?.Name}`,
-          product: productId,
-          Quantity: parseInt(price.quantity || '0', 10),
-          Unit_Price: parseFloat(price?.unit_amount || '0'),
-          Total_Price: parseFloat(price?.unit_amount || '0') * parseFloat(price.quantity || '0'),
-          Short_description: price.Description || productData?.Name || 'created with stripe link',
-          Stripe_price_id: price.Stripe_price_id || price.stripe_price_id || price.price || '',
-          Stripe_product_id: productData.SKU || '',
-          Amount_paid: price.amount_paid || null,
-          Currency: price.currency || 'USD',
-          Stripe_fee_cents: price.stripe_fee_cents || null,
-          Net_received_cents: price.net_received_cents || null
-        };
-      }));
+      const productData = product
+        ? await strapi.documents('api::product.product').findOne({ documentId: product, populate: ['PRICES'] })
+        : null;
 
       const response = await createPaymentLinkWithPriceIds({
+        product: productData,
         prices: body?.prices || [],
         include_shipping: !!includes_shipping,
         stripe_test: !!stripe_test,
@@ -390,18 +372,6 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         redirect_to_url,
         total,
       });
-
-      console.log('[STRIPE_LINK_DEBUG] Payment link response', {
-        success: !!response,
-        link_id: response?.id,
-        link_url: response?.url ? response.url.substring(0, 50) + '...' : null,
-        url_length: response?.url?.length,
-      });
-
-      link = {
-        response,
-        body,
-      };
 
       const order = await strapi.service('api::order.order').create({
         data: {
@@ -411,10 +381,11 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           Status: 'open',
           Shipping_Address: {},
           uuid: generateRandomSlug(),
-          STRIPE_PAYMENT_ID: response?.id,
-          Details: populatedPrices,
+          STRIPE_PAYMENT_ID: response?.link?.id,
+          Details: response.details,
           extra: {
             ...extraMeta,
+            fees: response?.feeInfo,
             link_creation_debug: {
               requested_total: total,
               calculated_total: prices?.reduce((sum: number, p: any) => sum + ((p.unit_amount || 0) * (p.quantity || 1)), 0),
@@ -423,16 +394,25 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         }
       });
 
-      console.log('[STRIPE_LINK_DEBUG] Order created', {
+      console.log('[STRIPE_LINK]createPaymentLink', {
+        success: !!response,
+        link_id: response?.link?.id,
+        link_url: response?.link?.url ? response?.link?.url.substring(0, 50) + '...' : null,
+        url_length: response?.link?.url?.length,
         order_id: order.documentId,
         order_amount: order.Amount,
         stripe_payment_id: order.STRIPE_PAYMENT_ID,
       });
 
+      link = {
+        response: response.link,
+        body,
+      };
       message = `order:${order.documentId}`;
     }
-
-
+    /**
+     * Retrieves transaction data to display a receipt for the buyer
+     */
     if (body?.action === 'stripe.receipt' && body?.session_id) {
       const response = await getSessionById(body?.session_id, body?.session_id?.includes('cs_test'));
       link = {
