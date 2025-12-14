@@ -357,15 +357,36 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
      * Validates product and prices ids, to check for valid stripe ids
      */
     if (body?.action === ACTION_KEYS.stripeLink) {
-      const { product, prices, includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
+      const { product, prices = [], includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
 
       const productData = product
         ? await strapi.documents('api::product.product').findOne({ documentId: product, populate: ['PRICES'] })
         : null;
 
+      /**
+       * product.PRICES.inventory: avoid creating links for sold out Stripe_price_ids
+       */
+      if (productData && Array.isArray(productData.PRICES)) {
+        for (const orderPrice of prices) {
+          const matchedPrice = productData.PRICES.find((p: any) =>
+            (p.STRIPE_ID === orderPrice.price)
+          );
+
+          if (matchedPrice && typeof matchedPrice.inventory === 'number') {
+            const requestedQty = orderPrice.quantity || 1;
+            if (matchedPrice.inventory === 0) {
+              return ctx.badRequest(`Product/price "${matchedPrice.Name}" is out of stock`);
+            }
+            if (requestedQty > matchedPrice.inventory) {
+              return ctx.badRequest(`Product/price "${matchedPrice.Name}" requested quantity (${requestedQty}) exceeds available inventory (${matchedPrice.inventory})`);
+            }
+          }
+        }
+      }
+
       const response = await createPaymentLinkWithPriceIds({
         product: productData,
-        prices: body?.prices || [],
+        prices: prices,
         include_shipping: !!includes_shipping,
         stripe_test: !!stripe_test,
         store_id,
@@ -422,60 +443,29 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       message = 'stripe session retrieved';
     }
 
-    if (body?.action === 'stripe:checkout.session.completed') {
+    if (body?.action === ACTION_KEYS.stripeCheckoutSessionCompleted) {
       const signature = ctx.request.headers['stripe-signature'];
       const is_test = !!body.data?.object?.id?.startsWith('cs_test_');
       const rawBody = ctx.request.body[Symbol.for('unparsedBody')];
-
       const event = verifyStripeWebhook(signature, rawBody?.toString(), is_test);
 
       if (!event) {
         return ctx.badRequest('Invalid webhook signature');
       }
 
-      const session = event.data?.object;
-
-      console.log('[MARKKET_CONTROLLER] Processing checkout session', {
-        sessionId: session?.id,
-        mode: is_test ? 'test' : 'production'
-      });
-
       try {
-        // --- DEC: Decrement inventory after order is completed/paid ---
-        const order = await handleCheckoutSessionCompleted(session, is_test);
-        const details: any[] = (order as unknown as { Details: [] }).Details || [];
-        // const extra = order.extra || {};
-        // await strapi.services['order'].updateOrderFromWebhook(order.documentId, details, extra, strapi);
-
-        await strapi.service(modelId).create({
-          data: {
-            Key: ACTION_KEYS.inventoryDecrement,
-            Content: {
-              orderId: order.documentId,
-              details: details.map(d => ({
-                product: d.product,
-                Name: d.Name,
-                Quantity: d.Quantity,
-                Stripe_price_id: d.Stripe_price_id,
-              })),
-              timestamp: new Date().toISOString(),
-              action: 'decrement_inventory_after_payment'
-            },
-            user_key_or_id: (order as unknown as { buyer: string }).buyer || '',
-          }
-        });
-
-        console.log('[MARKKET_CONTROLLER] Checkout session processed', {
-          orderId: order.documentId,
-          amount: order.Amount
-        });
-
+        const order = await handleCheckoutSessionCompleted(event?.data?.object, is_test);
         link = { body, order };
         message = `order:${order.documentId}`;
       } catch (error) {
         console.error('[MARKKET_CONTROLLER] Checkout session handling failed:', error?.message);
         return ctx.internalServerError('Failed to process checkout session');
       }
+
+      console.log('[markket]:stripe:checkout:completed', {
+        orderId: link?.order.documentId,
+        amount: link?.order.Amount
+      });
     }
 
     // Stripe webhooks: Use balance_transaction.created instead

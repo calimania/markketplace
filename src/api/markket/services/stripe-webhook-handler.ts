@@ -77,14 +77,15 @@ async function retrieveActualFees(session: CheckoutSessionData): Promise<Record<
 function buildOrderData(
   session: any,
   sessionData: CheckoutSessionData,
-  actualStripeFees: Record<string, any> | null
+  actualStripeFees: Record<string, any> | null,
+  Status: string,
 ): any {
   return {
     data: {
       STRIPE_PAYMENT_ID: session.id,
       Amount: session.amount_total ? session.amount_total / 100 : 0,
       Currency: session.currency?.toUpperCase() || 'USD',
-      Status: 'complete',
+      Status: Status || 'paid',
       store: session.metadata?.store_id || null,
       Shipping_Address: {
         name: sessionData.shipping?.name || session.customer_details?.name,
@@ -164,8 +165,7 @@ export async function handleCheckoutSessionCompleted(
 
   if (!order) {
     console.log('[WEBHOOK_HANDLER] Creating new order from session');
-    const orderData = buildOrderData(session, sessionData, actualStripeFees);
-
+    const orderData = buildOrderData(session, sessionData, actualStripeFees, 'paid');
     order = await strapi.service('api::order.order').create(orderData);
   } else {
     console.log('[WEBHOOK_HANDLER] Updating existing order');
@@ -182,7 +182,7 @@ export async function handleCheckoutSessionCompleted(
     order = await strapi.service('api::order.order').update(order.documentId, {
       populate: ['Shipping_Address', 'store', 'Details'],
       data: {
-        Status: 'complete',
+        Status: 'paid',
         Payment_attempts: [...prevAttempts, newAttempt],
         Shipping_Address: {
           name: sessionData.shipping?.name || session.customer_details?.name || order.Shipping_Address?.name,

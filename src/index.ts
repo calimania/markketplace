@@ -1,4 +1,5 @@
 import { registerMiddleware } from './middlewares/encrypt-extensions';
+import { registerMiddleware as registerPriceInventoryChanges } from './middlewares/price-inventory-changes';
 
 export default {
   /**
@@ -8,7 +9,7 @@ export default {
    * This gives you an opportunity to extend code.
    */
   register(/*{ strapi }*/) {
-    console.log('[APP] Application registered successfully');
+    console.log('[markket]:register');
   },
 
   /**
@@ -19,11 +20,10 @@ export default {
    * run jobs, or perform some special logic.
    */
   bootstrap({ strapi }) {
-    console.log('[APP] Application bootstrapped successfully');
-
+    console.log('[markket]:bootstrap');
     // Register auto-encryption for extension credentials
-    // Must be in bootstrap for Document Service middleware
     registerMiddleware({ strapi });
-    console.log('[APP] Extension encryption middleware registered');
+    // Audits inventory changes, reduces inventory after purchases
+    registerPriceInventoryChanges({ strapi });
   },
 };

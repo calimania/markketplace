@@ -7,9 +7,12 @@ const STRIPE_SECRET_TEST_KEY = process.env.STRIPE_SECRET_TEST_KEY;
 console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_KEY:', !!STRIPE_SECRET_KEY);
 console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_TEST_KEY:', !!STRIPE_SECRET_TEST_KEY);
 
+// Fix: Add missing Stripe API version for initialization (required by Stripe SDK)
+const STRIPE_API_VERSION = '2024-06-20';
+
 // Initialize Stripe clients
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
-const stripeTest = STRIPE_SECRET_TEST_KEY ? new Stripe(STRIPE_SECRET_TEST_KEY) : null;
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
+const stripeTest = STRIPE_SECRET_TEST_KEY ? new Stripe(STRIPE_SECRET_TEST_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
 
 console.log('[STRIPE_SERVICE] Stripe clients initialized - stripe:', !!stripe, 'stripeTest:', !!stripeTest);
 

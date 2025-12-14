@@ -289,7 +289,8 @@ export const createPaymentLinkWithPriceIds = async ({
   redirect_to_url,
   total,
   product,
-}: PaymentLinkOptions): Promise<{ link: Stripe.PaymentLink | null, details: {}[], feeInfo?: any, connectStatus?: any }> => {
+}: PaymentLinkOptions): Promise<{ link: Stripe.PaymentLink | null, details: {}[], feeInfo?: any, connectStatus?: any } | null> => {
+
   const validation = validatePaymentLinkInput({
     prices,
     include_shipping,
@@ -483,7 +484,7 @@ function buildLineItems(prices: LineItemInput[]): Stripe.PaymentLinkCreateParams
     }
   }
 
-  return lineItems.slice(0, 20); // ✅ FIXED: Use slice() not splice()
+  return lineItems.slice(0, 20);
 }
 
 /**
@@ -592,7 +593,6 @@ export const verifyStripeWebhook = (signature: string, payload: string | Buffer,
   const secret = test ? STRIPE_WEBHOOK_SECRET_TEST : STRIPE_WEBHOOK_SECRET;
   const client = test ? stripeTest : stripe;
 
-  // ✅ KEEP secrets configured for security
   if (!secret || !signature || !payload || !client) {
     console.warn('[STRIPE_SERVICE] Verification failed - missing components');
     return null;
