@@ -1,3 +1,5 @@
+import { encryptCredentials } from '../services/encryption';
+
 /**
  * Middleware to auto-encrypt sensitive fields before saving
  *
@@ -10,11 +12,8 @@
  * - Encrypted values shown when viewing (can't reverse them)
  * - Only server-side handlers can decrypt
  */
-
-import { encryptCredentials } from '../services/encryption';
-
 export function registerMiddleware({ strapi }: { strapi: any }) {
-  console.log('[ENCRYPT_MIDDLEWARE] Registering auto-encryption middleware');
+  console.log('[ENCRYPT_MIDDLEWARE]:registration');
 
   strapi.documents.use(async (context: any, next: any) => {
     if (!['create', 'update'].includes(context.action)) {
@@ -23,21 +22,17 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
 
     // Admin panel puts data in context.params.data, API puts it in context.data
     const dataToCheck = context.params?.data || context.data;
+    if (!dataToCheck?.extensions?.length) {
+      return next();
+    }
 
-    console.log('[ENCRYPT_MIDDLEWARE] Checking data location', {
+    console.log('[ENCRYPT_MIDDLEWARE]:Processing.extensions', {
+      count: dataToCheck.extensions.length,
       action: context.action,
       uid: context.uid,
       dataLocation: context.params?.data ? 'params.data' : 'data',
       hasExtensions: !!dataToCheck?.extensions,
       extensionsCount: dataToCheck?.extensions?.length || 0
-    });
-
-    if (!dataToCheck?.extensions?.length) {
-      return next();
-    }
-
-    console.log('[ENCRYPT_MIDDLEWARE] Processing extensions', {
-      count: dataToCheck.extensions.length
     });
 
     // Encrypt in place

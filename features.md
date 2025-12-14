@@ -4,7 +4,7 @@
 
 @NEXT:
 - [ ] webhook transaction complete finds store for default orders
-- [ ] Using and deployment an Astro [slug]  docs
+- [ ] Using and static deployment with Astro with hydration
 - [ ] read existing tags in posts and displays in settings
 - [ ] SocialPost content-type for a social feed, scheduling with third party
 - [ ] Sendgrid API to manage marketing lists (calendar, store, )
@@ -25,7 +25,6 @@
 
 @DECEMBER:
 - [ ] (product).settings overrides store or ENV fees
-- [ ] Newsletter content-type and functionality
 - [ ] Use Stripe API to better display information directly in dashboard
 - [ ] product extensions schema, is digital, better stripe link creation
 - [ ] orders decrease inventory amount
@@ -33,7 +32,10 @@
 - [ ] (store|product|prices).extensions shipping options
 - [ ] email lists with strapi.email, content type Newsletter delivery
 - [ ] url resolver extension (update company contact in odoo)
-- [ ] test odoo connection using instance.extensions.credentials
+- [x] fix: stripe auditing in order.extra
+- [x] Newsletter content-types
+- [x] test odoo connection using instance.extensions.credentials
+- [x] test sendgrid connection using instance.extensions.credentials
 - [x] test odoo connection using store.extensions.credentials
 - [x] create Extension schema
 - [x] create store.extensions.notifications association
