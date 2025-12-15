@@ -7,9 +7,12 @@ const STRIPE_SECRET_TEST_KEY = process.env.STRIPE_SECRET_TEST_KEY;
 console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_KEY:', !!STRIPE_SECRET_KEY);
 console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_TEST_KEY:', !!STRIPE_SECRET_TEST_KEY);
 
+// Fix: Add missing Stripe API version for initialization (required by Stripe SDK)
+const STRIPE_API_VERSION = '2024-06-20';
+
 // Initialize Stripe clients
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
-const stripeTest = STRIPE_SECRET_TEST_KEY ? new Stripe(STRIPE_SECRET_TEST_KEY) : null;
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
+const stripeTest = STRIPE_SECRET_TEST_KEY ? new Stripe(STRIPE_SECRET_TEST_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
 
 console.log('[STRIPE_SERVICE] Stripe clients initialized - stripe:', !!stripe, 'stripeTest:', !!stripeTest);
 
@@ -45,9 +48,8 @@ export function isStripeConfigured(): boolean {
 export function getFullImageUrl(url: string): string {
   if (!url || typeof url !== 'string') return '';
 
-  // Basic URL validation
   if (url.length > 2048) {
-    console.warn('[STRIPE_SERVICE] Image URL too long, truncating');
+    console.warn('[markket.stripe] Image URL too long, truncating');
     return '';
   }
 
@@ -55,22 +57,26 @@ export function getFullImageUrl(url: string): string {
     return url;
   }
 
-  const baseUrl = process.env.STRAPI_URL || 'http://localhost:1337';
+  const baseUrl = (process.env.STRAPI_URL || 'http://localhost:1337').replace(/\/+$/, '');
   return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
 /**
  * Strip HTML tags from description
  */
-export function stripHtml(html: string): string {
+export function stripsMarkdown(html: string): string {
   if (!html || typeof html !== 'string') return '';
 
-  // Limit input size to prevent DoS
-  if (html.length > 10000) {
-    html = html.substring(0, 10000);
+  if (html.length > 1000) {
+    html = html.substring(0, 1000);
   }
 
   return html
+    .replace(/^#+\s*/gm, '')
+    .replace(/(?<marks>(\*\*|\*|__|_))(?<inmarks>.*?)\k<marks>/gm, '$<inmarks>')
+    .replace(/`(?<inmarks>.*?)`/gm, '$<inmarks>')
+    .replace(/~~(?<inmarks>.*?)~~/gm, '$<inmarks>')
+    .replace(/\[(?<link_text>.*?)\]\(.*\)/gm, '$<link_text>')
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
@@ -80,4 +86,4 @@ export function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
-}
+};

@@ -58,8 +58,12 @@ const coreController = factories.createCoreController('api::product.product', ({
         result: syncResult,
       };
     } catch (error) {
+      console.error('[product.controller][stripeSync] syncProductWithStripe failed', { documentId, message: error?.message });
       ctx.status = 500;
-      ctx.body = { error: error.message };
+      ctx.body = {
+        error: 'Stripe sync failed',
+        details: process.env.NODE_ENV === 'development' ? (error?.message || String(error)) : undefined
+      };
     }
   },
 }));

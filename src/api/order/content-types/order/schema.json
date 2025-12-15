@@ -28,6 +28,7 @@
       "enum": [
         "open",
         "pending",
+        "paid",
         "complete",
         "refunded",
         "shipped",

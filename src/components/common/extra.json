@@ -1,0 +1,33 @@
+{
+  "collectionName": "components_common_extras",
+  "info": {
+    "displayName": "Extras",
+    "icon": "stars",
+    "description": "Extensible, optional content for interactive clients"
+  },
+  "options": {},
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true,
+      "unique": false,
+      "regex": "^[a-z0-9]+:[a-z0-9-]+(?::[a-z0-9-]+)?$"
+    },
+    "content": {
+      "type": "json",
+      "required": false,
+      "default": []
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "meta": {
+      "type": "json",
+      "required": false,
+      "default": {
+        "url": ""
+      }
+    }
+  }
+}
