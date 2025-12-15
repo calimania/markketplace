@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { getStripeClient, getFullImageUrl, stripHtml } from './stripe';
+import { getStripeClient, getFullImageUrl, stripsMarkdown } from './stripe';
 
 /**
  * Create a new Stripe product
@@ -30,7 +30,7 @@ export async function createStripeProduct(product: any): Promise<string | null> 
 
   const productData: Stripe.ProductCreateParams = {
     name: product.Name,
-    description: product.Description ? stripHtml(product.Description) : undefined,
+    description: product.Description ? stripsMarkdown(product.Description) : undefined,
     active: product.active !== false,
     metadata: {
       strapiId: product.documentId || product.id || '',
@@ -127,16 +127,15 @@ export async function updateStripeProductMetadata(product: any): Promise<void> {
       });
     }
 
-    // Check if description changed
-    const newDescription = product.Description ? stripHtml(product.Description) : '';
+    const newDescription = product.Description ? stripsMarkdown(product.Description) : '';
     const oldDescription = existingProduct.description || '';
+
     if (newDescription !== oldDescription) {
       updateData.description = newDescription || undefined;
       needsUpdate = true;
-      console.log('[STRIPE_PRODUCT_SERVICE] Product description changed');
+      console.log('[markket.stripe]:product.description.truncated');
     }
 
-    // Check if images changed
     const newImages: string[] = [];
     if (product.Thumbnail?.url) {
       newImages.push(getFullImageUrl(product.Thumbnail.url));

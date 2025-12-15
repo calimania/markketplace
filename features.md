@@ -26,12 +26,13 @@
 @DECEMBER:
 - [ ] (product).settings overrides store or ENV fees
 - [ ] Use Stripe API to better display information directly in dashboard
-- [ ] product extensions schema, is digital, better stripe link creation
 - [ ] orders decrease inventory amount
 - [ ] (store|product|prices).extensions inventory options
 - [ ] (store|product|prices).extensions shipping options
 - [ ] email lists with strapi.email, content type Newsletter delivery
 - [ ] url resolver extension (update company contact in odoo)
+- [ ] product.quantity limits sales
+- [x] new common.schema extras for public optional content [products]
 - [x] fix: stripe auditing in order.extra
 - [x] Newsletter content-types
 - [x] test odoo connection using instance.extensions.credentials

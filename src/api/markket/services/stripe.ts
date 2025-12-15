@@ -34,6 +34,8 @@ import {
   type StoreConnectData
 } from './stripe-connect';
 
+type DefaultCountries = ['US', 'CO', 'MX', 'SV', 'IL'];
+
 /**
  * Parse and validate Stripe secret keys from environment
  * @constant {string}
@@ -171,6 +173,7 @@ type PaymentLinkOptions = {
     PRICES: [any];
     SKU: string;
   };
+  countries?: DefaultCountries,
 };
 
 /**
@@ -289,6 +292,7 @@ export const createPaymentLinkWithPriceIds = async ({
   redirect_to_url,
   total,
   product,
+  countries,
 }: PaymentLinkOptions): Promise<{ link: Stripe.PaymentLink | null, details: {}[], feeInfo?: any, connectStatus?: any } | null> => {
 
   const validation = validatePaymentLinkInput({
@@ -311,7 +315,7 @@ export const createPaymentLinkWithPriceIds = async ({
       Quantity: parseInt(price.quantity || '0', 10),
       Unit_Price: parseFloat(_price?.Price || price.unit_amount || '0'),
       Total_Price: parseFloat(_price?.Price || price.unit_amount || '0') * parseFloat(price.quantity || '0'),
-      Short_description: _price?.Description || price?.Name || product?.Name || 'created with stripe link',
+      Description: _price?.Description || price?.Name || product?.Name || 'created with stripe link',
       Stripe_price_id: _price?.STRIPE_ID || '',
       Stripe_product_id: product.SKU || '',
       Currency: price.Currency || 'USD',
@@ -368,11 +372,9 @@ export const createPaymentLinkWithPriceIds = async ({
 
   // Try to create a Connect payment link if possible
   let connectResult: { link: Stripe.PaymentLink | null, feeInfo?: any } | null = null;
-  let triedConnect = false;
   let connectFailedReason: string | null = null;
 
   if (store?.STRIPE_CUSTOMER_ID) {
-    triedConnect = true;
     connectResult = await buildConnectPaymentLink({
       client,
       connectedAccountId: store.STRIPE_CUSTOMER_ID,
@@ -411,7 +413,7 @@ export const createPaymentLinkWithPriceIds = async ({
 
   // If Connect failed or not present, fallback to standard payment link
   if (!connectResult?.link) {
-    const link = await createStandardPaymentLink(client, lineItems, redirectUrl, include_shipping);
+    const link = await createStandardPaymentLink(client, lineItems, redirectUrl, include_shipping, countries);
 
     // Add connectStatus to indicate fallback in order.extra
     return {
@@ -498,6 +500,7 @@ function buildLineItems(prices: LineItemInput[]): Stripe.PaymentLinkCreateParams
  * @param {Stripe.PaymentLinkCreateParams.LineItem[]} lineItems - Formatted line items
  * @param {string} redirectUrl - URL for post-payment redirect
  * @param {boolean} includeShipping - Whether to collect shipping address
+ * @param {string[]} [allowedCountries] - Optional list of allowed shipping countries
  * @returns {Promise<Stripe.PaymentLink | null>} Created payment link or null
  * @private
  */
@@ -505,7 +508,8 @@ async function createStandardPaymentLink(
   client: Stripe,
   lineItems: Stripe.PaymentLinkCreateParams.LineItem[],
   redirectUrl: string,
-  includeShipping: boolean
+  includeShipping: boolean,
+  allowedCountries?: DefaultCountries,
 ): Promise<Stripe.PaymentLink | null> {
   const params: Stripe.PaymentLinkCreateParams = {
     line_items: lineItems,
@@ -517,7 +521,9 @@ async function createStandardPaymentLink(
 
   if (includeShipping) {
     params.shipping_address_collection = {
-      allowed_countries: ['US', 'CO', 'MX', 'SV', 'IL'],
+      allowed_countries: Array.isArray(allowedCountries) && allowedCountries.length > 0
+        ? allowedCountries
+        : ['US', 'CO', 'MX', 'SV', 'IL'],
     };
   }
 

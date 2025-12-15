@@ -266,7 +266,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         title,
         store_id,
         from_name,
-        reply_to
+        reply_to,
       } = ctx.request.body;
 
       if (!to || !subject || !content || !title || !store_id) {
@@ -357,7 +357,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
      * Validates product and prices ids, to check for valid stripe ids
      */
     if (body?.action === ACTION_KEYS.stripeLink) {
-      const { product, prices = [], includes_shipping, stripe_test, store_id, redirect_to_url, total } = body;
+      const { product, prices = [], includes_shipping, stripe_test, store_id, redirect_to_url, total, countries } = body;
 
       const productData = product
         ? await strapi.documents('api::product.product').findOne({ documentId: product, populate: ['PRICES'] })
@@ -377,8 +377,9 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
             if (matchedPrice.inventory === 0) {
               return ctx.badRequest(`Product/price "${matchedPrice.Name}" is out of stock`);
             }
+
             if (requestedQty > matchedPrice.inventory) {
-              return ctx.badRequest(`Product/price "${matchedPrice.Name}" requested quantity (${requestedQty}) exceeds available inventory (${matchedPrice.inventory})`);
+              return ctx.badRequest(`Product/price "${matchedPrice.Name}" requested quantity (${requestedQty}) exceeds available inventory:[(${matchedPrice.inventory})]`);
             }
           }
         }
@@ -392,6 +393,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         store_id,
         redirect_to_url,
         total,
+        countries,
       });
 
       const order = await strapi.service('api::order.order').create({
@@ -415,7 +417,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         }
       });
 
-      console.log('[STRIPE_LINK]createPaymentLink', {
+      console.log('[markket]:stripe.payment.link', {
         success: !!response,
         link_id: response?.link?.id,
         link_url: response?.link?.url ? response?.link?.url.substring(0, 50) + '...' : null,

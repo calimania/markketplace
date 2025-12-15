@@ -39,7 +39,7 @@
       "repeatable": true,
       "component": "common.extension"
     },
-    "shipping_zones": {
+    "ships_to": {
       "type": "json",
       "default": []
     }
