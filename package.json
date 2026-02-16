@@ -23,6 +23,7 @@
     "@strapi/strapi": "5.31.3",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
+    "fast-xml-parser": "5.3.4",
     "get-strapi-schema": "^0.0.3",
     "pg": "^8.12.0",
     "react": "^18.0.0",
