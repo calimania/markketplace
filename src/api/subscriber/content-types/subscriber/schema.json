@@ -34,7 +34,7 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::subscriber.subscriber-list",
-      "mappedBy": "subscribers"
+      "inversedBy": "subscribers"
     },
     "EmailVerified": {
       "type": "datetime"
