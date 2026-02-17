@@ -27,7 +27,8 @@
     "stores": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::store.store"
+      "target": "api::store.store",
+      "inversedBy": "subscribers"
     },
     "lists": {
       "type": "relation",

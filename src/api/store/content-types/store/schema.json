@@ -177,6 +177,12 @@
       "target": "api::store.store-setting",
       "inversedBy": "store"
     },
+    "subscribers": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::subscriber.subscriber",
+      "mappedBy": "stores"
+    },
     "extensions": {
       "type": "component",
       "repeatable": true,
