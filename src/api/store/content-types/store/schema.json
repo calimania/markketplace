@@ -183,6 +183,18 @@
       "target": "api::subscriber.subscriber",
       "mappedBy": "stores"
     },
+    "products": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::product.product",
+      "mappedBy": "stores"
+    },
+    "events": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::event.event",
+      "mappedBy": "stores"
+    },
     "extensions": {
       "type": "component",
       "repeatable": true,
