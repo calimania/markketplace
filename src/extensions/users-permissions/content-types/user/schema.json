@@ -78,7 +78,7 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::rsvp.rsvp",
-      "mappedBy": "users"
+      "mappedBy": "user"
     },
     "bio": {
       "type": "text",

@@ -45,6 +45,12 @@
       "target": "api::subscriber.subscriber",
       "mappedBy": "lists"
     },
+    "newsletters": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::subscriber.newsletter",
+      "mappedBy": "target_lists"
+    },
     "sendgrid_list_id": {
       "type": "string",
       "unique": true

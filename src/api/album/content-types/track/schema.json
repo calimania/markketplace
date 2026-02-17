@@ -62,6 +62,12 @@
       "type": "media",
       "multiple": true
     },
+    "albums": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::album.album",
+      "mappedBy": "tracks"
+    },
     "store": {
       "type": "relation",
       "relation": "manyToOne",

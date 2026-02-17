@@ -50,7 +50,8 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::album.album",
-      "label": "Albums"
+      "label": "Albums",
+      "inversedBy": "pages"
     },
     "creator": {
       "type": "relation",

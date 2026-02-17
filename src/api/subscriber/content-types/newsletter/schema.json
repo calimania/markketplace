@@ -78,7 +78,8 @@
     "target_lists": {
       "type": "relation",
       "relation": "manyToMany",
-      "target": "api::subscriber.subscriber-list"
+      "target": "api::subscriber.subscriber-list",
+      "inversedBy": "newsletters"
     },
     "sendgrid_campaign_id": {
       "type": "string"

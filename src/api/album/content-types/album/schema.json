@@ -55,7 +55,14 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::album.track",
-      "label": "Tracks"
+      "label": "Tracks",
+      "inversedBy": "albums"
+    },
+    "pages": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::page.page",
+      "mappedBy": "albums"
     },
     "store": {
       "type": "relation",
