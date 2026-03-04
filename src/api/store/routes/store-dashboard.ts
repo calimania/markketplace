@@ -70,7 +70,6 @@ export default {
       path: '/stores/:id/extensions-debug',
       handler: 'store.debugExtensions',
       config: {
-        auth: false,
         policies: [],
         middlewares: [],
       },
@@ -79,6 +78,15 @@ export default {
       method: 'POST',
       path: '/stores/:id/test-extension',
       handler: 'store.testExtension',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/stores/:id/sendgrid-scopes-debug',
+      handler: 'store.sendgridScopesDebug',
       config: {
         policies: [],
         middlewares: [],

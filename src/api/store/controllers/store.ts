@@ -472,6 +472,18 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   async debugExtensions(ctx: any) {
     const { id } = ctx.params;
     const userId = ctx.state.user?.id;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    if (!isDevelopment && !userId) {
+      return ctx.unauthorized('Authentication required outside development environment');
+    }
+
+    if (!isDevelopment) {
+      const { hasAccess } = await checkUserStoreAccess(strapi, userId, id);
+      if (!hasAccess) {
+        return ctx.forbidden('Access denied');
+      }
+    }
 
     console.log('[EXTENSIONS_DEBUG]', {
       storeId: id?.substring(0, 10) + '...',
@@ -609,20 +621,28 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
     const extension = storeData.extensions.find((ext: any) => ext.key === extensionKey);
 
-    if (!extension || !extension.credentials) {
-      return ctx.notFound(`Extension ${extensionKey}: or credentials not found `);
+    if (!extension) {
+      return ctx.notFound(`Extension ${extensionKey}: not found`);
     }
 
     let credentials: any;
-    try {
-      credentials = decryptCredentials(extension.credentials);
-    } catch (error: any) {
-      console.error('[TEST_EXTENSION] Decryption failed:', error.message);
-      return ctx.send({
-        success: false,
-        error: 'Failed to decrypt credentials',
-        message: 'Invalid or corrupted credentials'
-      });
+    if (extensionKey.includes('sendgrid') && process.env.SENDGRID_API_KEY) {
+      credentials = { api_key: '', use_default: true };
+    } else {
+      if (!extension.credentials) {
+        return ctx.notFound(`Extension ${extensionKey}: credentials not found`);
+      }
+
+      try {
+        credentials = decryptCredentials(extension.credentials);
+      } catch (error: any) {
+        console.error('[TEST_EXTENSION] Decryption failed:', error.message);
+        return ctx.send({
+          success: false,
+          error: 'Failed to decrypt credentials',
+          message: 'Invalid or corrupted credentials'
+        });
+      }
     }
 
     const config = (extension.config || {}) as Record<string, any>;
@@ -647,6 +667,82 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       success: false,
       message: `Task failed successfully: ${extensionKey}`,
       available_tests: ['markket:sendgrid:*', 'markket:odoo:*']
+    });
+  },
+
+  /**
+   * GET /api/stores/:id/sendgrid-scopes-debug
+   * Quick SendGrid scope diagnostics (including mail.send)
+   */
+  async sendgridScopesDebug(ctx: any) {
+    const { id } = ctx.params;
+    const extensionKeyFromQuery = ctx.query?.extensionKey;
+    const userId = ctx.state.user?.id;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    if (!isDevelopment && !userId) {
+      return ctx.unauthorized('Authentication required outside development environment');
+    }
+
+    if (!isDevelopment) {
+      const { hasAccess } = await checkUserStoreAccess(strapi, userId, id);
+      if (!hasAccess) {
+        return ctx.forbidden('Access denied');
+      }
+    }
+
+    const storeData = await strapi.documents('api::store.store').findOne({
+      documentId: id,
+      populate: ['extensions']
+    }) as any;
+
+    let credentials: any;
+    let extensionKey = 'env:SENDGRID_API_KEY';
+    let config: Record<string, any> = {};
+
+    if (process.env.SENDGRID_API_KEY) {
+      credentials = { api_key: '', use_default: true };
+    } else {
+      if (!storeData?.extensions?.length) {
+        return ctx.notFound('Store extensions not found and no env SendGrid key configured');
+      }
+
+      const sendgridExtension = extensionKeyFromQuery
+        ? storeData.extensions.find((ext: any) => ext.key === extensionKeyFromQuery)
+        : storeData.extensions.find((ext: any) => String(ext.key || '').includes('sendgrid'));
+
+      if (!sendgridExtension) {
+        return ctx.notFound('SendGrid extension not found for store');
+      }
+
+      if (!sendgridExtension.credentials) {
+        return ctx.badRequest('SendGrid extension has no credentials and no env default key');
+      }
+
+      try {
+        credentials = decryptCredentials(sendgridExtension.credentials);
+      } catch (error: any) {
+        return ctx.badRequest(`Failed to decrypt SendGrid credentials: ${error.message}`);
+      }
+
+      extensionKey = sendgridExtension.key;
+      config = (sendgridExtension.config || {}) as Record<string, any>;
+    }
+
+    const result = await testSendGridConnection(credentials, config);
+
+    return ctx.send({
+      success: result.success,
+      status: result.status,
+      extensionKey,
+      debug: {
+        scopes_detected: result.data?.scopes_detected || null,
+        capabilities: result.data?.capabilities || null,
+        missing_scopes: result.data?.missing_scopes || [],
+        debug_scopes: result.data?.debug_scopes || null,
+        debug_auth: result.data?.debug_auth || null,
+      },
+      message: result.message
     });
   },
 }));
