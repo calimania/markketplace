@@ -84,5 +84,15 @@ export default {
         middlewares: [],
       },
     },
+    {
+      method: 'GET',
+      path: '/stores/:id/sendgrid-scopes-debug',
+      handler: 'store.sendgridScopesDebug',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

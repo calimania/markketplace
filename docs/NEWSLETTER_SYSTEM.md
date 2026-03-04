@@ -14,6 +14,8 @@ Complete email marketing system for Markketplace using SendGrid Marketing API + 
 ## Phase 1 TODO Flow (Pre-Implementation)
 
 - Capture subscriber in `api::subscriber.subscriber` first (Strapi remains source of truth)
+- Keep current client flow as browser -> Strapi (no frontend changes in this phase)
+- TODO (next phase): browser -> Next.js tokenized endpoint -> Strapi for stronger abuse control
 - Use `store.documentId` as canonical key for all sync resolution
 - Resolve target `subscriber-list` entries and verify/create SendGrid lists
 - Upsert contact to each target SendGrid list (multi-newsletter support)
@@ -47,15 +49,63 @@ Implemented in `src/services/sendgrid-marketing.ts`:
 	- Returns async `jobId` and resolves `contactId` via email lookup
 	- Includes TODO placeholders for future segmentation/tags/custom-fields mapping
 
+### Chunk 3: Simple welcome email (non-blocking)
+
+Implemented in:
+
+- `src/services/sendgrid-email-templates.ts`
+	- Reusable welcome email HTML built on existing shared layout (`emailLayout`)
+- `src/services/sendgrid-marketing.ts`
+	- `sendWelcomeEmail(input)` using SendGrid `v3/mail/send`
+- `src/api/subscriber/services/subscriber.ts`
+	- Sends welcome email after successful list/contact sync
+	- Failures do not block subscription flow
+
+Current simple message includes:
+
+- Welcome text
+- Support contact: `support@markket.place`
+- Optional unsubscribe link placeholder
+
+Store-level toggle (current behavior):
+
+- Welcome email is sent by default
+- Welcome email is skipped when either setting is explicitly `false`:
+	- `store.settings.newsletter_settings.welcome_email_enabled`
+	- `store.settings.newsletter_settings.send_welcome_email`
+- TODO: standardize on a single key in schema rollout
+
 ## Minimal Testing (Current Scope)
 
-These methods are service-level and can be tested before controller wiring.
+These endpoints are now available for local client testing.
 
 1. Verify extension credentials via existing store extension test endpoint.
-2. Call `ensureStoreDefaultSendGridList` with a valid `storeDocumentId`.
-3. Re-run same call and verify idempotent behavior (reuses existing list).
-4. Call `upsertContactToList` using returned `listId` and a test email.
-5. Confirm SendGrid accepts request (`jobId` present) and contact appears in list.
+2. Call `POST /api/subscribers/subscribe` with `email` and `storeDocumentId`.
+3. Wait a few seconds for async sync.
+4. Call `GET /api/subscribers/:documentId/sync-status`.
+5. Confirm subscriber and membership status moved from `pending` to `synced`.
+
+Example payload for subscribe:
+
+```json
+{
+	"email": "test@example.com",
+	"storeDocumentId": "<store_document_id>",
+	"firstName": "Test",
+	"lastName": "User"
+}
+```
+
+Manual re-sync endpoint:
+
+- `POST /api/subscribers/:documentId/sync`
+- Body:
+
+```json
+{
+	"storeDocumentId": "<store_document_id>"
+}
+```
 
 ## Deferred (Next Chunks)
 
@@ -63,6 +113,7 @@ These methods are service-level and can be tested before controller wiring.
 - Persist sync status updates on subscriber and list-membership entities
 - Add manual re-sync endpoint for store owners
 - Add unsubscribe mutation path (list-specific)
+- Re-enable store-level SendGrid credential selection via settings for business/experience tiers (current rollout uses env-first)
 
 ## Schema References (Current Phase)
 
