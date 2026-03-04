@@ -82,6 +82,11 @@ export default factories.createCoreController('api::subscriber.subscriber', ({ s
    * - return subscriber-level sync status + per-list membership status
    */
   async syncStatus(ctx) {
+    const userId = ctx.state.user?.id;
+    if (!userId) {
+      return ctx.unauthorized('Authentication required');
+    }
+
     const { documentId } = ctx.params;
     const result = await strapi.service('api::subscriber.subscriber').getSubscriberSyncStatus(documentId);
 
@@ -98,6 +103,11 @@ export default factories.createCoreController('api::subscriber.subscriber', ({ s
    * - optional list-scoped sync payload
    */
   async sync(ctx) {
+    const userId = ctx.state.user?.id;
+    if (!userId) {
+      return ctx.unauthorized('Authentication required');
+    }
+
     const { documentId } = ctx.params;
     const body = ctx.request.body || {};
     const payload = body?.data || body;

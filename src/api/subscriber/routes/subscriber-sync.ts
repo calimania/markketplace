@@ -19,7 +19,6 @@ export default {
       path: '/subscribers/:documentId/sync-status',
       handler: 'subscriber.syncStatus',
       config: {
-        auth: false,
         policies: [],
         middlewares: [],
       },
@@ -29,7 +28,6 @@ export default {
       path: '/subscribers/:documentId/sync',
       handler: 'subscriber.sync',
       config: {
-        auth: false,
         policies: [],
         middlewares: [],
       },

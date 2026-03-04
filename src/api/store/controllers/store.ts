@@ -472,6 +472,18 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   async debugExtensions(ctx: any) {
     const { id } = ctx.params;
     const userId = ctx.state.user?.id;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    if (!isDevelopment && !userId) {
+      return ctx.unauthorized('Authentication required outside development environment');
+    }
+
+    if (!isDevelopment) {
+      const { hasAccess } = await checkUserStoreAccess(strapi, userId, id);
+      if (!hasAccess) {
+        return ctx.forbidden('Access denied');
+      }
+    }
 
     console.log('[EXTENSIONS_DEBUG]', {
       storeId: id?.substring(0, 10) + '...',
