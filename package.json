@@ -1,7 +1,7 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Markket.place api, powered by strapi:postgres",
   "scripts": {
     "dev": "strapi develop",
@@ -15,15 +15,15 @@
     "api:test": "node scripts/api-test.js"
   },
   "dependencies": {
-    "@strapi-community/plugin-healthcheck": "^1.0.5",
-    "@strapi/plugin-cloud": "5.37.1",
-    "@strapi/plugin-users-permissions": "5.37.1",
-    "@strapi/provider-email-sendgrid": "5.37.1",
-    "@strapi/provider-upload-aws-s3": "5.37.1",
-    "@strapi/strapi": "5.37.1",
+    "@strapi-community/plugin-healthcheck": "^1.1.1",
+    "@strapi/plugin-cloud": "5.41.1",
+    "@strapi/plugin-users-permissions": "5.41.1",
+    "@strapi/provider-email-sendgrid": "5.41.1",
+    "@strapi/provider-upload-aws-s3": "5.41.1",
+    "@strapi/strapi": "5.41.1",
     "@types/uuid": "^10.0.0",
     "esbuild": "0.16.17",
-    "fast-xml-parser": "5.3.4",
+    "fast-xml-parser": "5.5.10",
     "get-strapi-schema": "^0.0.3",
     "glob": "^13.0.6",
     "pg": "^8.12.0",
@@ -47,6 +47,6 @@
   "license": "SEE LICENSE IN LICENSE",
   "packageManager": "yarn@1.22.22",
   "devDependencies": {
-    "turbo": "^2.4.2"
+    "turbo": "^2.9.3"
   }
 }
