@@ -34,11 +34,18 @@
  */
 
 import Stripe from 'stripe';
+import type { Stripe as StripeClient } from 'stripe';
 import {
   calculateFee,
   TransactionType,
   getFeeBreakdown,
 } from './stripe-fees';
+
+type StripePaymentLinkCreateParams = Parameters<StripeClient['paymentLinks']['create']>[0];
+type StripeLineItem = StripePaymentLinkCreateParams['line_items'][number];
+type StripePaymentLink = Awaited<ReturnType<StripeClient['paymentLinks']['create']>>;
+type StripeAccount = Awaited<ReturnType<StripeClient['accounts']['retrieve']>>;
+type StripeLineItemData = NonNullable<StripePaymentLink['line_items']>['data'][number];
 
 /**
  * Fee configuration interface
@@ -99,9 +106,9 @@ export interface StoreConnectData {
  * @property {TransactionType} [transactionType] - Type of transaction for fee calculation
  */
 interface ConnectPaymentLinkOptions {
-  client: Stripe;
+  client: StripeClient;
   connectedAccountId: string;
-  lineItems: Stripe.PaymentLinkCreateParams.LineItem[];
+  lineItems: StripeLineItem[];
   redirectUrl: string;
   totalCents: number;
   store: StoreConnectData | any;
@@ -134,9 +141,9 @@ interface ConnectPaymentLinkOptions {
  * }
  */
 export async function validateConnectAccount(
-  client: Stripe,
+  client: StripeClient,
   connectedAccountId: string
-): Promise<Stripe.Account | null> {
+): Promise<StripeAccount | null> {
   if (!connectedAccountId || typeof connectedAccountId !== 'string') {
     console.error('[STRIPE_CONNECT] Invalid account ID');
     return null;
@@ -341,7 +348,7 @@ export function estimateConnectedAccountNet(
  */
 export async function buildConnectPaymentLink(
   options: ConnectPaymentLinkOptions
-): Promise<{ link: Stripe.PaymentLink | null, feeInfo: any, fallbackUsed?: boolean }> {
+): Promise<{ link: StripePaymentLink | null, feeInfo: any, fallbackUsed?: boolean }> {
   const {
     client,
     connectedAccountId,
@@ -454,7 +461,7 @@ export async function buildConnectPaymentLink(
     store_tier: breakdown.store_tier,
   });
 
-  const paymentLinkParams: Stripe.PaymentLinkCreateParams = {
+  const paymentLinkParams: StripePaymentLinkCreateParams = {
     line_items: lineItems,
     after_completion: {
       type: 'redirect',
@@ -490,7 +497,7 @@ export async function buildConnectPaymentLink(
     console.log('[STRIPE_CONNECT] Payment link created at Stripe', {
       link_id: paymentLink.id,
       link_url: paymentLink.url.substring(0, 60) + '...',
-      line_items_data: paymentLink.line_items?.data?.map((item: Stripe.LineItem) => ({
+      line_items_data: paymentLink.line_items?.data?.map((item: StripeLineItemData) => ({
         id: item.id,
         price: item.price?.id,
         quantity: item.quantity,

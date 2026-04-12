@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import type { Stripe as StripeClient } from 'stripe';
 
 // Stripe configuration
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
@@ -8,7 +9,7 @@ console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_KEY:', !!STRIPE_SECRET_KEY
 console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_TEST_KEY:', !!STRIPE_SECRET_TEST_KEY);
 
 // Fix: Add missing Stripe API version for initialization (required by Stripe SDK)
-const STRIPE_API_VERSION = '2024-06-20';
+const STRIPE_API_VERSION = '2026-03-25.dahlia';
 
 // Initialize Stripe clients
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
@@ -19,7 +20,7 @@ console.log('[STRIPE_SERVICE] Stripe clients initialized - stripe:', !!stripe, '
 /**
  * Get the appropriate Stripe client (prod vs test) based on environment
  */
-export function getStripeClient(useTestMode: boolean = false): Stripe | null {
+export function getStripeClient(useTestMode: boolean = false): StripeClient | null {
   const defaultTestMode = process.env.NODE_ENV === 'development';
   const shouldUseTest = useTestMode || defaultTestMode;
 

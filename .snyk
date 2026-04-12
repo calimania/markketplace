@@ -1,0 +1,22 @@
+# Snyk (https://snyk.io) policy file
+# Patches or ignores for vulnerabilities introduced through transitive
+# dependencies in @strapi/plugin-users-permissions that have no upstream fix.
+version: v1.25.0
+
+ignore:
+  SNYK-JS-ELLIPTIC-14908844:
+    - '*':
+        reason: >
+          No fix available upstream. Introduced transitively via
+          @strapi/plugin-users-permissions@5.42.0. Low exploitability in
+          this context (server-side only, no user-controlled elliptic input).
+        expires: 2026-10-12T00:00:00.000Z
+  SNYK-JS-INFLIGHT-6095116:
+    - '*':
+        reason: >
+          No fix available upstream. Introduced transitively via
+          @strapi/plugin-users-permissions@5.42.0. Memory leak risk is
+          acceptable for server process with managed restarts.
+        expires: 2026-10-12T00:00:00.000Z
+
+patch: {}

@@ -1,5 +1,8 @@
 import Stripe from 'stripe';
+import type { Stripe as StripeClient } from 'stripe';
 import { getStripeClient } from './stripe';
+
+type StripePriceCreateParams = Parameters<StripeClient['prices']['create']>[0];
 
 /**
  * Sync prices with Stripe
@@ -82,7 +85,7 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
       // Determine product type for tax configuration
       const isDigitalProduct = product.Name.toLowerCase().includes('digital');
 
-      const priceData: Stripe.PriceCreateParams = {
+      const priceData: StripePriceCreateParams = {
         unit_amount: Math.round(Number(price.Price) * 100),
         currency: (price.Currency || 'usd').toLowerCase(),
         product: product.SKU,

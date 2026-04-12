@@ -1,5 +1,9 @@
 import Stripe from 'stripe';
+import type { Stripe as StripeClient } from 'stripe';
 import { getStripeClient, getFullImageUrl, stripsMarkdown } from './stripe';
+
+type StripeProductCreateParams = Parameters<StripeClient['products']['create']>[0];
+type StripeProductUpdateParams = Parameters<StripeClient['products']['update']>[1];
 
 /**
  * Create a new Stripe product
@@ -28,7 +32,7 @@ export async function createStripeProduct(product: any): Promise<string | null> 
   const isDigitalProduct = product.Name.toLowerCase().includes('digital');
   console.log(`[STRIPE_PRODUCT_SERVICE] Product type detected: ${isDigitalProduct ? 'Digital' : 'Physical'} (based on name: "${product.Name}")`);
 
-  const productData: Stripe.ProductCreateParams = {
+  const productData: StripeProductCreateParams = {
     name: product.Name,
     description: product.Description ? stripsMarkdown(product.Description) : undefined,
     active: product.active !== false,
@@ -114,7 +118,7 @@ export async function updateStripeProductMetadata(product: any): Promise<void> {
     console.log('[STRIPE_PRODUCT_SERVICE] Retrieving existing Stripe product for comparison...');
     const existingProduct = await stripeClient.products.retrieve(product.SKU);
 
-    const updateData: Stripe.ProductUpdateParams = {};
+    const updateData: StripeProductUpdateParams = {};
     let needsUpdate = false;
 
     // Check if name changed

@@ -13,5 +13,5 @@ export default factories.createCoreRouter('api::store.store', {
       middlewares: [],
     },
   },
-  only: ['find', 'findOne', 'create', 'update', 'delete'],
+  only: ['find', 'findOne'],
 });
