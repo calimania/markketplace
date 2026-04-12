@@ -16,23 +16,22 @@
   },
   "dependencies": {
     "@strapi-community/plugin-healthcheck": "^1.1.1",
-    "@strapi/plugin-cloud": "5.41.1",
-    "@strapi/plugin-users-permissions": "5.41.1",
-    "@strapi/provider-email-sendgrid": "5.41.1",
-    "@strapi/provider-upload-aws-s3": "5.41.1",
-    "@strapi/strapi": "5.41.1",
-    "@types/uuid": "^10.0.0",
-    "esbuild": "0.25.12",
-    "fast-xml-parser": "5.5.10",
+    "@strapi/plugin-cloud": "5.42.0",
+    "@strapi/plugin-users-permissions": "5.42.0",
+    "@strapi/provider-email-sendgrid": "5.42.0",
+    "@strapi/provider-upload-aws-s3": "5.42.0",
+    "@strapi/strapi": "5.42.0",
+    "esbuild": "0.28.0",
+    "fast-xml-parser": "5.5.11",
     "get-strapi-schema": "^0.0.3",
     "glob": "^13.0.6",
-    "pg": "^8.12.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "react-router-dom": "^6.30.2",
-    "stripe": "^16.1.0",
-    "styled-components": "^6.0.0",
-    "twilio": "^5.9.0"
+    "pg": "^8.20.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.0",
+    "stripe": "^22.0.1",
+    "styled-components": "^6.4.0",
+    "twilio": "^5.13.1"
   },
   "author": {
     "name": "calimania"
@@ -41,12 +40,12 @@
     "uuid": "d945c243-b70c-4ef4-83b0-45bdf201fb89"
   },
   "engines": {
-    "node": ">=20.18.1 <=22.x.x",
-    "npm": ">=9.0.0"
+    "node": ">=24",
+    "npm": ">=11.0.0"
   },
   "license": "SEE LICENSE IN LICENSE",
   "packageManager": "yarn@1.22.22",
   "devDependencies": {
-    "turbo": "^2.4.2"
+    "turbo": "^2.9.6"
   }
 }
