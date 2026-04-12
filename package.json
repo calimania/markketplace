@@ -16,11 +16,11 @@
   },
   "dependencies": {
     "@strapi-community/plugin-healthcheck": "^1.1.1",
-    "@strapi/plugin-cloud": "5.41.1",
-    "@strapi/plugin-users-permissions": "5.41.1",
-    "@strapi/provider-email-sendgrid": "5.41.1",
-    "@strapi/provider-upload-aws-s3": "5.41.1",
-    "@strapi/strapi": "5.41.1",
+    "@strapi/plugin-cloud": "5.42.0",
+    "@strapi/plugin-users-permissions": "5.42.0",
+    "@strapi/provider-email-sendgrid": "5.42.0",
+    "@strapi/provider-upload-aws-s3": "5.42.0",
+    "@strapi/strapi": "5.42.0",
     "esbuild": "0.28.0",
     "fast-xml-parser": "5.5.11",
     "get-strapi-schema": "^0.0.3",
@@ -32,6 +32,12 @@
     "stripe": "^22.0.1",
     "styled-components": "^6.4.0",
     "twilio": "^5.13.1"
+  },
+  "resolutions": {
+    "ajv@^8.0.0": "8.18.0",
+    "ajv@^8.9.0": "8.18.0",
+    "ajv@~8.13.0": "8.18.0",
+    "ajv@^6.12.5": "6.14.0"
   },
   "author": {
     "name": "calimania"
