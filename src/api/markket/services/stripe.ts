@@ -29,10 +29,17 @@
  */
 
 import Stripe from "stripe";
+import type { Stripe as StripeClient } from 'stripe';
 import {
   buildConnectPaymentLink,
   type StoreConnectData
 } from './stripe-connect';
+
+type StripeAccount = Awaited<ReturnType<StripeClient['accounts']['retrieve']>>;
+type StripePaymentLink = Awaited<ReturnType<StripeClient['paymentLinks']['create']>>;
+type StripePaymentLinkCreateParams = Parameters<StripeClient['paymentLinks']['create']>[0];
+type StripeLineItem = StripePaymentLinkCreateParams['line_items'][number];
+type StripeCheckoutSession = Awaited<ReturnType<StripeClient['checkout']['sessions']['retrieve']>>;
 
 type DefaultCountries = ['US', 'CO', 'MX', 'SV', 'IL'];
 
@@ -102,10 +109,10 @@ const STRIPE_PROCESSING_FIXED_CENTS = Math.round(parseFloat(process.env.STRIPE_P
  *   return null;
  * }
  */
-function createStripeClient(secret: string): Stripe | null {
+function createStripeClient(secret: string): StripeClient | null {
   if (!secret) return null;
   return new Stripe(secret, {
-    apiVersion: '2024-06-20',
+    apiVersion: '2026-03-25.dahlia',
     typescript: true,
     telemetry: false,
   });
@@ -192,7 +199,7 @@ type PaymentLinkOptions = {
  *   console.log('Account ready for payments');
  * }
  */
-export const getAccount = async (store_id: string): Promise<Stripe.Account | null> => {
+export const getAccount = async (store_id: string): Promise<StripeAccount | null> => {
   if (!store_id) {
     return null;
   }
@@ -293,7 +300,7 @@ export const createPaymentLinkWithPriceIds = async ({
   total,
   product,
   countries,
-}: PaymentLinkOptions): Promise<{ link: Stripe.PaymentLink | null, details: {}[], feeInfo?: any, connectStatus?: any } | null> => {
+}: PaymentLinkOptions): Promise<{ link: StripePaymentLink | null, details: {}[], feeInfo?: any, connectStatus?: any } | null> => {
 
   const validation = validatePaymentLinkInput({
     prices,
@@ -371,7 +378,7 @@ export const createPaymentLinkWithPriceIds = async ({
   let connectStatus: any = null;
 
   // Try to create a Connect payment link if possible
-  let connectResult: { link: Stripe.PaymentLink | null, feeInfo?: any } | null = null;
+  let connectResult: { link: StripePaymentLink | null, feeInfo?: any } | null = null;
   let connectFailedReason: string | null = null;
 
   if (store?.STRIPE_CUSTOMER_ID) {
@@ -463,8 +470,8 @@ export const createPaymentLinkWithPriceIds = async ({
  * @returns {Stripe.PaymentLinkCreateParams.LineItem[]} Formatted line items (max 20)
  * @private
  */
-function buildLineItems(prices: LineItemInput[]): Stripe.PaymentLinkCreateParams.LineItem[] {
-  const lineItems: Stripe.PaymentLinkCreateParams.LineItem[] = [];
+function buildLineItems(prices: LineItemInput[]): StripeLineItem[] {
+  const lineItems: StripeLineItem[] = [];
 
   for (const price of prices) {
     if (price.price) {
@@ -482,7 +489,7 @@ function buildLineItems(prices: LineItemInput[]): Stripe.PaymentLinkCreateParams
           },
         },
         quantity: price.quantity || 1,
-      } as unknown) as Stripe.PaymentLinkCreateParams.LineItem);
+      } as unknown) as StripeLineItem);
     }
   }
 
@@ -505,13 +512,13 @@ function buildLineItems(prices: LineItemInput[]): Stripe.PaymentLinkCreateParams
  * @private
  */
 async function createStandardPaymentLink(
-  client: Stripe,
-  lineItems: Stripe.PaymentLinkCreateParams.LineItem[],
+  client: StripeClient,
+  lineItems: StripeLineItem[],
   redirectUrl: string,
   includeShipping: boolean,
   allowedCountries?: DefaultCountries,
-): Promise<Stripe.PaymentLink | null> {
-  const params: Stripe.PaymentLinkCreateParams = {
+): Promise<StripePaymentLink | null> {
+  const params: StripePaymentLinkCreateParams = {
     line_items: lineItems,
     after_completion: {
       type: 'redirect',
@@ -552,7 +559,7 @@ async function createStandardPaymentLink(
 export const getSessionById = async (
   session_id: string,
   stripe_test: boolean
-): Promise<Stripe.Checkout.Session | null> => {
+): Promise<StripeCheckoutSession | null> => {
   if (!session_id) {
     return null;
   }
@@ -661,7 +668,7 @@ export function validateStripeConfig(): { configured: boolean; warnings: string[
  *   const txns = await client.balanceTransactions.list(...);
  * }
  */
-export function getStripeClient(test: boolean = false): Stripe | null {
+export function getStripeClient(test: boolean = false): StripeClient | null {
   return test ? stripeTest : stripe;
 }
 
