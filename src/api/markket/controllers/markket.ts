@@ -861,4 +861,55 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     return ctx.send({ received: true });
   },
 
+  /**
+   * PUT /api/markket/user
+   * Update the authenticated user's own profile fields.
+   * Only whitelisted fields are accepted — role, email, password, blocked
+   * and other sensitive fields are always ignored.
+   */
+  async updateUser(ctx: any) {
+    const authUser = ctx.state?.user;
+
+    if (!authUser?.id) {
+      return ctx.unauthorized('Authentication required');
+    }
+
+    const ALLOWED_FIELDS = ['displayName', 'bio', 'phone', 'preferredChannel'];
+    const body = ctx.request.body || {};
+
+    const updates: Record<string, any> = {};
+    for (const field of ALLOWED_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(body, field)) {
+        updates[field] = body[field];
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return ctx.badRequest('No valid fields provided');
+    }
+
+    try {
+      const updated = await strapi
+        .plugin('users-permissions')
+        .service('user')
+        .edit(authUser.id, updates);
+
+      console.log('[MARKKET] User profile updated');
+
+      return ctx.send({
+        id: updated.id,
+        documentId: updated.documentId,
+        username: updated.username,
+        email: updated.email,
+        displayName: updated.displayName,
+        bio: updated.bio,
+        phone: updated.phone,
+        preferredChannel: updated.preferredChannel,
+      });
+    } catch (error) {
+      console.error('[MARKKET] User update failed:', error.message);
+      return ctx.internalServerError('Failed to update user profile');
+    }
+  },
+
 }));
