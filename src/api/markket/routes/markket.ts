@@ -59,5 +59,14 @@ module.exports = {
         middlewares: [],
       },
     },
+    {
+      method: 'PUT',
+      path: '/markket/user',
+      handler: 'markket.updateUser',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };
