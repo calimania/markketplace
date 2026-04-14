@@ -53,6 +53,16 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/markket/apple/app-store-connect-webhooks',
+      handler: 'markket.appleAppStoreConnectWebhooks',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
       path: '/markket/apple/install-attribution',
       handler: 'markket.appleInstallAttribution',
       config: {

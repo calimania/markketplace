@@ -123,6 +123,8 @@ const summarizeWebhookBody = (body: any) => {
     hasSignedPayload: typeof body?.signedPayload === 'string' && body.signedPayload.length > 0,
     hasPostbackSequenceIndex: typeof body?.postbackSequenceIndex !== 'undefined',
     hasSourceAppId: typeof body?.sourceAppId !== 'undefined',
+    webhookEvent: body?.eventType || body?.type || body?.notificationType || body?.data?.type || null,
+    webhookSubEvent: body?.subtype || body?.notificationSubType || body?.data?.attributes?.notificationSubType || null,
   };
 };
 
@@ -338,6 +340,34 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
       webhook: 'app_store_server_notification',
       placeholder: true,
       message: 'Payload stored. JWS verification and notification decoding are not wired yet.',
+    });
+  },
+
+  /**
+   * POST /api/markket/apple/app-store-connect-webhooks
+   * Public intake endpoint for App Store Connect webhooks like TestFlight, build,
+   * version, release, asset pack, and feedback status changes.
+   */
+  async appleAppStoreConnectWebhooks(ctx: any) {
+    const body = ctx.request.body || {};
+    const summary = summarizeWebhookBody(body);
+
+    console.info('[APPLE_WEBHOOK] App Store Connect webhook received', {
+      eventType: summary.webhookEvent,
+      subEvent: summary.webhookSubEvent,
+      keys: summary.keys,
+    });
+
+    await createWebhookAuditRecord(strapi, 'apple.app_store_connect_webhook', ctx, body);
+
+    return ctx.send({
+      received: true,
+      source: 'apple',
+      webhook: 'app_store_connect',
+      placeholder: true,
+      eventType: summary.webhookEvent,
+      subEvent: summary.webhookSubEvent,
+      message: 'Payload stored. Event-specific processing for TestFlight, build, version, release, asset pack, and feedback changes is not wired yet.',
     });
   },
 
