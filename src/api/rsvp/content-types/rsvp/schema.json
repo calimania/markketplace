@@ -46,9 +46,27 @@
       },
       "type": "boolean"
     },
+    "sendgrid_contact_id": {
+      "type": "string"
+    },
+    "sendgrid_list_id": {
+      "type": "string"
+    },
+    "last_synced_at": {
+      "type": "datetime"
+    },
+    "sync_status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "synced",
+        "failed"
+      ],
+      "default": "pending"
+    },
     "event": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "required": true,
       "target": "api::event.event"
     }

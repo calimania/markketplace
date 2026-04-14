@@ -186,6 +186,162 @@ function ensureRequestId(ctx: any): string {
   return requestId;
 }
 
+function resolveRequestedPublicationStatus(value: any): 'draft' | 'published' | null {
+  const status = String(value || '').trim().toLowerCase();
+  if (status === 'draft' || status === 'published') {
+    return status;
+  }
+
+  return null;
+}
+
+function buildPublicationMeta(hasDraft: boolean, hasPublished: boolean) {
+  return {
+    hasDraft,
+    hasPublished,
+    visibleStatus: hasPublished ? (hasDraft ? 'draft' : 'published') : 'unpublished',
+  };
+}
+
+function withPublicationMeta(item: any, hasDraft: boolean, hasPublished: boolean) {
+  if (!item) {
+    return item;
+  }
+
+  return {
+    ...item,
+    tiendaPublication: buildPublicationMeta(hasDraft, hasPublished),
+  };
+}
+
+async function findOwnerContentCollection(
+  documentsApi: any,
+  config: any,
+  query: any,
+  requestedStatus: 'draft' | 'published' | null,
+  skip: number,
+  limit: number,
+) {
+  if (!config.hasDraftAndPublish || requestedStatus) {
+    const items = await documentsApi.findMany({
+      ...query,
+      skip,
+      limit,
+      ...(requestedStatus ? { status: requestedStatus } : {}),
+    });
+
+    const count = await documentsApi.count({
+      filters: query.filters,
+      ...(requestedStatus ? { status: requestedStatus } : {}),
+    });
+
+    const publicationItems = (items || []).map((item: any) => withPublicationMeta(
+      item,
+      requestedStatus !== 'published',
+      requestedStatus !== 'draft',
+    ));
+
+    return {
+      items: publicationItems,
+      total: count,
+    };
+  }
+
+  const [draftItems, publishedItems] = await Promise.all([
+    documentsApi.findMany({
+      ...query,
+      status: 'draft',
+    }),
+    documentsApi.findMany({
+      ...query,
+      status: 'published',
+    }),
+  ]);
+
+  const publishedByDocumentId = new Map<string, any>();
+  for (const item of publishedItems || []) {
+    if (item?.documentId) {
+      publishedByDocumentId.set(item.documentId, item);
+    }
+  }
+
+  const mergedByDocumentId = new Map<string, any>();
+  for (const item of publishedItems || []) {
+    if (item?.documentId) {
+      mergedByDocumentId.set(
+        item.documentId,
+        withPublicationMeta(item, false, true),
+      );
+    }
+  }
+
+  for (const item of draftItems || []) {
+    if (item?.documentId) {
+      mergedByDocumentId.set(
+        item.documentId,
+        withPublicationMeta(item, true, publishedByDocumentId.has(item.documentId)),
+      );
+    }
+  }
+
+  const allItems = Array.from(mergedByDocumentId.values()).sort((left: any, right: any) => {
+    const leftTime = new Date(left?.updatedAt || left?.createdAt || 0).getTime();
+    const rightTime = new Date(right?.updatedAt || right?.createdAt || 0).getTime();
+    return rightTime - leftTime;
+  });
+
+  return {
+    items: allItems.slice(skip, skip + limit),
+    total: allItems.length,
+  };
+}
+
+async function findOwnerContentItem(
+  documentsApi: any,
+  config: any,
+  documentId: string,
+  populate: string[],
+  requestedStatus: 'draft' | 'published' | null,
+  locale?: string,
+) {
+  const sharedQuery = {
+    documentId,
+    populate,
+    ...(locale ? { locale } : {}),
+  };
+
+  if (!config.hasDraftAndPublish || requestedStatus) {
+    const item = await documentsApi.findOne({
+      ...sharedQuery,
+      ...(requestedStatus ? { status: requestedStatus } : {}),
+    });
+
+    if (!item) {
+      return null;
+    }
+
+    return withPublicationMeta(item, requestedStatus !== 'published', requestedStatus !== 'draft');
+  }
+
+  const [draftItem, publishedItem] = await Promise.all([
+    documentsApi.findOne({
+      ...sharedQuery,
+      status: 'draft',
+    }),
+    documentsApi.findOne({
+      ...sharedQuery,
+      status: 'published',
+    }),
+  ]);
+
+  const selectedItem = draftItem || publishedItem;
+  if (!selectedItem) {
+    return null;
+  }
+
+  return withPublicationMeta(selectedItem, Boolean(draftItem), Boolean(publishedItem));
+}
+
 export default {
   async me(ctx: any) {
     const user = requireUser(ctx);
@@ -511,11 +667,11 @@ export default {
       }
 
       const { skip, limit } = applyPagination(ctx);
+      const requestedStatus = resolveRequestedPublicationStatus(ctx.query.status);
+      const documentsApi = (strapi.documents as any)(config.uid);
       const query: any = {
         filters: buildStoreFilter(access.store.documentId, config),
         populate: config.defaultPopulate,
-        skip,
-        limit,
       };
 
       // Apply search if provided
@@ -534,15 +690,14 @@ export default {
         }
       }
 
-      // Apply status filter
-      if (ctx.query.status && ['draft', 'published'].includes(ctx.query.status)) {
-        query.status = ctx.query.status;
-      }
-
-      const items = await (strapi.documents as any)(config.uid).findMany(query);
-      const count = await (strapi.documents as any)(config.uid).count({
-        filters: query.filters,
-      });
+      const { items, total } = await findOwnerContentCollection(
+        documentsApi,
+        config,
+        query,
+        requestedStatus,
+        skip,
+        limit,
+      );
 
       return ctx.send({
         ok: true,
@@ -550,8 +705,8 @@ export default {
         pagination: {
           page: Math.floor(skip / limit) + 1,
           pageSize: limit,
-          total: count,
-          pages: Math.ceil(count / limit),
+          total,
+          pages: Math.ceil(total / limit),
         },
       });
     } catch (error) {
@@ -671,15 +826,20 @@ export default {
     try {
       const config = resolveContentType(contentType);
       const access = await checkStoreAccess(strapi, user.id, ref);
+      const requestedStatus = resolveRequestedPublicationStatus(ctx.query.status);
+      const documentsApi = (strapi.documents as any)(config.uid);
 
       if (!access.hasAccess) {
         return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
       }
 
-      const item = await (strapi.documents as any)(config.uid).findOne({
-        documentId: itemId,
-        populate: config.defaultPopulate,
-      });
+      const item = await findOwnerContentItem(
+        documentsApi,
+        config,
+        itemId,
+        config.defaultPopulate,
+        requestedStatus,
+      );
 
       if (!item) {
         return ctx.notFound('Content not found');
@@ -971,6 +1131,184 @@ export default {
         return ctx.badRequest('Invalid content type');
       }
       return ctx.internalServerError(`Unexpected error: ${error.message}. requestId=${requestId}`);
+    }
+  },
+
+  /**
+   * GET /api/tienda/stores/:ref/events/:eventId/rsvps
+   * List RSVPs for a store event with pagination and basic filters.
+   */
+  async listEventRsvps(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) {
+      return;
+    }
+
+    const ref = String(ctx.params?.ref || '').trim();
+    const eventId = String(ctx.params?.eventId || '').trim();
+
+    if (!ref || !eventId) {
+      return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+    }
+
+    try {
+      const access = await checkStoreAccess(strapi, user.id, ref);
+      if (!access.store || !access.hasAccess) {
+        return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
+      }
+
+      const eventConfig = resolveContentType('event');
+      const event = await (strapi.documents as any)(eventConfig.uid).findOne({
+        documentId: eventId,
+        populate: ['stores', 'Thumbnail'],
+      });
+
+      if (!event) {
+        return ctx.notFound('Event not found');
+      }
+
+      if (!verifyItemBelongsToStore(event, access.store.documentId, eventConfig)) {
+        return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
+      }
+
+      const { skip, limit } = applyPagination(ctx);
+      const filters: any = {
+        event: { documentId: { $eq: eventId } },
+      };
+
+      if (ctx.query.search) {
+        const searchTerm = String(ctx.query.search).trim();
+        if (searchTerm.length > 0) {
+          filters.$or = [
+            { name: { $containsi: searchTerm } },
+            { email: { $containsi: searchTerm } },
+          ];
+        }
+      }
+
+      if (typeof ctx.query.approved !== 'undefined') {
+        const approved = String(ctx.query.approved).toLowerCase();
+        if (approved === 'true' || approved === 'false') {
+          filters.approved = { $eq: approved === 'true' };
+        }
+      }
+
+      if (ctx.query.sync_status && ['pending', 'synced', 'failed'].includes(String(ctx.query.sync_status))) {
+        filters.sync_status = { $eq: String(ctx.query.sync_status) };
+      }
+
+      const rsvpDocuments = (strapi.documents as any)('api::rsvp.rsvp');
+      const [items, total] = await Promise.all([
+        rsvpDocuments.findMany({
+          filters,
+          populate: ['user', 'event'],
+          sort: { createdAt: 'desc' },
+          skip,
+          limit,
+        }),
+        rsvpDocuments.count({ filters }),
+      ]);
+
+      return ctx.send({
+        ok: true,
+        event: {
+          documentId: event.documentId,
+          name: event.Name,
+          startDate: event.startDate,
+          endDate: event.endDate,
+          active: event.active,
+        },
+        data: (items || []).map((item: any) => ({
+          documentId: item.documentId,
+          name: item.name,
+          email: item.email,
+          approved: item.approved,
+          usd_price: item.usd_price,
+          sync_status: item.sync_status || 'pending',
+          sendgrid_contact_id: item.sendgrid_contact_id || null,
+          sendgrid_list_id: item.sendgrid_list_id || null,
+          last_synced_at: item.last_synced_at || null,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          user: item.user ? {
+            id: item.user.id,
+            username: item.user.username,
+            email: item.user.email,
+          } : null,
+        })),
+        pagination: {
+          page: Math.floor(skip / limit) + 1,
+          pageSize: limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error: any) {
+      console.error('[TIENDA_EVENT_RSVPS] Failed:', error.message);
+      return ctx.internalServerError('Request failed');
+    }
+  },
+
+  /**
+   * POST /api/tienda/stores/:ref/events/:eventId/rsvps/sync
+   * Placeholder sync endpoint for future SendGrid list integration.
+   */
+  async syncEventRsvps(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) {
+      return;
+    }
+
+    const ref = String(ctx.params?.ref || '').trim();
+    const eventId = String(ctx.params?.eventId || '').trim();
+
+    if (!ref || !eventId) {
+      return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+    }
+
+    try {
+      const access = await checkStoreAccess(strapi, user.id, ref);
+      if (!access.store || !access.hasAccess) {
+        return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
+      }
+
+      const eventConfig = resolveContentType('event');
+      const event = await (strapi.documents as any)(eventConfig.uid).findOne({
+        documentId: eventId,
+        populate: ['stores'],
+      });
+
+      if (!event) {
+        return ctx.notFound('Event not found');
+      }
+
+      if (!verifyItemBelongsToStore(event, access.store.documentId, eventConfig)) {
+        return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
+      }
+
+      const rsvpDocuments = (strapi.documents as any)('api::rsvp.rsvp');
+      const rsvps = await rsvpDocuments.findMany({
+        filters: {
+          event: { documentId: { $eq: eventId } },
+        },
+        limit: 500,
+      });
+
+      return ctx.send({
+        ok: true,
+        placeholder: true,
+        message: 'RSVP sync placeholder ready. SendGrid event-list sync is not wired yet.',
+        data: {
+          storeDocumentId: access.store.documentId,
+          eventDocumentId: event.documentId,
+          eventName: event.Name,
+          totalRsvps: Array.isArray(rsvps) ? rsvps.length : 0,
+          suggestedNextStep: 'Create or resolve a SendGrid list per event, then upsert attendee emails from this RSVP set.',
+        },
+      });
+    } catch (error: any) {
+      console.error('[TIENDA_EVENT_RSVP_SYNC] Failed:', error.message);
+      return ctx.internalServerError('Request failed');
     }
   },
 

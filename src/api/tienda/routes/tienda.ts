@@ -122,6 +122,24 @@ export default {
       },
     },
     {
+      method: 'GET',
+      path: '/tienda/stores/:ref/events/:eventId/rsvps',
+      handler: 'tienda.listEventRsvps',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/tienda/stores/:ref/events/:eventId/rsvps/sync',
+      handler: 'tienda.syncEventRsvps',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'POST',
       path: '/tienda/stores/:ref/upload',
       handler: 'tienda.uploadStoreMedia',

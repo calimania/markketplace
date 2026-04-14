@@ -157,6 +157,12 @@
       "relation": "oneToOne",
       "target": "plugin::users-permissions.user"
     },
+    "rsvps": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::rsvp.rsvp",
+      "mappedBy": "event"
+    },
     "extensions": {
       "type": "component",
       "repeatable": true,

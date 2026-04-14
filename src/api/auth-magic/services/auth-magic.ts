@@ -40,14 +40,28 @@ if (TWILIO_AUTH_TOKEN) {
  * Supports multiple channels: email, SMS, WhatsApp
  */
 export default ({ strapi }) => ({
-  async generateCode(identifier: string, store_id?: string, channel = 'email', ipAddress?: string, userAgent?: string) {
+  async generateCode(
+    identifier: string,
+    store_id?: string,
+    channel = 'email',
+    ipAddress?: string,
+    userAgent?: string,
+    options: {
+      purpose?: 'auth_login' | 'subscribe_confirm' | 'unsubscribe' | 'store_invite';
+      meta?: Record<string, unknown>;
+      reusable?: boolean;
+      expiresInMinutes?: number;
+      maxUses?: number;
+    } = {}
+  ) {
     console.log('generateCode magic link:', { identifier, store_id, channel });
 
     // Security: Check for rate limiting (prevent spam/abuse)
     await this.checkRateLimit(identifier, ipAddress);
 
     const code = crypto.randomBytes(24).toString('hex');
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    const expiresInMinutes = Number(options?.expiresInMinutes || 15);
+    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
 
     console.log('Generated code and expiration');
 
@@ -55,6 +69,10 @@ export default ({ strapi }) => ({
       code,
       expiresAt,
       channel,
+      purpose: options?.purpose || 'auth_login',
+      meta: options?.meta || null,
+      reusable: options?.reusable === true,
+      maxUses: typeof options?.maxUses === 'number' ? options.maxUses : 1,
       ipAddress,
       userAgent,
       store: store_id
@@ -156,6 +174,206 @@ export default ({ strapi }) => ({
     }
 
     return { code, shortner: data.shortner, attempts: magicCode?.attempts };
+  },
+
+  obfuscateEmail(email?: string | null) {
+    const value = String(email || '').trim();
+
+    if (!value.includes('@')) {
+      return value || null;
+    }
+
+    const [localPart, domainPart] = value.split('@');
+    const visibleLocal = localPart.slice(0, 2);
+
+    return `${visibleLocal}${'*'.repeat(Math.max(localPart.length - 2, 1))}@${domainPart}`;
+  },
+
+  resolveCodeNextPath(magic: any) {
+    const metaNextPath = typeof magic?.meta?.nextPath === 'string' ? magic.meta.nextPath.trim() : '';
+    if (metaNextPath.startsWith('/')) {
+      return metaNextPath;
+    }
+
+    const storeUnsubscribePath = typeof magic?.store?.settings?.newsletter_settings?.unsubscribe_page_url === 'string'
+      ? magic.store.settings.newsletter_settings.unsubscribe_page_url.trim()
+      : '';
+
+    if (magic?.purpose === 'unsubscribe' && storeUnsubscribePath.startsWith('/')) {
+      return storeUnsubscribePath;
+    }
+
+    if (magic?.purpose === 'subscribe_confirm') {
+      return '/subscribe/confirm';
+    }
+
+    if (magic?.purpose === 'unsubscribe') {
+      return '/unsubscribe';
+    }
+
+    if (magic?.purpose === 'store_invite') {
+      return '/invite/accept';
+    }
+
+    return '/auth/magic';
+  },
+
+  isCodeExpired(magic: any) {
+    return !magic?.expiresAt || new Date(magic.expiresAt) < new Date();
+  },
+
+  isCodeExhausted(magic: any) {
+    if (!magic) {
+      return true;
+    }
+
+    if (magic.reusable) {
+      const maxUses = Number(magic.maxUses || 0);
+      if (maxUses <= 0) {
+        return false;
+      }
+
+      return Number(magic.useCount || 0) >= maxUses;
+    }
+
+    return magic.used === true;
+  },
+
+  buildCodeSummary(magic: any) {
+    return {
+      purpose: magic?.purpose || 'auth_login',
+      channel: magic?.channel || 'email',
+      nextPath: this.resolveCodeNextPath(magic),
+      expiresAt: magic?.expiresAt || null,
+      reusable: magic?.reusable === true,
+      useCount: Number(magic?.useCount || 0),
+      maxUses: Number(magic?.maxUses || 1),
+      emailHint: magic?.email ? this.obfuscateEmail(magic.email) : null,
+      store: magic?.store ? {
+        documentId: magic.store.documentId,
+        slug: magic.store.slug,
+        title: magic.store.title,
+        domain: magic.store?.settings?.domain || null,
+      } : null,
+      meta: magic?.meta || null,
+    };
+  },
+
+  async findCodeRecord(code: string) {
+    const record = await strapi.documents('api::auth-magic.magic-code').findMany({
+      filters: { code },
+      sort: { createdAt: 'desc' },
+      limit: 1,
+      populate: ['store.settings', 'store', 'store.Favicon', 'shortner']
+    });
+
+    return record?.[0] || null;
+  },
+
+  async previewCode(code: string) {
+    const magic = await this.findCodeRecord(code);
+
+    if (!magic) {
+      return {
+        success: false,
+        state: 'invalid',
+        message: 'Code not found',
+      };
+    }
+
+    if (this.isCodeExpired(magic)) {
+      return {
+        success: false,
+        state: 'expired',
+        message: 'Code has expired',
+        data: this.buildCodeSummary(magic),
+      };
+    }
+
+    if (this.isCodeExhausted(magic)) {
+      return {
+        success: false,
+        state: 'used',
+        message: 'Code is no longer available',
+        data: this.buildCodeSummary(magic),
+      };
+    }
+
+    return {
+      success: true,
+      state: 'ready',
+      message: 'Code is ready',
+      data: this.buildCodeSummary(magic),
+    };
+  },
+
+  async confirmCodeAction(code: string, actor?: { id?: number; email?: string; username?: string } | null) {
+    const magic = await this.findCodeRecord(code);
+
+    if (!magic) {
+      return {
+        success: false,
+        state: 'invalid',
+        message: 'Code not found',
+      };
+    }
+
+    if (this.isCodeExpired(magic)) {
+      if (!magic.used) {
+        await strapi.documents('api::auth-magic.magic-code').update({
+          documentId: magic.documentId,
+          data: { used: true, usedAt: new Date().toISOString() }
+        });
+      }
+
+      return {
+        success: false,
+        state: 'expired',
+        message: 'Code has expired',
+        data: this.buildCodeSummary(magic),
+      };
+    }
+
+    if (this.isCodeExhausted(magic)) {
+      return {
+        success: false,
+        state: 'used',
+        message: 'Code is no longer available',
+        data: this.buildCodeSummary(magic),
+      };
+    }
+
+    const nextUseCount = Number(magic.useCount || 0) + 1;
+    const maxUses = Number(magic.maxUses || 1);
+    const shouldMarkUsed = magic.reusable ? maxUses > 0 && nextUseCount >= maxUses : true;
+
+    await strapi.documents('api::auth-magic.magic-code').update({
+      documentId: magic.documentId,
+      data: {
+        useCount: nextUseCount,
+        used: shouldMarkUsed,
+        usedAt: new Date().toISOString(),
+      }
+    });
+
+    return {
+      success: true,
+      state: 'confirmed',
+      message: 'Code confirmed. Action placeholder executed.',
+      data: {
+        ...this.buildCodeSummary({ ...magic, useCount: nextUseCount, used: shouldMarkUsed }),
+        actor: actor ? {
+          id: actor.id || null,
+          email: actor.email || null,
+          username: actor.username || null,
+        } : null,
+        operation: {
+          status: 'placeholder',
+          purpose: magic?.purpose || 'auth_login',
+          note: 'No side effect has been executed yet. Wire this purpose to subscribe, unsubscribe, or invite acceptance next.'
+        }
+      }
+    };
   },
 
   /**
@@ -383,22 +601,15 @@ export default ({ strapi }) => ({
    * Verify magic code with attempt tracking and security
    */
   async verifyCode(code: string, ipAddress?: string, userAgent?: string) {
-    const record = await strapi.documents('api::auth-magic.magic-code').findMany({
-      filters: { code, used: false },
-      sort: { createdAt: 'desc' },
-      limit: 1,
-      populate: ['store.settings', 'store', 'store.Favicon', 'shortner']
-    });
+    const magic = await this.findCodeRecord(code);
 
-    if (!record.length) return null;
-
-    const magic = record[0];
+    if (!magic || magic.purpose !== 'auth_login' || magic.used) return null;
 
     // Check if expired
-    if (new Date(magic.expiresAt) < new Date()) {
+    if (this.isCodeExpired(magic)) {
       await strapi.documents('api::auth-magic.magic-code').update({
         documentId: magic.documentId,
-        data: { used: true } // Mark as used to prevent reuse
+        data: { used: true, usedAt: new Date().toISOString() } // Mark as used to prevent reuse
       });
       return null;
     }
@@ -414,7 +625,9 @@ export default ({ strapi }) => ({
       documentId: magic.documentId,
       data: {
         attempts: magic.attempts + 1,
-        used: true // Mark as used on successful verification
+        used: true,
+        usedAt: new Date().toISOString(),
+        useCount: Number(magic.useCount || 0) + 1,
       }
     });
 

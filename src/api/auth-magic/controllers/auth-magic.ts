@@ -4,6 +4,36 @@
  * Uses store.settings records for customization and shortener for SMS-friendly links
  */
 export default ({ strapi }) => ({
+  async preview(ctx) {
+    const { code } = ctx.request.body || {};
+
+    if (!code) {
+      return ctx.badRequest('CODE_REQUIRED');
+    }
+
+    const result = await strapi.service('api::auth-magic.auth-magic').previewCode(code);
+    return ctx.send(result);
+  },
+
+  async confirm(ctx) {
+    const { code } = ctx.request.body || {};
+
+    if (!code) {
+      return ctx.badRequest('CODE_REQUIRED');
+    }
+
+    const actor = ctx.state.user
+      ? {
+        id: ctx.state.user.id,
+        email: ctx.state.user.email,
+        username: ctx.state.user.username,
+      }
+      : null;
+
+    const result = await strapi.service('api::auth-magic.auth-magic').confirmCodeAction(code, actor);
+    return ctx.send(result);
+  },
+
   async request(ctx) {
     const { email, phone, store_id, channel } = ctx.request.body;
     let finalChannel = channel;

@@ -20,6 +20,19 @@
       "type": "string",
       "required": true
     },
+    "purpose": {
+      "type": "enumeration",
+      "enum": [
+        "auth_login",
+        "subscribe_confirm",
+        "unsubscribe",
+        "store_invite"
+      ],
+      "default": "auth_login"
+    },
+    "meta": {
+      "type": "json"
+    },
     "expiresAt": {
       "type": "datetime",
       "required": true
@@ -27,6 +40,21 @@
     "used": {
       "type": "boolean",
       "default": false
+    },
+    "reusable": {
+      "type": "boolean",
+      "default": false
+    },
+    "usedAt": {
+      "type": "datetime"
+    },
+    "useCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "maxUses": {
+      "type": "integer",
+      "default": 1
     },
     "attempts": {
       "type": "integer",
