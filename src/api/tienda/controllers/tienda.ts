@@ -3,6 +3,7 @@ import {
   verifyItemBelongsToStore,
   autoFillSEO,
   pickAllowedFields,
+  sanitizePayloadForUpdate,
   buildStoreRelation,
   applyPagination,
   checkRateLimit,
@@ -12,8 +13,8 @@ import {
 import { resolveContentType, RATE_LIMIT_CONFIG } from '../content-registry';
 import { getMediaFieldConfig, getMediaTargetConfig, getMediaTargetsForClient } from '../media-targets';
 
-const MAX_UPLOAD_BYTES = 4.2 * 1024 * 1024;
-const ALLOWED_UPLOAD_MIME_PREFIXES = ['image/', 'video/', 'audio/'];
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_UPLOAD_MIME_PREFIXES = ['image/']; // 'video/', 'audio/'];
 const ALLOWED_UPLOAD_MIME_EXACT = new Set([
   'application/pdf',
   'text/plain',
@@ -31,7 +32,6 @@ const STORE_MUTABLE_FIELDS = [
   'URLS',
   'SEO',
   'addresses',
-  'active',
 ];
 
 function getRequestData(ctx: any): Record<string, any> {
@@ -595,8 +595,11 @@ export default {
       // Pick allowed fields only
       const createData = pickAllowedFields(inputData, config);
 
+      // Sanitize media/relation/component fields
+      const sanitizedCreateData = sanitizePayloadForUpdate(createData, config);
+
       // Auto-fill SEO if title/content fields are present
-      const enrichedData = autoFillSEO(createData, config);
+      const enrichedData = autoFillSEO(sanitizedCreateData, config);
 
       // Add store relation
       const dataWithStore = {
@@ -757,8 +760,11 @@ export default {
         );
       }
 
+      // Sanitize media/relation/component fields so populated GET data can be PUT back directly
+      const sanitizedData = sanitizePayloadForUpdate(updateData, config);
+
       // Auto-fill SEO if title/content fields are present
-      const enrichedData = autoFillSEO(updateData, config);
+      const enrichedData = autoFillSEO(sanitizedData, config);
 
       let updated: any;
       try {

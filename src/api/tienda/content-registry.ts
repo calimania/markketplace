@@ -15,6 +15,10 @@ export interface ContentTypeConfig {
   hasDraftAndPublish: boolean;
   defaultPopulate: string[];
   autoSetCreator?: 'user' | 'Creator' | 'creator'; // Field name to auto-populate
+  // Field type metadata for sanitization before update
+  mediaFields?: string[];     // Single/multi media — strip to id only
+  relationFields?: string[];  // Relation fields — convert populated objects to connect format
+  componentFields?: string[]; // Repeatable components — strip id to avoid stale entry conflicts
 }
 
 export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
@@ -29,6 +33,9 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     readOnlyFields: ['Creator'],
     autoSetCreator: 'Creator',
     defaultPopulate: ['cover', 'Tags', 'SEO', 'category', 'Creator', 'store'],
+    mediaFields: ['cover'],
+    relationFields: ['category'],
+    componentFields: ['Tags'],
   },
   page: {
     uid: 'api::page.page',
@@ -39,6 +46,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     hasDraftAndPublish: true,
     mutableFields: ['Title', 'slug', 'Content', 'Active', 'menuOrder', 'SEO', 'albums', 'description', 'keywords'],
     defaultPopulate: ['SEO', 'albums', 'creator', 'store'],
+    relationFields: ['albums'],
   },
   album: {
     uid: 'api::album.album',
@@ -83,6 +91,8 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     ],
     readOnlyFields: ['SKU', 'slug'], // SKU is auto-synced with Stripe, slug is UID field
     defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'Tag', 'PRICES', 'stores', 'creator'],
+    mediaFields: ['Thumbnail', 'Slides'],
+    componentFields: ['Tag', 'PRICES'],
   },
   event: {
     uid: 'api::event.event',
@@ -97,6 +107,8 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     ],
     readOnlyFields: ['STRIPE_PRODUCT_ID', 'slug', 'amountSold'],
     defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'Tag', 'PRICES', 'stores', 'creator'],
+    mediaFields: ['Thumbnail', 'Slides'],
+    componentFields: ['Tag', 'PRICES'],
   },
   shortner: {
     uid: 'api::shortner.shortner',

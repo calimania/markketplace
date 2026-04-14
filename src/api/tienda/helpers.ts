@@ -89,6 +89,69 @@ export function pickAllowedFields(input: any, config: ContentTypeConfig): any {
 }
 
 /**
+ * Sanitize relation, media, and component fields before sending to Strapi Document Service.
+ *
+ * When a client does GET → edit → PUT, populated relation/media objects are sent back
+ * verbatim. Strapi v5 rejects full objects for relation fields and stale component ids.
+ *
+ * - mediaFields: reduce to { id } only (or null)
+ * - relationFields: convert populated object to { connect: [{ documentId }] } (or null)
+ * - componentFields (repeatable): strip `id` from each entry to avoid stale-entry conflicts
+ */
+export function sanitizePayloadForUpdate(data: any, config: ContentTypeConfig): any {
+  if (!data || typeof data !== 'object') return data;
+  const out = { ...data };
+
+  // Media fields — keep only the id
+  for (const field of config.mediaFields || []) {
+    if (!Object.prototype.hasOwnProperty.call(out, field)) continue;
+    const val = out[field];
+    if (val === null || val === undefined) {
+      out[field] = null;
+    } else if (Array.isArray(val)) {
+      // Multiple media
+      out[field] = val
+        .filter((v: any) => v?.id || v?.documentId)
+        .map((v: any) => ({ id: v.id ?? v.documentId }));
+    } else if (typeof val === 'object' && (val.id || val.documentId)) {
+      out[field] = { id: val.id ?? val.documentId };
+    }
+    // If it's already a number/string id, leave it
+  }
+
+  // Relation fields — convert populated objects to connect syntax
+  for (const field of config.relationFields || []) {
+    if (!Object.prototype.hasOwnProperty.call(out, field)) continue;
+    const val = out[field];
+    if (val === null || val === undefined) {
+      out[field] = null;
+    } else if (Array.isArray(val)) {
+      // manyToMany — convert each to documentId
+      const ids = val
+        .filter((v: any) => v?.documentId || v?.id)
+        .map((v: any) => ({ documentId: v.documentId ?? String(v.id) }));
+      out[field] = { connect: ids };
+    } else if (typeof val === 'object' && (val.documentId || val.id)) {
+      // manyToOne — convert to connect
+      out[field] = { connect: [{ documentId: val.documentId ?? String(val.id) }] };
+    }
+    // Already a connect/disconnect/set object or plain id — leave it
+  }
+
+  // Repeatable component fields — strip `id` to avoid stale entry conflicts in Strapi v5
+  for (const field of config.componentFields || []) {
+    if (!Object.prototype.hasOwnProperty.call(out, field)) continue;
+    const val = out[field];
+    if (Array.isArray(val)) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      out[field] = val.map(({ id: _id, ...rest }: any) => rest);
+    }
+  }
+
+  return out;
+}
+
+/**
  * Build store relation connect/disconnect based on relation type
  * Used when creating/updating items
  */
