@@ -35,6 +35,16 @@ const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || '';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
+const APPLE_WEBHOOK_HEADER_ALLOWLIST = [
+  'content-type',
+  'user-agent',
+  'authorization',
+  'x-forwarded-for',
+  'x-real-ip',
+  'apple-server-environment',
+  'apple-notification-type',
+  'x-apple-jws-signature',
+];
 
 /**
  * Verify Twilio webhook signature to ensure authenticity
@@ -84,6 +94,60 @@ const censor = (to: string | string[]) => {
     ? to.map(email => email.replace(/^(.{2})[^@]*(@.*)$/, '$1***$2')).join(', ')
     : to.replace(/^(.{2})[^@]*(@.*)$/, '$1***$2'));
 }
+
+const pickWebhookHeaders = (headers: Record<string, any> = {}) => {
+  const out: Record<string, string> = {};
+
+  for (const key of APPLE_WEBHOOK_HEADER_ALLOWLIST) {
+    const value = headers[key];
+    if (typeof value === 'string' && value.trim()) {
+      out[key] = value;
+    }
+  }
+
+  return out;
+};
+
+const summarizeWebhookBody = (body: any) => {
+  if (!body || typeof body !== 'object') {
+    return {
+      type: typeof body,
+      keys: [],
+      hasSignedPayload: false,
+    };
+  }
+
+  return {
+    type: Array.isArray(body) ? 'array' : 'object',
+    keys: Object.keys(body),
+    hasSignedPayload: typeof body?.signedPayload === 'string' && body.signedPayload.length > 0,
+    hasPostbackSequenceIndex: typeof body?.postbackSequenceIndex !== 'undefined',
+    hasSourceAppId: typeof body?.sourceAppId !== 'undefined',
+  };
+};
+
+const createWebhookAuditRecord = async (strapi: any, key: string, ctx: any, body: any) => {
+  try {
+    await strapi.service(modelId).create({
+      locale: 'en',
+      data: {
+        Key: key,
+        Content: {
+          received_at: new Date().toISOString(),
+          method: ctx.request?.method || 'POST',
+          path: ctx.request?.path || '',
+          ip: ctx.request?.ip || ctx.request?.headers?.['x-forwarded-for'] || null,
+          headers: pickWebhookHeaders(ctx.request?.headers || {}),
+          summary: summarizeWebhookBody(body),
+          payload: body,
+        },
+        user_key_or_id: 'apple_webhook',
+      }
+    });
+  } catch (error: any) {
+    console.error('[APPLE_WEBHOOK] Failed to persist webhook payload:', error.message);
+  }
+};
 
 module.exports = createCoreController(modelId, ({ strapi }) => ({
   async about(ctx: any) {
@@ -253,6 +317,77 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     ctx.status = 200;
     return ctx.send(twiml);
   },
+
+  /**
+   * POST /api/markket/apple/app-store-server-notifications
+   * Public placeholder endpoint for Apple's App Store Server Notifications V2.
+   */
+  async appleAppStoreServerNotifications(ctx: any) {
+    const body = ctx.request.body || {};
+
+    console.info('[APPLE_WEBHOOK] App Store Server Notification received', {
+      hasSignedPayload: typeof body?.signedPayload === 'string',
+      keys: typeof body === 'object' && body ? Object.keys(body) : [],
+    });
+
+    await createWebhookAuditRecord(strapi, 'apple.app_store_server_notification', ctx, body);
+
+    return ctx.send({
+      received: true,
+      source: 'apple',
+      webhook: 'app_store_server_notification',
+      placeholder: true,
+      message: 'Payload stored. JWS verification and notification decoding are not wired yet.',
+    });
+  },
+
+  /**
+   * POST /api/markket/apple/install-attribution
+   * Public placeholder endpoint for Apple-origin install attribution or postback payloads.
+   * Apple does not expose one universal app install webhook, so this route is intentionally generic.
+   */
+  async appleInstallAttribution(ctx: any) {
+    const body = ctx.request.body || {};
+
+    console.info('[APPLE_WEBHOOK] Install attribution payload received', {
+      hasSourceAppId: typeof body?.sourceAppId !== 'undefined',
+      keys: typeof body === 'object' && body ? Object.keys(body) : [],
+    });
+
+    await createWebhookAuditRecord(strapi, 'apple.install_attribution', ctx, body);
+
+    return ctx.send({
+      received: true,
+      source: 'apple',
+      webhook: 'install_attribution',
+      placeholder: true,
+      message: 'Payload stored. Map this route to the exact Apple attribution or install postback source you plan to use next.',
+    });
+  },
+
+  /**
+   * POST /api/markket/apple/skadnetwork
+   * Public placeholder endpoint for SKAdNetwork postbacks.
+   */
+  async appleSkAdNetwork(ctx: any) {
+    const body = ctx.request.body || {};
+
+    console.info('[APPLE_WEBHOOK] SKAdNetwork payload received', {
+      hasPostbackSequenceIndex: typeof body?.postbackSequenceIndex !== 'undefined',
+      keys: typeof body === 'object' && body ? Object.keys(body) : [],
+    });
+
+    await createWebhookAuditRecord(strapi, 'apple.skadnetwork_postback', ctx, body);
+
+    return ctx.send({
+      received: true,
+      source: 'apple',
+      webhook: 'skadnetwork',
+      placeholder: true,
+      message: 'Payload stored. SKAdNetwork verification and conversion mapping are not wired yet.',
+    });
+  },
+
   /**
    * POST /api/markket/send-email
    * Send branded email using store settings

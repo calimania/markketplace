@@ -43,6 +43,36 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/markket/apple/app-store-server-notifications',
+      handler: 'markket.appleAppStoreServerNotifications',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/markket/apple/install-attribution',
+      handler: 'markket.appleInstallAttribution',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/markket/apple/skadnetwork',
+      handler: 'markket.appleSkAdNetwork',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
       path: '/markket/refresh-fees/:orderId',
       handler: 'markket.refreshFees',
       config: {
