@@ -4,6 +4,7 @@
 
 import { factories } from '@strapi/strapi'
 import { syncProductWithStripe } from '../../../services/stripe-sync';
+import { requireUser } from '../../../services/api-auth';
 
 const coreController = factories.createCoreController('api::product.product', ({ strapi }) => ({
   /**
@@ -31,6 +32,11 @@ const coreController = factories.createCoreController('api::product.product', ({
   },
 
   async stripeSync(ctx) {
+    const user = requireUser(ctx);
+    if (!user) {
+      return;
+    }
+
     const { documentId } = ctx.params;
 
     if (!documentId) {
@@ -41,12 +47,31 @@ const coreController = factories.createCoreController('api::product.product', ({
 
     const product = await strapi.documents('api::product.product').findOne({
       documentId,
-      populate: ['PRICES', 'Thumbnail', 'Slides']
+      populate: ['PRICES', 'Thumbnail', 'Slides', 'stores', 'stores.users', 'stores.admin_users']
     });
 
     if (!product) {
       ctx.status = 404;
       ctx.body = { error: 'Product not found' };
+      return;
+    }
+
+    const userIdNum = Number(user.id);
+    const hasStoreAccess = Array.isArray(product.stores)
+      ? product.stores.some((store: any) => {
+        const isStoreUser = Array.isArray(store?.users)
+          ? store.users.some((item: any) => Number(item?.id) === userIdNum)
+          : false;
+        const isAdminUser = Array.isArray(store?.admin_users)
+          ? store.admin_users.some((item: any) => Number(item?.id) === userIdNum)
+          : false;
+        return isStoreUser || isAdminUser;
+      })
+      : false;
+
+    if (!hasStoreAccess) {
+      ctx.status = 403;
+      ctx.body = { error: 'Resource unavailable' };
       return;
     }
 

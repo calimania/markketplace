@@ -45,6 +45,11 @@
     "custom_scripts": { "type": "text" },
     "feature_flags": { "type": "json" },
     "notification_settings": { "type": "json" },
+    "navigation": {
+      "type": "component",
+      "repeatable": false,
+      "component": "common.navigation-settings"
+    },
     "meta": {
       "type": "json"
     },

@@ -1,0 +1,34 @@
+{
+  "collectionName": "components_common_navigation_settings",
+  "info": {
+    "displayName": "Navigation Settings",
+    "description": "Toggle which sections appear in store navigation"
+  },
+  "options": {},
+  "attributes": {
+    "show_blog": {
+      "type": "boolean",
+      "default": null
+    },
+    "show_shop": {
+      "type": "boolean",
+      "default": null
+    },
+    "show_events": {
+      "type": "boolean",
+      "default": null
+    },
+    "show_about": {
+      "type": "boolean",
+      "default": null
+    },
+    "show_newsletter": {
+      "type": "boolean",
+      "default": null
+    },
+    "show_home": {
+      "type": "boolean",
+      "default": null
+    }
+  }
+}

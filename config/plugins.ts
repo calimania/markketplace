@@ -10,7 +10,7 @@ export default ({ env }) => ({
   },
   upload: {
     config: {
-      sizeLimit: 4.2 * 1024 * 1024, // 4.20mb in bytes
+      sizeLimit: 10 * 1024 * 1024, // 10mb in bytes
       provider: "aws-s3",
       providerOptions: {
         s3Options: {
@@ -65,7 +65,7 @@ export default ({ env }) => ({
   'users-permissions': {
     config: {
       jwt: {
-        expiresIn: '8760h',
+        expiresIn: '30d',
       },
     },
   },

@@ -359,6 +359,21 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
    */
   async getStripeStatus(ctx: any) {
     const { id } = ctx.params;
+    const userId = ctx.state.user?.id;
+
+    if (!userId) {
+      return ctx.unauthorized('Authentication required');
+    }
+
+    const { hasAccess, store } = await checkUserStoreAccess(strapi, userId, id);
+
+    if (!hasAccess) {
+      return ctx.forbidden('You do not have access to this store');
+    }
+
+    if (!store) {
+      return ctx.notFound('Store not found');
+    }
 
     try {
       const status = await getStripeStatus(id);
@@ -404,6 +419,21 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
    */
   async getQuickStats(ctx: any) {
     const { id } = ctx.params;
+    const userId = ctx.state.user?.id;
+
+    if (!userId) {
+      return ctx.unauthorized('Authentication required');
+    }
+
+    const { hasAccess, store } = await checkUserStoreAccess(strapi, userId, id);
+
+    if (!hasAccess) {
+      return ctx.forbidden('You do not have access to this store');
+    }
+
+    if (!store) {
+      return ctx.notFound('Store not found');
+    }
 
     try {
       const stats = await getQuickStats(id);
@@ -421,6 +451,21 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
    */
   async getVisibilityFlags(ctx: any) {
     const { id } = ctx.params;
+    const userId = ctx.state.user?.id;
+
+    if (!userId) {
+      return ctx.unauthorized('Authentication required');
+    }
+
+    const { hasAccess, store } = await checkUserStoreAccess(strapi, userId, id);
+
+    if (!hasAccess) {
+      return ctx.forbidden('You do not have access to this store');
+    }
+
+    if (!store) {
+      return ctx.notFound('Store not found');
+    }
 
     try {
       const flags = await getVisibilityFlags(id);

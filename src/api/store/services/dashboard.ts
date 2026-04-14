@@ -453,7 +453,7 @@ export async function getVisibilityFlags(storeId: string) {
     getContentCounts(storeId),
     strapi.documents('api::store.store').findOne({
       documentId: storeId,
-      populate: ['settings'],
+      populate: ['settings', 'settings.navigation'],
     }),
     strapi.documents('api::page.page').findMany({
       filters: {
@@ -490,12 +490,12 @@ export async function getVisibilityFlags(storeId: string) {
   });
 
   const settings = (store?.settings || {}) as Record<string, any>;
-  const navigationSettings = settings?.meta?.navigation || {};
+  // Prefer the typed navigation component; fall back to legacy meta.navigation JSON
+  const navigationSettings: Record<string, any> = settings?.navigation || settings?.meta?.navigation || {};
 
   console.log('[DASHBOARD] Navigation settings', {
     hasSettings: !!store?.settings,
-    hasMeta: !!settings?.meta,
-    hasNavigation: !!navigationSettings,
+    hasNavigationComponent: !!settings?.navigation,
     navigationKeys: Object.keys(navigationSettings),
   });
 
