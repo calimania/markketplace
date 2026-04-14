@@ -79,4 +79,5 @@ export function sanitizeStore(store: any): any {
 
 export const ERRORS = {
   RESOURCE_UNAVAILABLE_MESSAGE,
+  STORE_NOT_FOUND: RESOURCE_UNAVAILABLE_MESSAGE,
 };

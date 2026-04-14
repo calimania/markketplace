@@ -5,7 +5,6 @@ export default {
       path: '/products/:documentId/stripe_sync',
       handler: 'product.stripeSync',
       config: {
-        auth: false,
         policies: [],
         middlewares: [],
       },

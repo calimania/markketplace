@@ -45,7 +45,10 @@ export default {
       method: 'GET',
       path: '/stores/:id/stripe-status',
       handler: 'store.getStripeStatus',
-      config: { auth: false },
+      config: {
+        policies: [],
+        middlewares: [],
+      },
     },
     {
       method: 'GET',
@@ -57,37 +60,17 @@ export default {
       method: 'GET',
       path: '/stores/:id/quick-stats',
       handler: 'store.getQuickStats',
-      config: { auth: false },
+      config: {
+        policies: [],
+        middlewares: [],
+      },
     },
     {
       method: 'GET',
       path: '/stores/:id/visibility',
       handler: 'store.getVisibilityFlags',
-      config: { auth: false },
-    },
-    {
-      method: 'GET',
-      path: '/stores/:id/extensions-debug',
-      handler: 'store.debugExtensions',
       config: {
-        policies: [],
-        middlewares: [],
-      },
-    },
-    {
-      method: 'POST',
-      path: '/stores/:id/test-extension',
-      handler: 'store.testExtension',
-      config: {
-        policies: [],
-        middlewares: [],
-      },
-    },
-    {
-      method: 'GET',
-      path: '/stores/:id/sendgrid-scopes-debug',
-      handler: 'store.sendgridScopesDebug',
-      config: {
+        auth: false,
         policies: [],
         middlewares: [],
       },
