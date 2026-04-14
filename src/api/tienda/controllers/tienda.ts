@@ -752,8 +752,12 @@ export default {
 
       // Pick allowed fields only
       const updateData = pickAllowedFields(inputData, config);
+      const hasStateOnlyAction = Boolean(
+        config.hasDraftAndPublish && (inputData.publishNow || inputData.unpublishNow)
+      );
+      const hasContentChanges = Object.keys(updateData).length > 0;
 
-      if (Object.keys(updateData).length === 0) {
+      if (!hasContentChanges && !hasStateOnlyAction) {
         const writableFields = (config.mutableFields || []).filter(
           field => !(config.readOnlyFields || []).includes(field)
         );
@@ -764,23 +768,27 @@ export default {
       }
 
       // Sanitize media/relation/component fields so populated GET data can be PUT back directly
-      const sanitizedData = sanitizePayloadForUpdate(updateData, config);
-
-      // Auto-fill SEO if title/content fields are present
-      const enrichedData = autoFillSEO(sanitizedData, config);
-
       let updated: any;
-      try {
-        updated = await (strapi.documents as any)(config.uid).update({
-          documentId: itemId,
-          data: enrichedData,
-          populate: config.defaultPopulate,
-          ...(requestedLocale ? { locale: requestedLocale } : {}),
-        });
-      } catch (updateError: any) {
-        console.error(`[TIENDA_UPDATE_CONTENT] Strapi update failed for ${contentType}/${itemId}:`, updateError.message, updateError?.details || updateError?.cause || '');
-        console.error(`[TIENDA_UPDATE_CONTENT] Failed payload keys:`, Object.keys(enrichedData));
-        return ctx.internalServerError(`Failed to save changes: ${updateError.message}. requestId=${requestId}`);
+      if (hasContentChanges) {
+        const sanitizedData = sanitizePayloadForUpdate(updateData, config);
+
+        // Auto-fill SEO if title/content fields are present
+        const enrichedData = autoFillSEO(sanitizedData, config);
+
+        try {
+          updated = await (strapi.documents as any)(config.uid).update({
+            documentId: itemId,
+            data: enrichedData,
+            populate: config.defaultPopulate,
+            ...(requestedLocale ? { locale: requestedLocale } : {}),
+          });
+        } catch (updateError: any) {
+          console.error(`[TIENDA_UPDATE_CONTENT] Strapi update failed for ${contentType}/${itemId}:`, updateError.message, updateError?.details || updateError?.cause || '');
+          console.error(`[TIENDA_UPDATE_CONTENT] Failed payload keys:`, Object.keys(enrichedData));
+          return ctx.internalServerError(`Failed to save changes: ${updateError.message}. requestId=${requestId}`);
+        }
+      } else {
+        updated = item;
       }
 
       const warnings: string[] = [];
@@ -820,7 +828,9 @@ export default {
 
       // Fetch the published version for the response so the client sees
       // the final persisted state (not the intermediate draft object from .update()).
-      const fetchStatus = (shouldRepublish && warnings.length === 0) ? 'published' : undefined;
+      const fetchStatus = ((shouldRepublish || inputData.publishNow) && warnings.length === 0)
+        ? 'published'
+        : undefined;
       const responseItem = await (strapi.documents as any)(config.uid).findOne({
         documentId: itemId,
         populate: config.defaultPopulate,
@@ -835,7 +845,7 @@ export default {
 
       console.log(`[TIENDA_UPDATE_CONTENT] Saved ${contentType}/${itemId}`, {
         fields: Object.keys(updateData),
-        published: shouldRepublish && warnings.length === 0,
+        published: (shouldRepublish || inputData.publishNow) && warnings.length === 0,
         locale: requestedLocale || 'default',
       });
 
