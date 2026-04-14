@@ -11,6 +11,9 @@ export type Store = {
     welcome_email_text: string;
     dashboard_url: string;
     domain: string;
+    email_footer?: string;
+    email_theme?: Record<string, any>;
+    branding?: Record<string, any>;
   }
 };
 
@@ -19,6 +22,81 @@ type EmailLayout = {
   title: string;
   store?: Store;
 };
+
+type EmailTheme = {
+  shellBackground: string;
+  cardBackground: string;
+  panelBackground: string;
+  textColor: string;
+  mutedTextColor: string;
+  primaryColor: string;
+  secondaryColor: string;
+  tertiaryColor: string;
+  borderColor: string;
+  inkBackground: string;
+  softSecondaryBackground: string;
+  softTertiaryBackground: string;
+};
+
+function escapeHtml(value: any): string {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function resolveTheme(store?: Store): EmailTheme {
+  const emailTheme = store?.settings?.email_theme || {};
+  const branding = store?.settings?.branding || {};
+
+  return {
+    shellBackground: emailTheme.backgroundColor || branding.backgroundColor || '#fffafb',
+    cardBackground: emailTheme.cardBackgroundColor || branding.cardBackgroundColor || '#ffffff',
+    panelBackground: emailTheme.panelBackgroundColor || branding.panelBackgroundColor || '#fdf1f7',
+    textColor: emailTheme.textColor || branding.textColor || '#1e1b4b',
+    mutedTextColor: emailTheme.mutedTextColor || branding.mutedTextColor || '#4b5563',
+    primaryColor: emailTheme.primaryColor || branding.primaryColor || '#db2777',
+    secondaryColor: emailTheme.secondaryColor || branding.secondaryColor || '#06b6d4',
+    tertiaryColor: emailTheme.tertiaryColor || branding.tertiaryColor || '#eab308',
+    borderColor: emailTheme.borderColor || branding.borderColor || '#fbcfe8',
+    inkBackground: emailTheme.inkBackground || branding.inkBackground || '#1e1b4b',
+    softSecondaryBackground: emailTheme.softSecondaryBackground || branding.softSecondaryBackground || '#ecfeff',
+    softTertiaryBackground: emailTheme.softTertiaryBackground || branding.softTertiaryBackground || '#fff8db',
+  };
+}
+
+function renderEyebrow(text: string, theme: EmailTheme): string {
+  return `<div style="font-family:'Courier New',Courier,monospace;font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:${theme.primaryColor};font-weight:bold;margin:0 0 12px 0;">${escapeHtml(text)}</div>`;
+}
+
+function renderButton(label: string, href: string, theme: EmailTheme, fill: 'primary' | 'secondary' = 'primary'): string {
+  const background = fill === 'secondary' ? theme.secondaryColor : theme.primaryColor;
+  return `
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 8px 0;">
+      <tr>
+        <td bgcolor="${background}" style="border-radius:999px;">
+          <a href="${href}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">${escapeHtml(label)}</a>
+        </td>
+      </tr>
+    </table>
+  `.replace(/\n\s+/g, '\n').trim();
+}
+
+function renderInfoPanel(title: string, body: string, theme: EmailTheme): string {
+  return `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:${theme.panelBackground};border:1px dashed ${theme.borderColor};border-radius:18px;">
+      <tr>
+        <td width="8" bgcolor="${theme.primaryColor}" style="font-size:0;line-height:0;border-radius:18px 0 0 18px;">&nbsp;</td>
+        <td style="padding:20px 22px;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.2;color:${theme.textColor};font-style:italic;margin:0 0 10px 0;">${escapeHtml(title)}</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${theme.textColor};">${body}</div>
+        </td>
+      </tr>
+    </table>
+  `.replace(/\n\s+/g, '\n').trim();
+}
 
 /**
  * Common HTML/CSS to include in emails
@@ -32,6 +110,8 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
   const preheader = store?.settings?.email_header_message || `Thank you for using ${store?.title || 'Markkët'}!`;
   const storeName = store?.settings?.store_name_override || store?.title || 'Markkët';
   const storeUrl = store?.settings?.domain || 'https://markket.place';
+  const footerText = store?.settings?.email_footer || `Visit ${storeName} for more updates.`;
+  const theme = resolveTheme(store);
 
   return `
     <!DOCTYPE html>
@@ -41,34 +121,80 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
       <title>${title} - ${storeName}</title>
     </head>
-    <body style="background:#fffbe7;color:#222;margin:0;font-family:Inter,Arial,sans-serif">
-      <span style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden">${preheader}</span>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffbe7">
+    <body style="margin:0;padding:0;background:${theme.shellBackground};color:${theme.textColor};font-family:Arial,Helvetica,sans-serif;">
+      <span style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}</span>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.shellBackground};">
         <tr>
-          <td align="center">
-            <table width="666" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:14px;box-shadow:0 2px 16px rgba(0,0,0,0.08);margin:32px 0">
+          <td align="center" style="padding:28px 12px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;margin:0 auto;">
               <tr>
-                <td style="padding:24px 32px 16px 32px;text-align:left">
-                  ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="height:44px;margin-bottom:12px;border-radius:6px">` : ''}
-                  <div style="color:#1a1a1a;font-size:1.6rem;font-weight:600;letter-spacing:-0.5px;margin-bottom:4px">${storeName}</div>
+                <td style="padding:0 0 14px 0;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="padding:0 2px 14px 2px;">
+                        ${renderEyebrow('Curated message', theme)}
+                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:42px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
               <tr>
-                <td style="height:1px;background:linear-gradient(90deg,rgba(251,218,13,0.3) 0%,rgba(255,0,207,0.2) 100%)"></td>
-              </tr>
-              <tr>
-                <td style="padding:28px 32px 24px 32px">
-                  <div style="font-size:1.2rem;font-weight:700;color:#2d3748;margin-bottom:20px;letter-spacing:-0.3px">${title}</div>
-                  <div style="line-height:1.6;color:#4a5568">
-                    ${content || ''}
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:16px 32px 20px 32px;text-align:center;border-top:1px solid #f7fafc">
-                  <div style="font-size:11px;color:#a0aec0;letter-spacing:0.5px">
-                    <a href=${storeUrl} style="color:#a0aec0;text-decoration:none">${storeName}</a>
-                  </div>
+                <td>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:26px;">
+                    <tr>
+                      <td bgcolor="${theme.inkBackground}" style="padding:26px 28px 18px 28px;border-radius:26px 26px 0 0;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                            <td valign="top" style="padding:0 12px 0 0;">
+                              ${logoUrl ? `<img src="${logoUrl}" alt="${escapeHtml(storeName)} logo" style="display:block;height:48px;max-width:160px;border:0;outline:none;text-decoration:none;">` : ''}
+                            </td>
+                            <td align="right" valign="top">
+                              <div style="display:inline-block;padding:7px 12px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.2;color:#ffffff;letter-spacing:1.4px;text-transform:uppercase;font-weight:bold;">Curated message</div>
+                              <div style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.6;color:#e9d5ff;letter-spacing:1.4px;text-transform:uppercase;">
+                                ${escapeHtml(title)}
+                              </div>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:0 28px;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                            <td height="8" style="font-size:0;line-height:0;background:${theme.primaryColor};border-radius:999px;">&nbsp;</td>
+                            <td width="8"></td>
+                            <td height="8" style="font-size:0;line-height:0;background:${theme.secondaryColor};border-radius:999px;">&nbsp;</td>
+                            <td width="8"></td>
+                            <td height="8" style="font-size:0;line-height:0;background:${theme.tertiaryColor};border-radius:999px;">&nbsp;</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:26px 28px 14px 28px;">
+                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:1.05;color:${theme.textColor};font-style:italic;margin:0 0 10px 0;">${escapeHtml(title)}</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.8;color:${theme.textColor};">${content || ''}</div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:0 28px 26px 28px;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${theme.borderColor};">
+                          <tr>
+                            <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">
+                              ${escapeHtml(footerText)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.6;color:${theme.mutedTextColor};letter-spacing:1.4px;text-transform:uppercase;">
+                              <a href="${storeUrl}" style="color:${theme.secondaryColor};text-decoration:none;">${escapeHtml(storeUrl)}</a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
             </table>
@@ -87,19 +213,16 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
  * @returns
  */
 export const OrderNotificationHTml = (order: any) => {
-  // <p>Order Amount: ${((order?.data?.object?.total_amount || 0) / 100)}</p>
+  const theme = resolveTheme();
+  const receiptUrl = `https://markket.place/receipt?session_id=${order?.data?.object?.id || ''}`;
   const content = `
-    <p>Thank you for your order!</p>
-    <div class="event-details">
-      <h3>Order</h3>
-      <p>Order ID: ${order?.data?.object?.id}</p>
-      <p class="greeting">Dear <span class="name">buyer</span>,</p>
-      <p class="message">Thank you for your order!</p>
-      <a href="https://markket.place/receipt?session_id=${order?.data?.object?.id}">
-        View Receipt
-      </a>
-      <p>The seller has been notified and will reach out if more information is needed.</p>
-    </div>
+    <p style="margin:0 0 14px 0;">Thank you for your order. Your receipt is ready and the seller has already been notified.</p>
+    ${renderInfoPanel('Order details', `
+      <p style="margin:0 0 8px 0;"><strong>Order ID:</strong> ${escapeHtml(order?.data?.object?.id || 'Pending')}</p>
+      <p style="margin:0;">If any follow-up is needed, the seller will reach out directly.</p>
+    `, theme)}
+    ${renderButton('View receipt', receiptUrl, theme)}
+    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Keep this email for your records.</p>
   `;
 
   const title = 'Markkët: Order Confirmation';
@@ -107,32 +230,73 @@ export const OrderNotificationHTml = (order: any) => {
   return emailLayout({ content, title });
 };
 
+function formatEventDate(value: any): string {
+  if (!value) {
+    return 'To be announced';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatEventTimeRange(start: any, end: any): string {
+  if (!start && !end) {
+    return 'To be announced';
+  }
+
+  const formatTime = (value: any) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return String(value || '');
+    }
+
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  const startLabel = formatTime(start);
+  const endLabel = end ? formatTime(end) : '';
+  return endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+}
+
 /**
  * RSVP Notification Email Template
- *
- * @param event
- * @returns
  */
-export const RSVPNotificationHTml = (event: any) => {
+export const RSVPNotificationHTml = ({ rsvp, event, store }: { rsvp: any; event: any; store?: any }) => {
+  const theme = resolveTheme(store);
+  const calendarUrl = event?.calendarUrl || event?.data?.object?.calendarUrl || '';
+  const attendeeName = rsvp?.name || rsvp?.user?.displayName || rsvp?.email || 'friend';
+  const eventName = event?.Name || event?.title || 'Upcoming event';
+  const eventDate = formatEventDate(event?.startDate);
+  const eventTime = formatEventTimeRange(event?.startDate, event?.endDate);
+  const attendeeEmail = rsvp?.email || '';
 
   const content = `
-    <!--<h1>Order Confirmation</h1>
-    <p>Thank you for your order!</p>
-    <p>Order ID: ${event?.data?.object?.id}</p>-->
-    <p class="greeting">Dear <span class="name">{{name}}</span>,</p>
-    <p class="message">Thank you for confirming your attendance to our upcoming event. We're excited to have you join us!</p>
-    <div class="event-details">
-      <h3>Event Details</h3>
-      <p><strong>Event:</strong> {{eventName}}</p>
-      <p><strong>Date:</strong> {{eventDate}}</p>
-      <p><strong>Time:</strong> {{startTime}} - {{endTime}}</p>
-      <p><strong>Your Email:</strong> {{email}}</p>
-    </div>
+    <p style="margin:0 0 14px 0;">Hi ${escapeHtml(attendeeName)}, your RSVP is in. We saved your spot and put the essentials below.</p>
+    ${renderInfoPanel('Event details', `
+      <p style="margin:0 0 8px 0;"><strong>Event:</strong> ${escapeHtml(eventName)}</p>
+      <p style="margin:0 0 8px 0;"><strong>Date:</strong> ${escapeHtml(eventDate)}</p>
+      <p style="margin:0 0 8px 0;"><strong>Time:</strong> ${escapeHtml(eventTime)}</p>
+      <p style="margin:0;"><strong>Email:</strong> ${escapeHtml(attendeeEmail)}</p>
+    `, theme)}
+    ${calendarUrl ? renderButton('Add to calendar', calendarUrl, theme, 'secondary') : ''}
+    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Bring this email with you if the event requires check-in.</p>
   `;
 
   const title = 'Markkët: RSVP Confirmation';
 
-  return emailLayout({ content, title });
+  return emailLayout({ content, title, store });
 };
 
 /**
@@ -163,6 +327,7 @@ export const OrderStoreNotificationEmailHTML = (order: {
   }>
 }, store: { title: string, documentId: string, slug: string }) => {
   console.log('notification:order:store', { order: order?.documentId });
+  const theme = resolveTheme(store as Store);
 
   const formatAddress = (addr?: typeof order.Shipping_Address) => {
     if (!addr) return 'No shipping address provided';
@@ -176,20 +341,19 @@ export const OrderStoreNotificationEmailHTML = (order: {
   };
 
   const customer_email = order?.buyer?.email || order?.Shipping_Address?.email;
+  const receiptUrl = `https://de.markket.place/store/${store?.slug}/receipt?session_id=${order?.STRIPE_PAYMENT_ID || ''}`;
+  const dashboardUrl = `https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders`;
 
   const content = `
-    <h2>Order Received!</h2>
-    <p>A new order has been placed in your '<strong>${store?.title || 'markket'}</strong>' store</p>
-
-    <div style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-      <h3 style="margin: 0 0 10px 0;">Order Details</h3>
-      <p><strong>Amount:</strong> ${'$'}${order?.Amount}  ${order?.Currency || ''}</p>
-      <p><strong>Markket Order ID:</strong> ${order?.documentId}</p>
+    <p style="margin:0 0 14px 0;">A new order just landed in <strong>${escapeHtml(store?.title || 'markket')}</strong>.</p>
+    ${renderInfoPanel('Order snapshot', `
+      <p style="margin:0 0 8px 0;"><strong>Amount:</strong> ${'$'}${escapeHtml(order?.Amount)} ${escapeHtml(order?.Currency || '')}</p>
+      <p style="margin:0 0 8px 0;"><strong>Markket Order ID:</strong> ${escapeHtml(order?.documentId)}</p>
       ${customer_email ? `<p><strong>Email:</strong> ${customer_email}</p>` : ''}
 
       ${order?.Details && order.Details.length > 0 ? `
-        <h4 style="margin: 15px 0 5px 0;">Items Ordered:</h4>
-        <ul style="margin: 0; padding-left: 20px;">
+        <p style="margin:14px 0 6px 0;"><strong>Items ordered:</strong></p>
+        <ul style="margin:0;padding-left:18px;">
           ${order.Details.map(item => `
             <li>${item.Name || 'Unnamed item'}${item.Quantity ? ` × ${item.Quantity}` : ''}</li>
           `).join('')}
@@ -197,32 +361,16 @@ export const OrderStoreNotificationEmailHTML = (order: {
       ` : ''}
 
       ${order?.Shipping_Address ? `
-        <h4 style="margin: 15px 0 5px 0;">Shipping Address:</h4>
-        <pre style="margin: 0; white-space: pre-wrap; font-family: inherit;">${formatAddress(order.Shipping_Address)}</pre>
+        <p style="margin:14px 0 6px 0;"><strong>Shipping address:</strong></p>
+        <pre style="margin:0;white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;">${escapeHtml(formatAddress(order.Shipping_Address))}</pre>
       ` : ''}
-    </div>
-
-    <div style="margin: 20px 0;">
-      <p><strong>Receipt & Payment Details:</strong></p>
-      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <a href="https://de.markket.place/store/${store?.slug}/receipt?session_id=${order?.STRIPE_PAYMENT_ID}"
-           style="display: inline-block; padding: 10px 20px; background: #4a5568; color: white; text-decoration: none; border-radius: 6px;">
-          View Receipt
-        </a>
-        <p style="margin: 0; font-size: 12px; color: #718096;">
-          Session ID: <code style="background: #f7fafc; padding: 2px 4px; border-radius: 4px;">${order?.STRIPE_PAYMENT_ID || 'N/A'}</code>
-        </p>
-      </div>
-
-      <p><strong>Manage Order:</strong></p>
-      <a href="https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders"
-         style="display: inline-block; padding: 10px 20px; background: #4a5568; color: white; text-decoration: none; border-radius: 6px;">
-        View in Dashboard
-      </a>
-    </div>
+    `, theme)}
+    ${renderButton('View receipt', receiptUrl, theme)}
+    ${renderButton('Open dashboard', dashboardUrl, theme, 'secondary')}
+    <p style="margin:14px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Session ID: ${escapeHtml(order?.STRIPE_PAYMENT_ID || 'N/A')}</p>
   `;
 
   const title = 'Markkët: Order notification';
 
-  return emailLayout({ content, title });
+  return emailLayout({ content, title, store: store as Store });
 };

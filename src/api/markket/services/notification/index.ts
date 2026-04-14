@@ -16,21 +16,21 @@ export const sendRSVPNotification = async ({ strapi, rsvp, event }) => {
     return;
   }
 
-  // if (!order?.data?.object?.customer_details?.email) {
-  //   return;
-  // }
+  const customerEmail = rsvp?.email;
+  if (!customerEmail) {
+    return;
+  }
 
-  // const customer = event?.data?.object?.customer_details;
-  const customer = { email: rsvp.email };
+  const store = Array.isArray(event?.stores) ? event.stores[0] : null;
 
   return await strapi.plugins['email'].services.email.send({
-    to: customer.email,
+    to: customerEmail,
     from: SENDGRID_FROM_EMAIL, //e.g. single sender verification in SendGrid
     cc: SENDGRID_REPLY_TO_EMAIL,
     replyTo: SENDGRID_REPLY_TO_EMAIL,
     subject: 'Markkët: RSVP Confirmation',
     text: 'RSVP confirmation!',
-    html: RSVPNotificationHTml(event),
+    html: RSVPNotificationHTml({ rsvp, event, store }),
   });
 };
 

@@ -2,6 +2,18 @@ export default {
   routes: [
     {
       method: 'POST',
+      path: '/auth-magic/preview',
+      handler: 'auth-magic.preview',
+      config: { auth: false }
+    },
+    {
+      method: 'POST',
+      path: '/auth-magic/confirm',
+      handler: 'auth-magic.confirm',
+      config: { auth: false }
+    },
+    {
+      method: 'POST',
       path: '/auth-magic/request',
       handler: 'auth-magic.request',
       config: { auth: false }

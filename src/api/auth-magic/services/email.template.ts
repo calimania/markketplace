@@ -5,24 +5,31 @@ import { emailLayout, Store } from '../../markket/services/notification/email.te
  * Magic Link Email Template - same code for register or login
  */
 export const MagicLinkHTML = (email: string, url: string, store: any) => {
+  const accent = store?.settings?.email_theme?.primaryColor || store?.settings?.branding?.primaryColor || '#db2777';
+  const secondary = store?.settings?.email_theme?.secondaryColor || store?.settings?.branding?.secondaryColor || '#06b6d4';
+  const tertiary = store?.settings?.email_theme?.tertiaryColor || store?.settings?.branding?.tertiaryColor || '#eab308';
   const content = `
-    <div style="background:#fffbe7;border:2.5px solid #ff00cf;padding:22px 14px 16px 14px;border-radius:12px;">
-      <h3 style="font-size:1.3rem;color:#ff00cf;font-weight:900;margin-bottom:16px;letter-spacing:1px;">
-        Bienvenido a ${store?.title || 'Markkët'}
-      </h3>
-      <p style="font-size:1.1rem;margin-bottom:14px;">
-        Hey <span style="color:#0057ad;font-weight:700;">${email}</span>!
-      </p>
-      <a href="${url}" style="display:inline-block;background:#ff00cf;color:#fff;font-weight:900;padding:13px 26px;border-radius:8px;text-decoration:none;font-size:1.1rem;margin-bottom:16px;box-shadow:0 2px 8px #ff00cf33;letter-spacing:1px;">
-        Continue
-      </a>
-      <p style="margin-top:18px;color:#666;font-size:0.95rem;">
-        Valid for 15 minutes. If you didn't request this, you can ignore this email.
-      </p>
-      <p style="margin-top:18px;color:#666;font-size:0.95rem;">
-        ${url}
-      </p>
-    </div>
+    <p style="margin:0 0 14px 0;">Hi <strong>${email}</strong>, use the secure link below to continue.</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:#fff7fb;border:1px dashed ${accent};border-radius:18px;">
+      <tr>
+        <td style="padding:20px 22px;">
+          <div style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.4;color:${secondary};letter-spacing:1.6px;text-transform:uppercase;font-weight:bold;margin:0 0 10px 0;">Secure access sequence</div>
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;color:${accent};font-style:italic;margin:0 0 10px 0;">Magic login link</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1f2340;">
+            This link stays valid for 15 minutes. If you did not request it, you can safely ignore this email.
+          </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 8px 0;">
+            <tr>
+              <td bgcolor="${accent}" style="border-radius:999px;">
+                <a href="${url}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">Continue</a>
+              </td>
+            </tr>
+          </table>
+          <div style="margin-top:12px;height:6px;background:${tertiary};border-radius:999px;font-size:0;line-height:0;">&nbsp;</div>
+          <div style="font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.7;color:${secondary};word-break:break-all;margin-top:12px;">${url}</div>
+        </td>
+      </tr>
+    </table>
   `;
   const title = `${store?.title || 'Markkët'} Magic Login Link`;
   return emailLayout({ content, title, store });
@@ -32,18 +39,28 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
  * Account Created Notification - first time users of magic link
  */
 export const AccountCreatedHTML = (email: string, store: Store) => {
+  const accent = store?.settings?.email_theme?.tertiaryColor || store?.settings?.branding?.tertiaryColor || '#eab308';
+  const dashboardUrl = store?.settings?.dashboard_url || new URL('/dashboard', store?.settings?.domain || 'https://de.markket.place/').toString();
   const content = `
-    <div style="background:#fffbe7;border:2.5px solid #fbda0d;padding:22px 14px 16px 14px;border-radius:12px;text-align:left;">
-      <h3 style="font-size:1.3rem;color:#0057ad;font-weight:900;margin-bottom:16px;letter-spacing:1px;">
-        Your account is ready!
-      </h3>
-      <p style="font-size:1.1rem;margin-bottom:14px;">Hi <span style="color:#ff00cf;font-weight:700;">${email}</span>!</p>
-      <p style="color:#222;font-size:1rem;margin-bottom:0;">
-      ${store?.settings?.welcome_email_text || 'Markkët helps webmasters'}.
-        Visit your
-        <a href="${store?.settings?.dashboard_url || new URL('/dashboard', store?.settings?.domain || 'https://de.markket.place/').toString() }">dashboard</a> to explore features.
-      </p>
-    </div>
+    <p style="margin:0 0 14px 0;">Hi <strong>${email}</strong>, your account is ready.</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:#fff9e8;border:1px dashed ${accent};border-radius:18px;">
+      <tr>
+        <td style="padding:20px 22px;">
+          <div style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.4;color:#db2777;letter-spacing:1.6px;text-transform:uppercase;font-weight:bold;margin:0 0 10px 0;">Studio unlocked</div>
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;color:#1f2340;font-style:italic;margin:0 0 10px 0;">Your account is ready</div>
+          <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1f2340;">
+            ${store?.settings?.welcome_email_text || 'Markkët helps webmasters'}.
+          </div>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 0 0;">
+            <tr>
+              <td bgcolor="#1f2340" style="border-radius:999px;">
+                <a href="${dashboardUrl}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">Open dashboard</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   `;
   const title = `Welcome to ${store?.title || ' Markkët'}!`;
   return emailLayout({ content, title, store });
