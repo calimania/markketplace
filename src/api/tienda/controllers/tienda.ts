@@ -975,9 +975,19 @@ export default {
     }
 
     const ref = String(ctx.params?.ref || '').trim();
+    const requestId = ensureRequestId(ctx);
     if (!ref) {
       return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
     }
+
+    const badUploadRequest = (message: string, details?: Record<string, any>) => {
+      console.warn('[TIENDA_UPLOAD] Bad request', {
+        requestId,
+        ref,
+        ...(details || {}),
+      });
+      return ctx.badRequest(`${message}. requestId=${requestId}`);
+    };
 
     try {
       const access = await checkStoreAccess(strapi, user.id, ref);
@@ -994,11 +1004,14 @@ export default {
 
       const normalizedFiles = normalizeUploadFiles(ctx);
       if (normalizedFiles.length === 0) {
-        return ctx.badRequest('No files provided. Use multipart/form-data with field "files" or "file".');
+        return badUploadRequest('No files provided. Use multipart/form-data with field "files" or "file"', {
+          bodyKeys: Object.keys(ctx.request?.body || {}),
+          fileKeys: Object.keys(ctx.request?.files || {}),
+        });
       }
 
       if (normalizedFiles.length > 10) {
-        return ctx.badRequest('Maximum 10 files per request');
+        return badUploadRequest('Maximum 10 files per request', { fileCount: normalizedFiles.length });
       }
 
       for (const file of normalizedFiles) {
@@ -1006,11 +1019,17 @@ export default {
         const size = Number(file?.size || 0);
 
         if (!isAllowedMime(mimeType)) {
-          return ctx.badRequest(`Unsupported file type: ${mimeType || 'unknown'}`);
+          return badUploadRequest(`Unsupported file type: ${mimeType || 'unknown'}`, {
+            fileName: file?.name || file?.originalFilename || 'file',
+            mimeType,
+          });
         }
 
         if (size <= 0 || size > MAX_UPLOAD_BYTES) {
-          return ctx.badRequest(`Invalid file size for ${file?.name || file?.originalFilename || 'file'}. Max is ${Math.floor(MAX_UPLOAD_BYTES / 1024 / 1024)}MB`);
+          return badUploadRequest(
+            `Invalid file size for ${file?.name || file?.originalFilename || 'file'}. Max is ${Math.floor(MAX_UPLOAD_BYTES / 1024 / 1024)}MB`,
+            { fileName: file?.name || file?.originalFilename || 'file', size, maxSize: MAX_UPLOAD_BYTES }
+          );
         }
 
         // Prefix filenames with store slug to keep uploads easy to identify by store.
@@ -1060,33 +1079,49 @@ export default {
         const attachMode = String(attach.mode || 'replace').trim();
 
         if (!attachContentType || !attachField) {
-          return ctx.badRequest('Invalid attach payload. Required: contentType and field');
+          return badUploadRequest('Invalid attach payload. Required: contentType and field', { attach });
         }
 
         if (attachContentType !== 'store' && !attachItemId) {
-          return ctx.badRequest('Invalid attach payload. itemId is required for non-store targets');
+          return badUploadRequest('Invalid attach payload. itemId is required for non-store targets', {
+            attachContentType,
+            attachField,
+            attachMode,
+          });
         }
 
         const targetConfig = getMediaTargetConfig(attachContentType);
         const fieldConfig = getMediaFieldConfig(attachContentType, attachField);
         if (!targetConfig || !fieldConfig) {
-          return ctx.badRequest(`Unsupported attach field "${attachField}" for type "${attachContentType}"`);
+          return badUploadRequest(`Unsupported attach field "${attachField}" for type "${attachContentType}"`, {
+            attachContentType,
+            attachField,
+          });
         }
 
         const fieldMode = fieldConfig.mode;
 
         if (fieldMode === 'single' && uploaded.length > 1) {
-          return ctx.badRequest(`Field "${attachField}" accepts a single file. Upload one file only.`);
+          return badUploadRequest(`Field "${attachField}" accepts a single file. Upload one file only`, {
+            attachField,
+            uploadedCount: uploaded.length,
+          });
         }
 
         if (fieldMode === 'single' && attachMode === 'append') {
-          return ctx.badRequest(`Mode "append" is only valid for multi-file fields`);
+          return badUploadRequest('Mode "append" is only valid for multi-file fields', {
+            attachField,
+            attachMode,
+            fieldMode,
+          });
         }
 
         const targetUid = targetConfig.uid;
         const targetDocumentId = attachContentType === 'store'
           ? (attachItemId || access.store.documentId)
           : attachItemId;
+        const [rootField, nestedField] = attachField.split('.');
+        const effectiveField = nestedField ? rootField : attachField;
 
         if (attachContentType === 'store' && targetDocumentId !== access.store.documentId) {
           return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
@@ -1094,7 +1129,9 @@ export default {
 
         const targetItem = await (strapi.documents as any)(targetUid).findOne({
           documentId: targetDocumentId,
-          populate: attachContentType === 'store' ? [attachField] : [resolveContentType(attachContentType).storeField, attachField],
+          populate: attachContentType === 'store'
+            ? [effectiveField]
+            : [resolveContentType(attachContentType).storeField, effectiveField],
         });
 
         if (!targetItem) {
@@ -1110,12 +1147,15 @@ export default {
 
         const uploadedIds = uploaded.map((item: any) => item.id).filter(Boolean);
         let nextValue: any;
+        const currentFieldValue = nestedField
+          ? targetItem?.[rootField]?.[nestedField]
+          : targetItem?.[attachField];
 
         if (fieldMode === 'single') {
           nextValue = uploadedIds[0] || null;
         } else {
-          const existingIds = Array.isArray(targetItem[attachField])
-            ? targetItem[attachField].map((item: any) => item?.id).filter(Boolean)
+          const existingIds = Array.isArray(currentFieldValue)
+            ? currentFieldValue.map((item: any) => item?.id).filter(Boolean)
             : [];
 
           if (attachMode === 'append') {
@@ -1125,11 +1165,20 @@ export default {
           }
         }
 
+        const updateData = nestedField
+          ? {
+            [rootField]: {
+              ...(targetItem?.[rootField] || {}),
+              [nestedField]: nextValue,
+            },
+          }
+          : {
+            [attachField]: nextValue,
+          };
+
         await (strapi.documents as any)(targetUid).update({
           documentId: targetDocumentId,
-          data: {
-            [attachField]: nextValue,
-          },
+          data: updateData,
         });
 
         if (attachContentType === 'store') {
@@ -1152,6 +1201,7 @@ export default {
 
       return ctx.send({
         ok: true,
+        requestId,
         data: (uploaded || []).map((item: any) => ({
           id: item.id,
           documentId: item.documentId,
@@ -1164,9 +1214,22 @@ export default {
         })),
         attachment: attachmentResult,
       });
-    } catch (error) {
-      console.error('[TIENDA_UPLOAD] Failed:', error.message);
-      return ctx.internalServerError('Upload failed');
+    } catch (error: any) {
+      const status = Number(error?.status || error?.statusCode || 500);
+      const message = String(error?.message || 'Upload failed');
+
+      console.error('[TIENDA_UPLOAD] Failed:', {
+        requestId,
+        status,
+        message,
+        details: error?.details || error?.cause || null,
+      });
+
+      if (status >= 400 && status < 500) {
+        return ctx.badRequest(`${message}. requestId=${requestId}`);
+      }
+
+      return ctx.internalServerError(`Upload failed. requestId=${requestId}`);
     }
   },
 };
