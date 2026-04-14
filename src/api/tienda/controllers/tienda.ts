@@ -601,12 +601,15 @@ export default {
       // Auto-fill SEO if title/content fields are present
       const enrichedData = autoFillSEO(sanitizedCreateData, config);
 
+      const creatorData = config.autoSetCreator
+        ? { [config.autoSetCreator]: user.id }
+        : {};
+
       // Add store relation
       const dataWithStore = {
         ...enrichedData,
+        ...creatorData,
         ...buildStoreRelation(access.store.documentId, config),
-        createdBy: user.id, // Track creator
-        createdAt: new Date().toISOString(),
       };
 
       // Create and optionally publish based on content type config

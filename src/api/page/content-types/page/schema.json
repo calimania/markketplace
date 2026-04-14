@@ -58,6 +58,11 @@
       "relation": "oneToOne",
       "target": "admin::user"
     },
+    "owner": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
     "slug": {
       "pluginOptions": {
         "i18n": {
