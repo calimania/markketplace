@@ -130,17 +130,26 @@ const summarizeWebhookBody = (body: any) => {
 
 const createWebhookAuditRecord = async (strapi: any, key: string, ctx: any, body: any) => {
   try {
+    const summary = summarizeWebhookBody(body);
+    const receivedAt = new Date().toISOString();
+
     await strapi.service(modelId).create({
       locale: 'en',
       data: {
         Key: key,
+        Source: 'apple',
+        Webhook: key.replace(/^apple\./, ''),
+        EventType: summary.webhookEvent || null,
+        EventSubType: summary.webhookSubEvent || null,
+        RequestPath: ctx.request?.path || '',
+        ReceivedAt: receivedAt,
         Content: {
-          received_at: new Date().toISOString(),
+          received_at: receivedAt,
           method: ctx.request?.method || 'POST',
           path: ctx.request?.path || '',
           ip: ctx.request?.ip || ctx.request?.headers?.['x-forwarded-for'] || null,
           headers: pickWebhookHeaders(ctx.request?.headers || {}),
-          summary: summarizeWebhookBody(body),
+          summary,
           payload: body,
         },
         user_key_or_id: 'apple_webhook',

@@ -16,6 +16,30 @@
       "type": "string",
       "required": true
     },
+    "Source": {
+      "type": "string",
+      "required": false
+    },
+    "Webhook": {
+      "type": "string",
+      "required": false
+    },
+    "EventType": {
+      "type": "string",
+      "required": false
+    },
+    "EventSubType": {
+      "type": "string",
+      "required": false
+    },
+    "RequestPath": {
+      "type": "string",
+      "required": false
+    },
+    "ReceivedAt": {
+      "type": "datetime",
+      "required": false
+    },
     "Content": {
       "type": "json",
       "required": true
