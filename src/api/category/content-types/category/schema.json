@@ -23,6 +23,11 @@
       "relation": "manyToOne",
       "target": "api::store.store"
     },
+    "owner": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
     "Name": {
       "type": "string",
       "required": true

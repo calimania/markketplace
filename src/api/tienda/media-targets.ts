@@ -19,28 +19,37 @@ export const MEDIA_TARGETS: Record<string, MediaTargetConfig> = {
   store: {
     uid: 'api::store.store',
     fields: {
-      Logo: { mode: 'single', allowedTypes: ['images', 'files', 'videos', 'audios'] },
+      Logo: { mode: 'single', allowedTypes: ['images'] },
       Cover: { mode: 'single', allowedTypes: ['images'] },
-      Slides: { mode: 'multiple', allowedTypes: ['images', 'files', 'videos', 'audios'] },
-      Favicon: { mode: 'single', allowedTypes: ['images', 'files', 'videos', 'audios'] },
+      Slides: { mode: 'multiple', allowedTypes: ['images'] },
+      Favicon: { mode: 'single', allowedTypes: ['images'] },
+      'SEO.socialImage': { mode: 'single', allowedTypes: ['images',] },
     },
   },
   article: {
     uid: 'api::article.article',
     fields: {
       cover: { mode: 'single', allowedTypes: ['images'] },
+      'SEO.socialImage': { mode: 'single', allowedTypes: ['images',] },
+    },
+  },
+  page: {
+    uid: 'api::page.page',
+    fields: {
+      'SEO.socialImage': { mode: 'single', allowedTypes: ['images',] },
     },
   },
   album: {
     uid: 'api::album.album',
     fields: {
       cover: { mode: 'single', allowedTypes: ['images'] },
+      'SEO.socialImage': { mode: 'single', allowedTypes: ['images',] },
     },
   },
   track: {
     uid: 'api::album.track',
     fields: {
-      media: { mode: 'single', allowedTypes: ['images', 'files', 'videos', 'audios'] },
+      media: { mode: 'single', allowedTypes: ['images'] },
     },
   },
   product: {
@@ -48,6 +57,7 @@ export const MEDIA_TARGETS: Record<string, MediaTargetConfig> = {
     fields: {
       Thumbnail: { mode: 'single', allowedTypes: ['images'] },
       Slides: { mode: 'multiple', allowedTypes: ['images'] },
+      'SEO.socialImage': { mode: 'single', allowedTypes: ['images',] },
     },
   },
   event: {
