@@ -2,6 +2,7 @@ import { checkStoreAccess, ERRORS, requireUser, sanitizeStore } from '../../../s
 import {
   verifyItemBelongsToStore,
   autoFillSEO,
+  ensureGeneratedSlug,
   pickAllowedFields,
   sanitizePayloadForUpdate,
   buildStoreRelation,
@@ -34,6 +35,18 @@ const STORE_MUTABLE_FIELDS = [
   'addresses',
 ];
 
+const CONTENT_TYPE_ALIASES: Record<string, string> = {
+  stores: 'store',
+  articles: 'article',
+  pages: 'page',
+  albums: 'album',
+  tracks: 'track',
+  categories: 'category',
+  products: 'product',
+  events: 'event',
+  shortners: 'shortner',
+};
+
 function getRequestData(ctx: any): Record<string, any> {
   const body = ctx.request?.body;
   if (!body) {
@@ -49,6 +62,11 @@ function getRequestData(ctx: any): Record<string, any> {
   }
 
   return {};
+}
+
+function normalizeContentTypeKey(value: any): string {
+  const normalized = String(value || '').trim().toLowerCase();
+  return CONTENT_TYPE_ALIASES[normalized] || normalized;
 }
 
 function pickStoreFields(input: Record<string, any>, allowedFields: string[]): Record<string, any> {
@@ -340,6 +358,20 @@ async function findOwnerContentItem(
   }
 
   return withPublicationMeta(selectedItem, Boolean(draftItem), Boolean(publishedItem));
+}
+
+async function hasPublishedContentVersion(
+  documentsApi: any,
+  documentId: string,
+  locale?: string,
+): Promise<boolean> {
+  const publishedItem = await documentsApi.findOne({
+    documentId,
+    status: 'published',
+    ...(locale ? { locale } : {}),
+  });
+
+  return !!publishedItem;
 }
 
 export default {
@@ -754,7 +786,7 @@ export default {
       const sanitizedCreateData = sanitizePayloadForUpdate(createData, config);
 
       // Auto-fill SEO if title/content fields are present
-      const enrichedData = autoFillSEO(sanitizedCreateData, config);
+      const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedCreateData, config), config);
 
       const creatorData = config.autoSetCreator
         ? { [config.autoSetCreator]: user.id }
@@ -933,7 +965,7 @@ export default {
         const sanitizedData = sanitizePayloadForUpdate(updateData, config);
 
         // Auto-fill SEO if title/content fields are present
-        const enrichedData = autoFillSEO(sanitizedData, config);
+        const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedData, config), config, item);
 
         try {
           updated = await (strapi.documents as any)(config.uid).update({
@@ -1420,8 +1452,9 @@ export default {
       // Optional auto-attach to a content record media field.
       const attach = parseJsonIfString(body.attach);
       let attachmentResult: any = null;
+      const attachmentWarnings: string[] = [];
       if (attach && typeof attach === 'object') {
-        const attachContentType = String(attach.contentType || '').trim();
+        const attachContentType = normalizeContentTypeKey(attach.contentType);
         const attachItemId = String(attach.itemId || '').trim();
         const attachField = String(attach.field || '').trim();
         const attachMode = String(attach.mode || 'replace').trim();
@@ -1475,11 +1508,15 @@ export default {
           return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
         }
 
+        const contentConfig = attachContentType === 'store'
+          ? null
+          : resolveContentType(attachContentType);
+
         const targetItem = await (strapi.documents as any)(targetUid).findOne({
           documentId: targetDocumentId,
           populate: attachContentType === 'store'
             ? [effectiveField]
-            : [resolveContentType(attachContentType).storeField, effectiveField],
+            : [contentConfig!.storeField, effectiveField],
         });
 
         if (!targetItem) {
@@ -1487,7 +1524,6 @@ export default {
         }
 
         if (attachContentType !== 'store') {
-          const contentConfig = resolveContentType(attachContentType);
           if (!verifyItemBelongsToStore(targetItem, access.store.documentId, contentConfig)) {
             return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
           }
@@ -1513,7 +1549,7 @@ export default {
           }
         }
 
-        const updateData = nestedField
+        let updateData = nestedField
           ? {
             [rootField]: {
               ...(targetItem?.[rootField] || {}),
@@ -1524,6 +1560,10 @@ export default {
             [attachField]: nextValue,
           };
 
+        if (contentConfig) {
+          updateData = ensureGeneratedSlug(updateData, contentConfig, targetItem);
+        }
+
         await (strapi.documents as any)(targetUid).update({
           documentId: targetDocumentId,
           data: updateData,
@@ -1532,9 +1572,21 @@ export default {
         if (attachContentType === 'store') {
           await strapi.documents('api::store.store').publish({ documentId: targetDocumentId });
         } else {
-          const contentConfig = resolveContentType(attachContentType);
           if (contentConfig.hasDraftAndPublish) {
-            await (strapi.documents as any)(contentConfig.uid).publish({ documentId: targetDocumentId });
+            try {
+              await (strapi.documents as any)(contentConfig.uid).publish({
+                documentId: targetDocumentId,
+                ...(targetItem?.locale ? { locale: targetItem.locale } : {}),
+              });
+            } catch (publishError: any) {
+              console.warn('[TIENDA_UPLOAD] Publish after attach failed', {
+                requestId,
+                contentType: attachContentType,
+                itemId: targetDocumentId,
+                message: publishError?.message || 'Publish failed',
+              });
+              attachmentWarnings.push(`Media attached, but publish failed: ${publishError?.message || 'Publish failed'}`);
+            }
           }
         }
 
@@ -1561,6 +1613,7 @@ export default {
           createdAt: item.createdAt,
         })),
         attachment: attachmentResult,
+        ...(attachmentWarnings.length > 0 ? { warnings: attachmentWarnings } : {}),
       });
     } catch (error: any) {
       const status = Number(error?.status || error?.statusCode || 500);

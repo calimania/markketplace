@@ -5,6 +5,17 @@
 
 import type { ContentTypeConfig } from './content-registry';
 
+function slugifyValue(value: string): string {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 96);
+}
+
 /**
  * Verify an item belongs to the specified store based on the content type's store relation
  * Handles manyToOne, manyToMany, and oneToOne relations
@@ -68,6 +79,33 @@ export function autoFillSEO(data: any, config: ContentTypeConfig): any {
   }
 
   return data;
+}
+
+export function ensureGeneratedSlug(data: any, config: ContentTypeConfig, existingItem?: any): any {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  const nextData = { ...data };
+  const currentSlug = typeof nextData.slug === 'string' ? nextData.slug.trim() : '';
+  const existingSlug = typeof existingItem?.slug === 'string' ? existingItem.slug.trim() : '';
+
+  if (currentSlug || existingSlug) {
+    return nextData;
+  }
+
+  const titleValue = nextData?.[config.titleField] ?? existingItem?.[config.titleField];
+  if (!titleValue) {
+    return nextData;
+  }
+
+  const generatedSlug = slugifyValue(String(titleValue));
+  if (!generatedSlug) {
+    return nextData;
+  }
+
+  nextData.slug = generatedSlug;
+  return nextData;
 }
 
 /**
