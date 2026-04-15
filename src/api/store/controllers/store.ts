@@ -77,6 +77,25 @@ async function checkUserStoreAccess(
   }
 }
 
+async function resolveStoreDocumentId(strapi: any, storeRef: string): Promise<string | null> {
+  const storeByDocumentId = await strapi.documents('api::store.store').findOne({
+    documentId: storeRef,
+    fields: ['documentId'],
+  }) as any;
+
+  if (storeByDocumentId?.documentId) {
+    return storeByDocumentId.documentId;
+  }
+
+  const storesBySlug = await strapi.documents('api::store.store').findMany({
+    filters: { slug: storeRef },
+    fields: ['documentId'],
+    limit: 1,
+  }) as any[];
+
+  return storesBySlug?.[0]?.documentId || null;
+}
+
 export default factories.createCoreController('api::store.store', ({ strapi }) => ({
   ...factories.createCoreController('api::store.store'),
 
@@ -265,8 +284,14 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
   async getContentCounts(ctx: any) {
     const { id } = ctx.params;
 
+    const storeId = await resolveStoreDocumentId(strapi, id);
+
+    if (!storeId) {
+      return ctx.notFound('Store not found');
+    }
+
     try {
-      const counts = await getContentCounts(id);
+      const counts = await getContentCounts(storeId);
 
       return ctx.send({
         message: 'Content counts retrieved',
@@ -359,24 +384,15 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
    */
   async getStripeStatus(ctx: any) {
     const { id } = ctx.params;
-    const userId = ctx.state.user?.id;
 
-    if (!userId) {
-      return ctx.unauthorized('Authentication required');
-    }
+    const storeId = await resolveStoreDocumentId(strapi, id);
 
-    const { hasAccess, store } = await checkUserStoreAccess(strapi, userId, id);
-
-    if (!hasAccess) {
-      return ctx.forbidden('You do not have access to this store');
-    }
-
-    if (!store) {
+    if (!storeId) {
       return ctx.notFound('Store not found');
     }
 
     try {
-      const status = await getStripeStatus(id);
+      const status = await getStripeStatus(storeId);
       return ctx.send({ data: status });
     } catch (error) {
       console.error('[STORE_CONTROLLER] Stripe status failed:', error.message);
@@ -419,24 +435,15 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
    */
   async getQuickStats(ctx: any) {
     const { id } = ctx.params;
-    const userId = ctx.state.user?.id;
 
-    if (!userId) {
-      return ctx.unauthorized('Authentication required');
-    }
+    const storeId = await resolveStoreDocumentId(strapi, id);
 
-    const { hasAccess, store } = await checkUserStoreAccess(strapi, userId, id);
-
-    if (!hasAccess) {
-      return ctx.forbidden('You do not have access to this store');
-    }
-
-    if (!store) {
+    if (!storeId) {
       return ctx.notFound('Store not found');
     }
 
     try {
-      const stats = await getQuickStats(id);
+      const stats = await getQuickStats(storeId);
       return ctx.send({ data: stats });
     } catch (error) {
       console.error('[STORE_CONTROLLER] Quick stats failed:', error.message);
@@ -451,24 +458,15 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
    */
   async getVisibilityFlags(ctx: any) {
     const { id } = ctx.params;
-    const userId = ctx.state.user?.id;
 
-    if (!userId) {
-      return ctx.unauthorized('Authentication required');
-    }
+    const storeId = await resolveStoreDocumentId(strapi, id);
 
-    const { hasAccess, store } = await checkUserStoreAccess(strapi, userId, id);
-
-    if (!hasAccess) {
-      return ctx.forbidden('You do not have access to this store');
-    }
-
-    if (!store) {
+    if (!storeId) {
       return ctx.notFound('Store not found');
     }
 
     try {
-      const flags = await getVisibilityFlags(id);
+      const flags = await getVisibilityFlags(storeId);
       return ctx.send({ data: flags });
     } catch (error) {
       console.error('[STORE_CONTROLLER] Visibility flags failed:', error.message);
