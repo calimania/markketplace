@@ -65,6 +65,7 @@ export const MEDIA_TARGETS: Record<string, MediaTargetConfig> = {
     fields: {
       Thumbnail: { mode: 'single', allowedTypes: ['images'] },
       Slides: { mode: 'multiple', allowedTypes: ['images'] },
+      'SEO.socialImage': { mode: 'single', allowedTypes: ['images'] },
     },
   },
   shortner: {
