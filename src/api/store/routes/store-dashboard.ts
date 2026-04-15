@@ -46,6 +46,7 @@ export default {
       path: '/stores/:id/stripe-status',
       handler: 'store.getStripeStatus',
       config: {
+        auth: false, // Public - for storefront UI badges
         policies: [],
         middlewares: [],
       },
@@ -61,6 +62,7 @@ export default {
       path: '/stores/:id/quick-stats',
       handler: 'store.getQuickStats',
       config: {
+        auth: false, // Public - for homepage hero rendering
         policies: [],
         middlewares: [],
       },
