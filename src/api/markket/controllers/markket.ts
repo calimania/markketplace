@@ -35,6 +35,7 @@ const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || '';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
+const APPLE_APP_STORE_CONNECT_WEBHOOK_SECRET = process.env.APPLE_APP_STORE_CONNECT_WEBHOOK_SECRET || '';
 const APPLE_WEBHOOK_HEADER_ALLOWLIST = [
   'content-type',
   'user-agent',
@@ -106,6 +107,35 @@ const pickWebhookHeaders = (headers: Record<string, any> = {}) => {
   }
 
   return out;
+};
+
+const safeCompare = (left: string, right: string) => {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
+
+const hasValidBearerSecret = (authorizationHeader: string | undefined, expectedSecret: string) => {
+  if (!expectedSecret) {
+    return true;
+  }
+
+  if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
+    return false;
+  }
+
+  const providedSecret = authorizationHeader.slice('Bearer '.length).trim();
+
+  if (!providedSecret) {
+    return false;
+  }
+
+  return safeCompare(providedSecret, expectedSecret);
 };
 
 const summarizeWebhookBody = (body: any) => {
@@ -359,6 +389,19 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
    */
   async appleAppStoreConnectWebhooks(ctx: any) {
     const body = ctx.request.body || {};
+    const authorizationHeader = ctx.request?.headers?.authorization;
+
+    if (!hasValidBearerSecret(authorizationHeader, APPLE_APP_STORE_CONNECT_WEBHOOK_SECRET)) {
+      console.warn('[APPLE_WEBHOOK] Rejected App Store Connect webhook with invalid secret');
+      ctx.status = 401;
+      return ctx.send({
+        received: false,
+        source: 'apple',
+        webhook: 'app_store_connect',
+        error: 'Invalid webhook authorization',
+      });
+    }
+
     const summary = summarizeWebhookBody(body);
 
     console.info('[APPLE_WEBHOOK] App Store Connect webhook received', {
