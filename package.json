@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@strapi-community/plugin-healthcheck": "^1.1.1",
-    "@strapi/plugin-cloud": "5.42.0",
     "@strapi/plugin-users-permissions": "5.42.1",
     "@strapi/provider-email-sendgrid": "5.42.1",
     "@strapi/provider-upload-aws-s3": "5.42.1",
