@@ -1,0 +1,22 @@
+{
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/.turbo": true,
+    "**/dist": true,
+    "**/node_modules": true,
+    "**/*.draft.*": true,
+    "docs/drafts": true
+  },
+  "search.exclude": {
+    "**/dist": true,
+    "**/node_modules": true,
+    "**/*.draft.*": true,
+    "docs/drafts/**": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.turbo/**": true
+  },
+  "editor.formatOnSave": true
+}

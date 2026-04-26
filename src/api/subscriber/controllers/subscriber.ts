@@ -77,6 +77,37 @@ export default factories.createCoreController('api::subscriber.subscriber', ({ s
     return ctx.send(result);
   },
 
+  async unsubscribe(ctx) {
+    const body = ctx.request.body || {};
+    const payload = body?.data || body;
+
+    const email = String(payload?.email || payload?.Email || '').trim();
+    const storeFromArray = Array.isArray(payload?.stores) ? payload.stores[0] : undefined;
+    const storeDocumentId = String(
+      payload?.storeDocumentId ||
+      payload?.store?.documentId ||
+      payload?.store ||
+      storeFromArray?.documentId ||
+      storeFromArray ||
+      ''
+    ).trim();
+
+    if (!email || !storeDocumentId) {
+      return ctx.badRequest('email and storeDocumentId are required');
+    }
+
+    const result = await strapi.service('api::subscriber.subscriber').unsubscribeFromStore({
+      email,
+      storeDocumentId,
+    });
+
+    if (!result?.success) {
+      return ctx.badRequest(result?.message || 'Failed to unsubscribe');
+    }
+
+    return ctx.send(result);
+  },
+
   /**
    * TODO(newsletter-phase-1): GET /api/subscribers/:documentId/sync-status
    * - return subscriber-level sync status + per-list membership status

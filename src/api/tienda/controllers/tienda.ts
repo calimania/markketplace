@@ -1,4 +1,5 @@
 import { checkStoreAccess, ERRORS, requireUser, sanitizeStore } from '../../../services/api-auth';
+import { ensureStoreDefaultSendGridList, upsertContactToList } from '../../../services/sendgrid-marketing';
 import {
   verifyItemBelongsToStore,
   autoFillSEO,
@@ -1283,7 +1284,10 @@ export default {
 
   /**
    * POST /api/tienda/stores/:ref/events/:eventId/rsvps/sync
-   * Placeholder sync endpoint for future SendGrid list integration.
+   * Syncs approved RSVPs to a per-event SendGrid list.
+   * Resolves SendGrid credentials from the store's extension config,
+   * ensures a list named after the event slug exists, then upserts
+   * each pending/failed RSVP email. Writes sync_status and timestamps back.
    */
   async syncEventRsvps(ctx: any) {
     const user = requireUser(ctx);
@@ -1307,7 +1311,7 @@ export default {
       const eventConfig = resolveContentType('event');
       const event = await (strapi.documents as any)(eventConfig.uid).findOne({
         documentId: eventId,
-        populate: ['stores'],
+        populate: ['stores', 'extensions'],
       });
 
       if (!event) {
@@ -1318,28 +1322,114 @@ export default {
         return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
       }
 
+      // Resolve SendGrid credentials: prefer event extension, fall back to store extension.
+      const storeWithExtensions = await (strapi.documents as any)('api::store.store').findOne({
+        documentId: access.store.documentId,
+        populate: ['extensions'],
+      });
+
+      const allExtensions: any[] = [
+        ...(Array.isArray(event.extensions) ? event.extensions : []),
+        ...(Array.isArray(storeWithExtensions?.extensions) ? storeWithExtensions.extensions : []),
+      ];
+
+      const sgExtension = allExtensions.find(
+        (ext: any) => ext?.active && typeof ext?.credentials?.api_key === 'string'
+      );
+
+      const credentials = sgExtension?.credentials || { use_default: true };
+      const sgConfig = sgExtension?.config || {};
+
+      // Ensure a per-event SendGrid list exists (create if missing).
+      const listSuffix = `event-${event.slug || event.documentId}`;
+      const listResult = await ensureStoreDefaultSendGridList({
+        credentials,
+        storeDocumentId: access.store.documentId,
+        listNameSuffix: listSuffix,
+        existingListId: sgConfig.sendgrid_list_id || undefined,
+      });
+
+      if (!listResult.success || !listResult.listId) {
+        console.error('[TIENDA_EVENT_RSVP_SYNC] Could not resolve SendGrid list:', listResult.error);
+        return ctx.serviceUnavailable(
+          `SendGrid list unavailable: ${listResult.message}. Configure a SendGrid extension on this store or set SENDGRID_API_KEY.`
+        );
+      }
+
+      const listId = listResult.listId;
+
+      // Fetch RSVPs that need syncing (pending or failed), limit to 500 per call.
       const rsvpDocuments = (strapi.documents as any)('api::rsvp.rsvp');
-      const rsvps = await rsvpDocuments.findMany({
+      const rsvps: any[] = await rsvpDocuments.findMany({
         filters: {
           event: { documentId: { $eq: eventId } },
+          sync_status: { $in: ['pending', 'failed'] },
         },
         limit: 500,
       });
 
+      const results = { synced: 0, failed: 0, skipped: 0 };
+      const now = new Date().toISOString();
+
+      for (const rsvp of rsvps) {
+        if (!rsvp?.email) {
+          results.skipped++;
+          continue;
+        }
+
+        const nameParts = String(rsvp.name || '').trim().split(' ');
+        const upsertResult = await upsertContactToList({
+          credentials,
+          listId,
+          email: rsvp.email,
+          firstName: nameParts[0] || undefined,
+          lastName: nameParts.slice(1).join(' ') || undefined,
+        });
+
+        const newStatus = upsertResult.success ? 'synced' : 'failed';
+
+        try {
+          await rsvpDocuments.update({
+            documentId: rsvp.documentId,
+            data: {
+              sync_status: newStatus,
+              sendgrid_list_id: listId,
+              ...(upsertResult.contactId ? { sendgrid_contact_id: upsertResult.contactId } : {}),
+              last_synced_at: now,
+            },
+          });
+        } catch (updateErr: any) {
+          console.warn('[TIENDA_EVENT_RSVP_SYNC] Failed to persist sync status for RSVP:', rsvp.documentId, updateErr.message);
+        }
+
+        if (upsertResult.success) {
+          results.synced++;
+        } else {
+          results.failed++;
+          console.warn('[TIENDA_EVENT_RSVP_SYNC] Upsert failed for', rsvp.email, upsertResult.error);
+        }
+      }
+
+      console.log('[TIENDA_EVENT_RSVP_SYNC] Sync complete', {
+        eventId,
+        listId,
+        listCreated: listResult.created,
+        ...results,
+      });
+
       return ctx.send({
         ok: true,
-        placeholder: true,
-        message: 'RSVP sync placeholder ready. SendGrid event-list sync is not wired yet.',
         data: {
-          storeDocumentId: access.store.documentId,
           eventDocumentId: event.documentId,
           eventName: event.Name,
-          totalRsvps: Array.isArray(rsvps) ? rsvps.length : 0,
-          suggestedNextStep: 'Create or resolve a SendGrid list per event, then upsert attendee emails from this RSVP set.',
+          sendgridListId: listId,
+          sendgridListCreated: listResult.created,
+          ...results,
+          total: rsvps.length,
         },
       });
     } catch (error: any) {
-      console.error('[TIENDA_EVENT_RSVP_SYNC] Failed:', error.message);
+      console.error('[TIENDA_EVENT_RSVP_SYNC] Unexpected error:', error.message);
       return ctx.internalServerError('Request failed');
     }
   },

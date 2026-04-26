@@ -300,6 +300,36 @@ export const RSVPNotificationHTml = ({ rsvp, event, store }: { rsvp: any; event:
 };
 
 /**
+ * Event Reminder Email Template
+ * Sent to each approved RSVP attendee ~24h before the event starts.
+ */
+export const EventReminderEmailHtml = ({ event, store }: { event: any; store?: any }) => {
+  const theme = resolveTheme(store);
+  const attendeeName = 'friend';
+  const eventName = event?.Name || event?.title || 'Upcoming event';
+  const eventDate = formatEventDate(event?.startDate);
+  const eventTime = formatEventTimeRange(event?.startDate, event?.endDate);
+  const storeDomain = store?.settings?.domain || 'https://markket.place';
+  const eventSlug = event?.slug || event?.documentId || '';
+  const eventUrl = eventSlug ? `${storeDomain}/events/${eventSlug}` : storeDomain;
+
+  const content = `
+    <p style="margin:0 0 14px 0;">This is a friendly reminder that <strong>${escapeHtml(eventName)}</strong> is happening tomorrow.</p>
+    ${renderInfoPanel('Event details', `
+      <p style="margin:0 0 8px 0;"><strong>Event:</strong> ${escapeHtml(eventName)}</p>
+      <p style="margin:0 0 8px 0;"><strong>Date:</strong> ${escapeHtml(eventDate)}</p>
+      <p style="margin:0 0 8px 0;"><strong>Time:</strong> ${escapeHtml(eventTime)}</p>
+    `, theme)}
+    ${renderButton('View event details', eventUrl, theme, 'secondary')}
+    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">See you there, ${escapeHtml(attendeeName)}. Bring this email if check-in is required.</p>
+  `;
+
+  const title = `Reminder: ${eventName} is tomorrow`;
+
+  return emailLayout({ content, title, store });
+};
+
+/**
  * Notifies Store.user[].email about a purchase
  *
  * @param order, store

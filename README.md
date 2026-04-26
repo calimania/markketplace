@@ -110,6 +110,9 @@ It will move into our website and online documentation.
 
 [./docs](./docs/)
 
+Workspace note: root markdown files are intentionally minimal (project-level docs only).
+Planning notes and drafts live under `docs/` and `docs/drafts/`.
+
 Announcement in our [Blog](https://www.markket. place/blog/2024-what-is-markketplace)
 
 [markket.place](https://markket.place)

@@ -74,6 +74,69 @@ Done criteria:
 Verification:
 - file reads clearly top to bottom with active work first and archive last
 
+### 3. Subscriber Public Endpoints handoff notes
+Status: ready for frontend
+
+Scope:
+- document stable public contracts for subscribe and unsubscribe
+- keep payload parsing compatibility so existing clients do not break
+- provide copy-ready request and response examples for frontend teams
+
+Dependencies:
+- route config in src/api/subscriber/routes/subscriber-sync.ts
+- controller parsing in src/api/subscriber/controllers/subscriber.ts
+- service behavior in src/api/subscriber/services/subscriber.ts
+
+Risk:
+- low for new clients
+- medium if frontend sends store id in a shape not covered by compatibility parsing
+
+Compatibility impact:
+- backward compatible
+- existing POST /api/subscribers/subscribe behavior remains unchanged
+
+Done criteria:
+- frontend has one canonical request shape to implement
+- alternate accepted request shapes are documented for migration safety
+- expected success and validation error responses are documented
+
+Verification:
+- POST /api/subscribers/subscribe with email + storeDocumentId returns success true and sync_status pending
+- POST /api/subscribers/unsubscribe with email + storeDocumentId returns success true with unsubscribed timestamp
+- missing email or storeDocumentId returns 400 bad request
+
+Frontend handoff contract:
+
+Canonical request body for both endpoints:
+- {"email":"person@example.com","storeDocumentId":"store_document_id_here"}
+
+Also accepted for compatibility:
+- {"Email":"person@example.com","store":"store_document_id_here"}
+- {"email":"person@example.com","store":{"documentId":"store_document_id_here"}}
+- {"email":"person@example.com","stores":["store_document_id_here"]}
+- {"email":"person@example.com","stores":[{"documentId":"store_document_id_here"}]}
+
+Endpoint: POST /api/subscribers/subscribe
+- auth: false (public)
+- success response shape:
+	{"success":true,"message":"Subscriber saved and sync queued","data":{"subscriberDocumentId":"...","email":"person@example.com","storeDocumentId":"...","listDocumentId":"...","sync_status":"pending"}}
+
+Endpoint: POST /api/subscribers/unsubscribe
+- auth: false (public)
+- success response shape:
+	{"success":true,"message":"Unsubscribed successfully","data":{"email":"person@example.com","storeDocumentId":"...","unsubscribed_at":"ISO_DATE"}}
+- if no existing subscriber is found, endpoint is still successful and returns:
+	{"success":true,"message":"No subscription found","data":{"email":"person@example.com","storeDocumentId":"..."}}
+
+Validation error shape:
+- status 400
+- message includes: email and storeDocumentId are required
+
+Operational notes for frontend:
+- treat subscribe as accepted/queued, not instant provider confirmation
+- unsubscribe is immediate in Strapi records; provider removal is best effort and non-blocking
+- prefer canonical body shape for all new clients
+
 ## V0 Now: Security + Tienda Foundation
 
 - [ ] Tienda resolver and ownership model
