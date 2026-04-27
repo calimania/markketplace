@@ -20,6 +20,21 @@ const REMINDER_UID = 'api::event-reminder.event-reminder';
 const RSVP_UID = 'api::rsvp.rsvp';
 
 const REMINDER_HOURS_BEFORE = 24;
+const eventOperationLocks = new Set<string>();
+let isReminderCronRunning = false;
+
+async function runWithEventLock(key: string, work: () => Promise<void>): Promise<void> {
+  if (eventOperationLocks.has(key)) {
+    return;
+  }
+
+  eventOperationLocks.add(key);
+  try {
+    await work();
+  } finally {
+    eventOperationLocks.delete(key);
+  }
+}
 
 /** Resolve a SendGrid API key from store extensions or the platform env. */
 async function resolveSendGridApiKey(strapi: any, storeDocumentId: string): Promise<string | null> {
@@ -77,13 +92,14 @@ async function upsertEventReminder(strapi: any, eventDocumentId: string): Promis
     const storeDocumentId = event?.stores?.[0]?.documentId || null;
     const reminders = (strapi.documents as any)(REMINDER_UID);
 
-    // Find existing non-cancelled reminder for this event.
+    // Find existing pending reminders for this event.
     const existing: any[] = await reminders.findMany({
       filters: {
         event: { documentId: { $eq: eventDocumentId } },
         status: { $in: ['pending'] },
       },
-      limit: 1,
+      sort: ['createdAt:asc'],
+      limit: 10,
     });
 
     if (existing.length > 0) {
@@ -96,17 +112,65 @@ async function upsertEventReminder(strapi: any, eventDocumentId: string): Promis
           ...(storeDocumentId ? { store: storeDocumentId } : {}),
         },
       });
+
+      // Dedupe safety: if race created multiple pending reminders, cancel extras.
+      if (existing.length > 1) {
+        for (const duplicate of existing.slice(1)) {
+          await reminders.update({
+            documentId: duplicate.documentId,
+            data: {
+              status: 'cancelled',
+              cancelled_at: new Date().toISOString(),
+              error: 'auto_cancelled_duplicate_pending_reminder',
+            },
+          });
+        }
+      }
+
       console.log('[EVENT_REMINDER] Updated reminder schedule', { eventDocumentId, scheduledFor });
     } else {
-      await reminders.create({
-        data: {
-          event: eventDocumentId,
-          ...(storeDocumentId ? { store: storeDocumentId } : {}),
-          scheduled_for: scheduledFor.toISOString(),
-          status: 'pending',
-          subject: `Reminder: ${event.Name || 'Event'} is tomorrow`,
-        },
-      });
+      try {
+        await reminders.create({
+          data: {
+            event: eventDocumentId,
+            ...(storeDocumentId ? { store: storeDocumentId } : {}),
+            scheduled_for: scheduledFor.toISOString(),
+            status: 'pending',
+            subject: `Reminder: ${event.Name || 'Event'} is tomorrow`,
+          },
+        });
+      } catch (createErr: any) {
+        // Race-safe fallback: if create collided with another write, re-read and update.
+        const isLikelyUniqueConflict =
+          /unique|duplicate|already exists/i.test(String(createErr?.message || ''));
+
+        if (!isLikelyUniqueConflict) {
+          throw createErr;
+        }
+
+        const fallbackExisting: any[] = await reminders.findMany({
+          filters: {
+            event: { documentId: { $eq: eventDocumentId } },
+            status: { $in: ['pending'] },
+          },
+          sort: ['createdAt:asc'],
+          limit: 1,
+        });
+
+        if (fallbackExisting.length > 0) {
+          await reminders.update({
+            documentId: fallbackExisting[0].documentId,
+            data: {
+              scheduled_for: scheduledFor.toISOString(),
+              subject: `Reminder: ${event.Name || 'Event'} is tomorrow`,
+              ...(storeDocumentId ? { store: storeDocumentId } : {}),
+            },
+          });
+        } else {
+          throw createErr;
+        }
+      }
+
       console.log('[EVENT_REMINDER] Created reminder', { eventDocumentId, scheduledFor });
     }
   } catch (err: any) {
@@ -188,6 +252,13 @@ async function sendReminderEmail(
  * Called from the cron task registered in src/index.ts.
  */
 export async function sendDueEventReminders(strapi: any): Promise<void> {
+  if (isReminderCronRunning) {
+    console.warn('[EVENT_REMINDER_CRON] Previous run still active, skipping overlap');
+    return;
+  }
+
+  isReminderCronRunning = true;
+
   const reminders = (strapi.documents as any)(REMINDER_UID);
   const now = new Date();
   const windowEnd = new Date(now.getTime() + 10 * 60 * 1000); // 10-min lookahead
@@ -204,93 +275,107 @@ export async function sendDueEventReminders(strapi: any): Promise<void> {
     });
   } catch (err: any) {
     console.error('[EVENT_REMINDER_CRON] Failed to query due reminders:', err.message);
+    isReminderCronRunning = false;
     return;
   }
 
-  if (!due.length) return;
+  if (!due.length) {
+    isReminderCronRunning = false;
+    return;
+  }
+
   console.log('[EVENT_REMINDER_CRON] Processing reminders', { count: due.length });
 
-  for (const reminder of due) {
-    const event = reminder.event;
-    const store = reminder.store;
-
-    if (!event?.documentId) {
-      await reminders.update({
-        documentId: reminder.documentId,
-        data: { status: 'failed', error: 'event relation missing', sent_at: now.toISOString() },
-      });
-      continue;
-    }
-
-    const storeDocumentId = store?.documentId || event?.stores?.[0]?.documentId || null;
-    const apiKey = storeDocumentId ? await resolveSendGridApiKey(strapi, storeDocumentId) : null;
-
-    if (!apiKey) {
-      await reminders.update({
-        documentId: reminder.documentId,
-        data: { status: 'failed', error: 'no SendGrid API key', sent_at: now.toISOString() },
-      });
-      console.warn('[EVENT_REMINDER_CRON] No API key for reminder', { reminderId: reminder.documentId });
-      continue;
-    }
-
-    // Load full store for theme/branding in email.
-    let fullStore = store;
-    if (storeDocumentId && !store?.settings) {
-      try {
-        fullStore = await (strapi.documents as any)('api::store.store').findOne({
-          documentId: storeDocumentId,
-          populate: ['Favicon', 'settings'],
-        });
-      } catch { /* use partial store */ }
-    }
-
-    // Fetch approved RSVPs.
-    let rsvps: any[] = [];
-    try {
-      rsvps = await (strapi.documents as any)(RSVP_UID).findMany({
-        filters: {
-          event: { documentId: { $eq: event.documentId } },
-          approved: { $eq: true },
-        },
-        limit: 500,
-      });
-    } catch (err: any) {
-      console.error('[EVENT_REMINDER_CRON] Failed to fetch RSVPs:', err.message);
-    }
-
-    let sent = 0;
-    let failed = 0;
-
-    for (const rsvp of rsvps) {
-      const result = await sendReminderEmail(apiKey, rsvp, event, fullStore);
-      if (result.success) {
-        sent++;
-      } else {
-        failed++;
-        console.warn('[EVENT_REMINDER_CRON] Email failed', { email: rsvp?.email, error: result.error });
+  try {
+    for (const reminder of due) {
+      const latest = await reminders.findOne({ documentId: reminder.documentId });
+      if (!latest || latest.status !== 'pending') {
+        continue;
       }
-    }
 
-    const finalStatus = failed > 0 && sent === 0 ? 'failed' : 'sent';
-    await reminders.update({
-      documentId: reminder.documentId,
-      data: {
+      const event = reminder.event;
+      const store = reminder.store;
+
+      if (!event?.documentId) {
+        await reminders.update({
+          documentId: reminder.documentId,
+          data: { status: 'failed', error: 'event relation missing', sent_at: now.toISOString() },
+        });
+        continue;
+      }
+
+      const storeDocumentId = store?.documentId || event?.stores?.[0]?.documentId || null;
+      const apiKey = storeDocumentId ? await resolveSendGridApiKey(strapi, storeDocumentId) : null;
+
+      if (!apiKey) {
+        await reminders.update({
+          documentId: reminder.documentId,
+          data: { status: 'failed', error: 'no SendGrid API key', sent_at: now.toISOString() },
+        });
+        console.warn('[EVENT_REMINDER_CRON] No API key for reminder', { reminderId: reminder.documentId });
+        continue;
+      }
+
+      // Load full store for theme/branding in email.
+      let fullStore = store;
+      if (storeDocumentId && !store?.settings) {
+        try {
+          fullStore = await (strapi.documents as any)('api::store.store').findOne({
+            documentId: storeDocumentId,
+            populate: ['Favicon', 'settings'],
+          });
+        } catch { /* use partial store */ }
+      }
+
+      // Fetch approved RSVPs.
+      let rsvps: any[] = [];
+      try {
+        rsvps = await (strapi.documents as any)(RSVP_UID).findMany({
+          filters: {
+            event: { documentId: { $eq: event.documentId } },
+            approved: { $eq: true },
+          },
+          limit: 500,
+        });
+      } catch (err: any) {
+        console.error('[EVENT_REMINDER_CRON] Failed to fetch RSVPs:', err.message);
+      }
+
+      let sent = 0;
+      let failed = 0;
+
+      for (const rsvp of rsvps) {
+        const result = await sendReminderEmail(apiKey, rsvp, event, fullStore);
+        if (result.success) {
+          sent++;
+        } else {
+          failed++;
+          console.warn('[EVENT_REMINDER_CRON] Email failed', { email: rsvp?.email, error: result.error });
+        }
+      }
+
+      const finalStatus = failed > 0 && sent === 0 ? 'failed' : 'sent';
+      await reminders.update({
+        documentId: reminder.documentId,
+        data: {
+          status: finalStatus,
+          sent_at: now.toISOString(),
+          recipients_count: sent,
+          failed_count: failed,
+          ...(finalStatus === 'failed' ? { error: `${failed} of ${rsvps.length} failed` } : {}),
+        },
+      });
+
+      console.log('[EVENT_REMINDER_CRON] Reminder done', {
+        reminderId: reminder.documentId,
+        eventId: event.documentId,
+        sent,
+        failed,
         status: finalStatus,
-        sent_at: now.toISOString(),
-        recipients_count: sent,
-        failed_count: failed,
-        ...(finalStatus === 'failed' ? { error: `${failed} of ${rsvps.length} failed` } : {}),
-      },
-    });
-
-    console.log('[EVENT_REMINDER_CRON] Reminder done', {
-      reminderId: reminder.documentId,
-      eventId: event.documentId,
-      sent,
-      failed,
-      status: finalStatus,
-    });
+      });
+    }
+  } finally {
+    isReminderCronRunning = false;
   }
 }
 
@@ -312,9 +397,13 @@ export function registerEventReminderMiddleware({ strapi }: { strapi: any }): vo
     if (!documentId) return result;
 
     if (['create', 'update', 'publish'].includes(action)) {
-      setImmediate(() => upsertEventReminder(strapi, documentId));
+      setImmediate(() => {
+        void runWithEventLock(`upsert:${documentId}`, () => upsertEventReminder(strapi, documentId));
+      });
     } else if (['unpublish', 'delete'].includes(action)) {
-      setImmediate(() => cancelEventReminders(strapi, documentId));
+      setImmediate(() => {
+        void runWithEventLock(`cancel:${documentId}`, () => cancelEventReminders(strapi, documentId));
+      });
     }
 
     return result;

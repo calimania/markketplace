@@ -21,6 +21,8 @@ type EmailLayout = {
   content: string;
   title: string;
   store?: Store;
+  /** Override the eyebrow/badge label. Pass null to hide entirely. Defaults to store name. */
+  label?: string | null;
 };
 
 type EmailTheme = {
@@ -68,7 +70,7 @@ function resolveTheme(store?: Store): EmailTheme {
 }
 
 function renderEyebrow(text: string, theme: EmailTheme): string {
-  return `<div style="font-family:'Courier New',Courier,monospace;font-size:11px;letter-spacing:1.8px;text-transform:uppercase;color:${theme.primaryColor};font-weight:bold;margin:0 0 12px 0;">${escapeHtml(text)}</div>`;
+  return `<div style="font-family:'Courier New',Courier,monospace;font-size:13px;letter-spacing:1.8px;text-transform:uppercase;color:${theme.primaryColor};font-weight:bold;margin:0 0 12px 0;">${escapeHtml(text)}</div>`;
 }
 
 function renderButton(label: string, href: string, theme: EmailTheme, fill: 'primary' | 'secondary' = 'primary'): string {
@@ -105,13 +107,15 @@ function renderInfoPanel(title: string, body: string, theme: EmailTheme): string
  * @param props.store - Store & settings to override template content
  * @returns
  */
-export const emailLayout = ({ content, title, store }: EmailLayout) => {
+export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
   const logoUrl = store?.Favicon?.url;
   const preheader = store?.settings?.email_header_message || `Thank you for using ${store?.title || 'Markkët'}!`;
   const storeName = store?.settings?.store_name_override || store?.title || 'Markkët';
   const storeUrl = store?.settings?.domain || 'https://markket.place';
   const footerText = store?.settings?.email_footer || `Visit ${storeName} for more updates.`;
   const theme = resolveTheme(store);
+  // label=undefined → use storeName; label=null → hide badge/eyebrow; label=string → use that string
+  const resolvedLabel = label === undefined ? storeName : label;
 
   return `
     <!DOCTYPE html>
@@ -132,8 +136,8 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                     <tr>
                       <td style="padding:0 2px 14px 2px;">
-                        ${renderEyebrow('Curated message', theme)}
-                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:42px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
+                        ${resolvedLabel !== null ? renderEyebrow(resolvedLabel, theme) : ''}
+                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
                       </td>
                     </tr>
                   </table>
@@ -150,8 +154,8 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
                               ${logoUrl ? `<img src="${logoUrl}" alt="${escapeHtml(storeName)} logo" style="display:block;height:48px;max-width:160px;border:0;outline:none;text-decoration:none;">` : ''}
                             </td>
                             <td align="right" valign="top">
-                              <div style="display:inline-block;padding:7px 12px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.2;color:#ffffff;letter-spacing:1.4px;text-transform:uppercase;font-weight:bold;">Curated message</div>
-                              <div style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.6;color:#e9d5ff;letter-spacing:1.4px;text-transform:uppercase;">
+                              ${resolvedLabel !== null ? `<div style="display:inline-block;padding:7px 14px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.2;color:#ffffff;letter-spacing:1.2px;text-transform:uppercase;font-weight:bold;">${escapeHtml(resolvedLabel)}</div>` : ''}
+                              <div style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:#e9d5ff;letter-spacing:1.2px;text-transform:uppercase;">
                                 ${escapeHtml(title)}
                               </div>
                             </td>
@@ -174,20 +178,20 @@ export const emailLayout = ({ content, title, store }: EmailLayout) => {
                     </tr>
                     <tr>
                       <td style="padding:26px 28px 14px 28px;">
-                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:1.05;color:${theme.textColor};font-style:italic;margin:0 0 10px 0;">${escapeHtml(title)}</div>
-                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.8;color:${theme.textColor};">${content || ''}</div>
+                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.05;color:${theme.textColor};font-style:italic;margin:0 0 14px 0;">${escapeHtml(title)}</div>
+                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:1.8;color:${theme.textColor};">${content || ''}</div>
                       </td>
                     </tr>
                     <tr>
                       <td style="padding:0 28px 26px 28px;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${theme.borderColor};">
                           <tr>
-                            <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">
+                            <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${theme.mutedTextColor};">
                               ${escapeHtml(footerText)}
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.6;color:${theme.mutedTextColor};letter-spacing:1.4px;text-transform:uppercase;">
+                            <td style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.mutedTextColor};letter-spacing:1.2px;text-transform:uppercase;">
                               <a href="${storeUrl}" style="color:${theme.secondaryColor};text-decoration:none;">${escapeHtml(storeUrl)}</a>
                             </td>
                           </tr>
