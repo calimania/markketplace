@@ -67,7 +67,8 @@ export default factories.createCoreController('api::subscriber.subscriber', ({ s
       storeDocumentId,
       firstName,
       lastName,
-      source: 'public_subscribe_api'
+      source: 'public_subscribe_api',
+      syncImmediately: true
     });
 
     if (!result?.success) {

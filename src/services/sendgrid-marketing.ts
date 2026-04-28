@@ -927,6 +927,11 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
     };
   }
 
+  const keySource = credentials.use_default
+    ? 'env:SENDGRID_API_KEY'
+    : 'extension.credentials.api_key';
+  const keyFingerprint = `${apiKey.slice(0, 6)}...${apiKey.slice(-4)} (len:${apiKey.length})`;
+
   const resolveSenderIdentity = async (): Promise<ResolvedSenderIdentity> => {
     if (fromEmail) {
       return {

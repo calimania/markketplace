@@ -13,6 +13,7 @@ interface SubscribeAndQueueSyncInput {
   firstName?: string;
   lastName?: string;
   source?: string;
+  syncImmediately?: boolean;
 }
 
 interface TriggerSubscriberResyncInput {
@@ -199,7 +200,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
       });
     }
 
-    setImmediate(async () => {
+    const queueAsyncSyncRetry = () => setImmediate(async () => {
       try {
         await (strapi.service('api::subscriber.subscriber') as any).syncSubscriberToSendGrid({
           subscriberDocumentId: subscriber.documentId,
@@ -209,6 +210,77 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
         console.error('[SUBSCRIBER_SYNC] async sync failed:', error.message);
       }
     });
+
+    const syncImmediately = input?.syncImmediately !== false;
+
+    if (syncImmediately) {
+      try {
+        const syncResult = await (strapi.service('api::subscriber.subscriber') as any).syncSubscriberToSendGrid({
+          subscriberDocumentId: subscriber.documentId,
+          storeDocumentId
+        });
+
+        if (syncResult?.success) {
+          return {
+            success: true,
+            message: 'Subscriber saved and synced to SendGrid',
+            data: {
+              subscriberDocumentId: subscriber.documentId,
+              email: subscriber.Email,
+              storeDocumentId,
+              listDocumentId: targetList.documentId,
+              sync_status: 'synced',
+              sendgrid_sync: {
+                success: true,
+                sendgrid_list_id: syncResult?.data?.sendgrid_list_id,
+                sendgrid_contact_id: syncResult?.data?.sendgrid_contact_id,
+                jobId: syncResult?.data?.jobId || null
+              }
+            }
+          };
+        }
+
+        queueAsyncSyncRetry();
+
+        return {
+          success: true,
+          message: 'Subscriber saved, SendGrid sync failed, retry queued',
+          data: {
+            subscriberDocumentId: subscriber.documentId,
+            email: subscriber.Email,
+            storeDocumentId,
+            listDocumentId: targetList.documentId,
+            sync_status: 'failed',
+            sendgrid_sync: {
+              success: false,
+              error: syncResult?.error || syncResult?.message || 'sync_failed',
+              retry_queued: true
+            }
+          }
+        };
+      } catch (error: any) {
+        queueAsyncSyncRetry();
+
+        return {
+          success: true,
+          message: 'Subscriber saved, immediate SendGrid sync failed unexpectedly, retry queued',
+          data: {
+            subscriberDocumentId: subscriber.documentId,
+            email: subscriber.Email,
+            storeDocumentId,
+            listDocumentId: targetList.documentId,
+            sync_status: 'pending',
+            sendgrid_sync: {
+              success: false,
+              error: error?.message || 'unexpected_sync_error',
+              retry_queued: true
+            }
+          }
+        };
+      }
+    }
+
+    queueAsyncSyncRetry();
 
     return {
       success: true,
