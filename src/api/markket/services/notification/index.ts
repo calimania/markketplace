@@ -3,7 +3,7 @@ const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 import { OrderNotificationHTml, RSVPNotificationHTml, OrderStoreNotificationEmailHTML } from './email.template';
 
 
-export const sendRSVPNotification = async ({ strapi, rsvp, event }) => {
+export const sendRSVPNotification = async ({ strapi, rsvp, event, store: storeOverride = null }) => {
   console.info('notification::rsvp:created', {
     rsvp: !!rsvp,
     event: !!event,
@@ -21,7 +21,7 @@ export const sendRSVPNotification = async ({ strapi, rsvp, event }) => {
     return;
   }
 
-  const store = Array.isArray(event?.stores) ? event.stores[0] : null;
+  const store = storeOverride || (Array.isArray(event?.stores) ? event.stores[0] : null);
 
   return await strapi.plugins['email'].services.email.send({
     to: customerEmail,

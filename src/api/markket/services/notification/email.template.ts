@@ -54,18 +54,18 @@ function resolveTheme(store?: Store): EmailTheme {
   const branding = store?.settings?.branding || {};
 
   return {
-    shellBackground: emailTheme.backgroundColor || branding.backgroundColor || '#fffafb',
+    shellBackground: emailTheme.backgroundColor || branding.backgroundColor || '#fffef5',
     cardBackground: emailTheme.cardBackgroundColor || branding.cardBackgroundColor || '#ffffff',
-    panelBackground: emailTheme.panelBackgroundColor || branding.panelBackgroundColor || '#fdf1f7',
-    textColor: emailTheme.textColor || branding.textColor || '#1e1b4b',
-    mutedTextColor: emailTheme.mutedTextColor || branding.mutedTextColor || '#4b5563',
-    primaryColor: emailTheme.primaryColor || branding.primaryColor || '#db2777',
-    secondaryColor: emailTheme.secondaryColor || branding.secondaryColor || '#06b6d4',
-    tertiaryColor: emailTheme.tertiaryColor || branding.tertiaryColor || '#eab308',
-    borderColor: emailTheme.borderColor || branding.borderColor || '#fbcfe8',
-    inkBackground: emailTheme.inkBackground || branding.inkBackground || '#1e1b4b',
+    panelBackground: emailTheme.panelBackgroundColor || branding.panelBackgroundColor || '#fff7ed',
+    textColor: emailTheme.textColor || branding.textColor || '#1f2937',
+    mutedTextColor: emailTheme.mutedTextColor || branding.mutedTextColor || '#475569',
+    primaryColor: emailTheme.primaryColor || branding.primaryColor || '#ef476f',
+    secondaryColor: emailTheme.secondaryColor || branding.secondaryColor || '#06d6a0',
+    tertiaryColor: emailTheme.tertiaryColor || branding.tertiaryColor || '#ffd166',
+    borderColor: emailTheme.borderColor || branding.borderColor || '#fed7aa',
+    inkBackground: emailTheme.inkBackground || branding.inkBackground || '#2b2d42',
     softSecondaryBackground: emailTheme.softSecondaryBackground || branding.softSecondaryBackground || '#ecfeff',
-    softTertiaryBackground: emailTheme.softTertiaryBackground || branding.softTertiaryBackground || '#fff8db',
+    softTertiaryBackground: emailTheme.softTertiaryBackground || branding.softTertiaryBackground || '#fff7cc',
   };
 }
 
@@ -79,7 +79,7 @@ function renderButton(label: string, href: string, theme: EmailTheme, fill: 'pri
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 8px 0;">
       <tr>
         <td bgcolor="${background}" style="border-radius:999px;">
-          <a href="${href}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">${escapeHtml(label)}</a>
+          <a class="mk-btn" href="${href}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">${escapeHtml(label)}</a>
         </td>
       </tr>
     </table>
@@ -123,13 +123,57 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
+      <meta name="color-scheme" content="light dark">
+      <meta name="supported-color-schemes" content="light dark">
       <title>${title} - ${storeName}</title>
+      <style>
+        body {
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+        }
+        @media (max-width: 600px) {
+          .mk-shell {
+            padding: 18px 10px !important;
+          }
+          .mk-card-pad {
+            padding: 20px 18px 12px 18px !important;
+          }
+          .mk-header-pad {
+            padding: 20px 18px 14px 18px !important;
+          }
+          .mk-footer-pad {
+            padding: 0 18px 20px 18px !important;
+          }
+          .mk-brand {
+            font-size: 34px !important;
+          }
+          .mk-title {
+            font-size: 30px !important;
+          }
+          .mk-content {
+            font-size: 16px !important;
+            line-height: 1.7 !important;
+          }
+          .mk-btn {
+            display: block !important;
+            padding: 14px 18px !important;
+            font-size: 15px !important;
+            text-align: center !important;
+          }
+        }
+        @media (prefers-color-scheme: dark) {
+          body,
+          .mk-bg {
+            background-color: ${theme.shellBackground} !important;
+          }
+        }
+      </style>
     </head>
     <body style="margin:0;padding:0;background:${theme.shellBackground};color:${theme.textColor};font-family:Arial,Helvetica,sans-serif;">
       <span style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}</span>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.shellBackground};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="mk-bg" style="background:${theme.shellBackground};">
         <tr>
-          <td align="center" style="padding:28px 12px;">
+          <td align="center" class="mk-shell" style="padding:28px 12px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;margin:0 auto;">
               <tr>
                 <td style="padding:0 0 14px 0;">
@@ -137,7 +181,7 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                     <tr>
                       <td style="padding:0 2px 14px 2px;">
                         ${resolvedLabel !== null ? renderEyebrow(resolvedLabel, theme) : ''}
-                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
+                        <div class="mk-brand" style="font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
                       </td>
                     </tr>
                   </table>
@@ -147,7 +191,7 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                 <td>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:26px;">
                     <tr>
-                      <td bgcolor="${theme.inkBackground}" style="padding:26px 28px 18px 28px;border-radius:26px 26px 0 0;">
+                      <td bgcolor="${theme.inkBackground}" class="mk-header-pad" style="padding:26px 28px 18px 28px;border-radius:26px 26px 0 0;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                           <tr>
                             <td valign="top" style="padding:0 12px 0 0;">
@@ -155,7 +199,7 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                             </td>
                             <td align="right" valign="top">
                               ${resolvedLabel !== null ? `<div style="display:inline-block;padding:7px 14px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.2;color:#ffffff;letter-spacing:1.2px;text-transform:uppercase;font-weight:bold;">${escapeHtml(resolvedLabel)}</div>` : ''}
-                              <div style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:#e9d5ff;letter-spacing:1.2px;text-transform:uppercase;">
+                              <div style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.softTertiaryBackground};letter-spacing:1.2px;text-transform:uppercase;">
                                 ${escapeHtml(title)}
                               </div>
                             </td>
@@ -177,13 +221,13 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding:26px 28px 14px 28px;">
-                        <div style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.05;color:${theme.textColor};font-style:italic;margin:0 0 14px 0;">${escapeHtml(title)}</div>
-                        <div style="font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:1.8;color:${theme.textColor};">${content || ''}</div>
+                      <td class="mk-card-pad" style="padding:26px 28px 14px 28px;">
+                        <div class="mk-title" style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:1.05;color:${theme.textColor};font-style:italic;margin:0 0 14px 0;">${escapeHtml(title)}</div>
+                        <div class="mk-content" style="font-family:Arial,Helvetica,sans-serif;font-size:17px;line-height:1.8;color:${theme.textColor};">${content || ''}</div>
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding:0 28px 26px 28px;">
+                      <td class="mk-footer-pad" style="padding:0 28px 26px 28px;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${theme.borderColor};">
                           <tr>
                             <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${theme.mutedTextColor};">
@@ -220,7 +264,8 @@ export const OrderNotificationHTml = (order: any) => {
   const theme = resolveTheme();
   const receiptUrl = `https://markket.place/receipt?session_id=${order?.data?.object?.id || ''}`;
   const content = `
-    <p style="margin:0 0 14px 0;">Thank you for your order. Your receipt is ready and the seller has already been notified.</p>
+    <p style="margin:0 0 6px 0;font-size:20px;line-height:1.3;">&#127873; Order received!</p>
+    <p style="margin:0 0 14px 0;">Thank you for your purchase. Your receipt is ready and the seller has already been notified.</p>
     ${renderInfoPanel('Order details', `
       <p style="margin:0 0 8px 0;"><strong>Order ID:</strong> ${escapeHtml(order?.data?.object?.id || 'Pending')}</p>
       <p style="margin:0;">If any follow-up is needed, the seller will reach out directly.</p>
@@ -234,7 +279,19 @@ export const OrderNotificationHTml = (order: any) => {
   return emailLayout({ content, title });
 };
 
-function formatEventDate(value: any): string {
+function safeTimezone(tz: any): string | undefined {
+  if (!tz || typeof tz !== 'string') {
+    return undefined;
+  }
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    return undefined;
+  }
+}
+
+function formatEventDate(value: any, timezone?: any): string {
   if (!value) {
     return 'To be announced';
   }
@@ -244,18 +301,22 @@ function formatEventDate(value: any): string {
     return String(value);
   }
 
+  const tz = safeTimezone(timezone);
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
   });
 }
 
-function formatEventTimeRange(start: any, end: any): string {
+function formatEventTimeRange(start: any, end: any, timezone?: any): string {
   if (!start && !end) {
     return 'To be announced';
   }
+
+  const tz = safeTimezone(timezone);
 
   const formatTime = (value: any) => {
     const date = new Date(value);
@@ -266,12 +327,27 @@ function formatEventTimeRange(start: any, end: any): string {
     return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
+      ...(tz ? { timeZone: tz } : {}),
     });
   };
 
   const startLabel = formatTime(start);
   const endLabel = end ? formatTime(end) : '';
-  return endLabel ? `${startLabel} - ${endLabel}` : startLabel;
+  const tzLabel = tz ? ` (${tz.replace(/_/g, '\u00a0')})` : '';
+  return endLabel ? `${startLabel} - ${endLabel}${tzLabel}` : `${startLabel}${tzLabel}`;
+}
+
+function maskEmail(value: any): string {
+  const email = String(value || '').trim();
+  const atIndex = email.indexOf('@');
+  if (!email || atIndex <= 0) {
+    return 'Hidden';
+  }
+
+  const local = email.slice(0, atIndex);
+  const domain = email.slice(atIndex + 1);
+  const visibleLocal = local.length <= 2 ? local.charAt(0) : local.slice(0, 2);
+  return `${visibleLocal}${'*'.repeat(Math.max(3, local.length - visibleLocal.length))}@${domain}`;
 }
 
 /**
@@ -282,23 +358,30 @@ export const RSVPNotificationHTml = ({ rsvp, event, store }: { rsvp: any; event:
   const calendarUrl = event?.calendarUrl || event?.data?.object?.calendarUrl || '';
   const attendeeName = rsvp?.name || rsvp?.user?.displayName || rsvp?.email || 'friend';
   const eventName = event?.Name || event?.title || 'Upcoming event';
-  const eventDate = formatEventDate(event?.startDate);
-  const eventTime = formatEventTimeRange(event?.startDate, event?.endDate);
-  const attendeeEmail = rsvp?.email || '';
+  const eventTimezone = event?.timezone || null;
+  const eventDate = formatEventDate(event?.startDate, eventTimezone);
+  const eventTime = formatEventTimeRange(event?.startDate, event?.endDate, eventTimezone);
+  const attendeeEmail = maskEmail(rsvp?.email);
+  const storeDomain = String(store?.settings?.domain || 'https://markket.place').replace(/\/$/, '');
+  const rsvpDocumentId = String(rsvp?.documentId || '').trim();
+  const rsvpUrl = rsvpDocumentId
+    ? `${storeDomain}/rsvp?id=${encodeURIComponent(rsvpDocumentId)}`
+    : `${storeDomain}/rsvp`;
 
   const content = `
-    <p style="margin:0 0 14px 0;">Hi ${escapeHtml(attendeeName)}, your RSVP is in. We saved your spot and put the essentials below.</p>
+    <p style="margin:0 0 6px 0;font-size:22px;line-height:1.3;">&#127881; You're going, ${escapeHtml(attendeeName)}!</p>
+    <p style="margin:0 0 18px 0;">Your spot at <strong>${escapeHtml(eventName)}</strong> is confirmed. Here are your details &mdash; save this email or open it at check-in.</p>
     ${renderInfoPanel('Event details', `
-      <p style="margin:0 0 8px 0;"><strong>Event:</strong> ${escapeHtml(eventName)}</p>
-      <p style="margin:0 0 8px 0;"><strong>Date:</strong> ${escapeHtml(eventDate)}</p>
-      <p style="margin:0 0 8px 0;"><strong>Time:</strong> ${escapeHtml(eventTime)}</p>
-      <p style="margin:0;"><strong>Email:</strong> ${escapeHtml(attendeeEmail)}</p>
+      <p style="margin:0 0 8px 0;">&#128197; <strong>Date:</strong> ${escapeHtml(eventDate)}</p>
+      <p style="margin:0 0 8px 0;">&#128336; <strong>Time:</strong> ${escapeHtml(eventTime)}</p>
+      <p style="margin:0;">&#128231; <strong>Registered as:</strong> ${escapeHtml(attendeeEmail)}</p>
     `, theme)}
-    ${calendarUrl ? renderButton('Add to calendar', calendarUrl, theme, 'secondary') : ''}
-    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Bring this email with you if the event requires check-in.</p>
+    ${renderButton('&#127918; View my RSVP', rsvpUrl, theme)}
+    ${calendarUrl ? renderButton('&#128197; Add to calendar', calendarUrl, theme, 'secondary') : ''}
+    <p style="margin:18px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Can't wait to see you there. &#10024; Bring this email if check-in is required.</p>
   `;
 
-  const title = 'Markkët: RSVP Confirmation';
+  const title = 'You\'re in! &#127881; RSVP confirmed';
 
   return emailLayout({ content, title, store });
 };
@@ -307,28 +390,31 @@ export const RSVPNotificationHTml = ({ rsvp, event, store }: { rsvp: any; event:
  * Event Reminder Email Template
  * Sent to each approved RSVP attendee ~24h before the event starts.
  */
-export const EventReminderEmailHtml = ({ event, store }: { event: any; store?: any }) => {
+export const EventReminderEmailHtml = ({ event, store, rsvp }: { event: any; store?: any; rsvp?: any }) => {
   const theme = resolveTheme(store);
-  const attendeeName = 'friend';
+  const attendeeName = rsvp?.name || rsvp?.email ? maskEmail(rsvp?.email) : 'friend';
   const eventName = event?.Name || event?.title || 'Upcoming event';
-  const eventDate = formatEventDate(event?.startDate);
-  const eventTime = formatEventTimeRange(event?.startDate, event?.endDate);
-  const storeDomain = store?.settings?.domain || 'https://markket.place';
+  const eventTimezone = event?.timezone || null;
+  const eventDate = formatEventDate(event?.startDate, eventTimezone);
+  const eventTime = formatEventTimeRange(event?.startDate, event?.endDate, eventTimezone);
+  const storeDomain = String(store?.settings?.domain || 'https://markket.place').replace(/\/$/, '');
   const eventSlug = event?.slug || event?.documentId || '';
   const eventUrl = eventSlug ? `${storeDomain}/events/${eventSlug}` : storeDomain;
+  const rsvpDocumentId = String(rsvp?.documentId || '').trim();
+  const rsvpUrl = rsvpDocumentId ? `${storeDomain}/rsvp?id=${encodeURIComponent(rsvpDocumentId)}` : null;
 
   const content = `
-    <p style="margin:0 0 14px 0;">This is a friendly reminder that <strong>${escapeHtml(eventName)}</strong> is happening tomorrow.</p>
+    <p style="margin:0 0 6px 0;font-size:20px;line-height:1.3;">&#9889; See you tomorrow, ${escapeHtml(attendeeName)}!</p>
+    <p style="margin:0 0 14px 0;">Just a heads-up &mdash; <strong>${escapeHtml(eventName)}</strong> is happening tomorrow. Here are your details.</p>
     ${renderInfoPanel('Event details', `
-      <p style="margin:0 0 8px 0;"><strong>Event:</strong> ${escapeHtml(eventName)}</p>
-      <p style="margin:0 0 8px 0;"><strong>Date:</strong> ${escapeHtml(eventDate)}</p>
-      <p style="margin:0 0 8px 0;"><strong>Time:</strong> ${escapeHtml(eventTime)}</p>
+      <p style="margin:0 0 8px 0;">&#128197; <strong>Date:</strong> ${escapeHtml(eventDate)}</p>
+      <p style="margin:0 0 8px 0;">&#128336; <strong>Time:</strong> ${escapeHtml(eventTime)}</p>
     `, theme)}
-    ${renderButton('View event details', eventUrl, theme, 'secondary')}
-    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">See you there, ${escapeHtml(attendeeName)}. Bring this email if check-in is required.</p>
+    ${rsvpUrl ? renderButton('&#127918; View my RSVP', rsvpUrl, theme) : renderButton('View event details', eventUrl, theme, 'secondary')}
+    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">&#10024; Bring this email if check-in is required.</p>
   `;
 
-  const title = `Reminder: ${eventName} is tomorrow`;
+  const title = `&#9889; Tomorrow: ${eventName}`;
 
   return emailLayout({ content, title, store });
 };

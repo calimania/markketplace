@@ -157,5 +157,14 @@ export default {
         middlewares: [],
       },
     },
+    {
+      method: 'GET',
+      path: '/tienda/:ref',
+      handler: 'tienda.store',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };
