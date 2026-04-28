@@ -343,7 +343,7 @@ export default {
   },
 
   /**
-   * GET /api/crm/stripe/connect?storeRef=...
+   * GET /api/pagos/connect?storeRef=...
    */
   async stripeConnectStatus(ctx: any) {
     const scope = await requireStoreScope(ctx);
@@ -379,7 +379,7 @@ export default {
   },
 
   /**
-   * POST /api/crm/stripe/connect/onboarding
+   * POST /api/pagos/connect/onboarding?storeRef=...
    * Placeholder for Stripe Connect account/onboarding link creation.
    */
   async createStripeConnectOnboardingLink(ctx: any) {

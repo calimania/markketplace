@@ -30,18 +30,6 @@ export default {
       config: { policies: [], middlewares: [] },
     },
     {
-      method: 'GET',
-      path: '/crm/stripe/connect',
-      handler: 'crm.stripeConnectStatus',
-      config: { policies: [], middlewares: [] },
-    },
-    {
-      method: 'POST',
-      path: '/crm/stripe/connect/onboarding',
-      handler: 'crm.createStripeConnectOnboardingLink',
-      config: { policies: [], middlewares: [] },
-    },
-    {
       method: 'POST',
       path: '/crm/subscribers/:documentId/sync',
       handler: 'crm.syncSubscriber',
@@ -53,5 +41,19 @@ export default {
       handler: 'crm.sendNewsletter',
       config: { policies: [], middlewares: [] },
     },
+    // Pagos — Stripe Connect / payouts
+    {
+      method: 'GET',
+      path: '/pagos/connect',
+      handler: 'crm.stripeConnectStatus',
+      config: { policies: [], middlewares: [] },
+    },
+    {
+      method: 'POST',
+      path: '/pagos/connect/onboarding',
+      handler: 'crm.createStripeConnectOnboardingLink',
+      config: { policies: [], middlewares: [] },
+    },
   ],
 };
+
