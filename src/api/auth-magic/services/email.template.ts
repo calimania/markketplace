@@ -41,15 +41,16 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
 export const AccountCreatedHTML = (email: string, store: Store) => {
   const accent = store?.settings?.email_theme?.tertiaryColor || store?.settings?.branding?.tertiaryColor || '#eab308';
   const dashboardUrl = store?.settings?.dashboard_url || new URL('/dashboard', store?.settings?.domain || 'https://de.markket.place/').toString();
+  const customWelcome = store?.settings?.welcome_email_text;
   const content = `
-    <p style="margin:0 0 14px 0;">Hi <strong>${email}</strong>, your account is ready.</p>
+    <p style="margin:0 0 18px 0;font-size:20px;line-height:1.3;">🎉 You're in!</p>
+    <p style="margin:0 0 14px 0;">Hi <strong>${email}</strong> — your account is ready.</p>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:#fff9e8;border:1px dashed ${accent};border-radius:18px;">
       <tr>
         <td style="padding:20px 22px;">
           <div style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.4;color:#db2777;letter-spacing:1.6px;text-transform:uppercase;font-weight:bold;margin:0 0 10px 0;">Studio unlocked</div>
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;color:#1f2340;font-style:italic;margin:0 0 10px 0;">Your account is ready</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1f2340;">
-            ${store?.settings?.welcome_email_text || 'Markkët helps webmasters'}.
+            ${customWelcome || 'Web publishing platform for nice people. Start by creating a store and adding some pictures.'}
           </div>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 0 0;">
             <tr>
@@ -61,7 +62,8 @@ export const AccountCreatedHTML = (email: string, store: Store) => {
         </td>
       </tr>
     </table>
+    <p style="margin:18px 0 0 0;font-size:13px;color:#6b7280;">Questions? Reach us at <a href="mailto:markket@caliman.org" style="color:#06b6d4;text-decoration:none;">markket@caliman.org</a>.</p>
   `;
-  const title = `Welcome to ${store?.title || ' Markkët'}!`;
+  const title = `Welcome to ${store?.title || 'Markkët'}! 🎉`;
   return emailLayout({ content, title, store });
 };

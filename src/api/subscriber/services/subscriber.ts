@@ -13,11 +13,13 @@ interface SubscribeAndQueueSyncInput {
   firstName?: string;
   lastName?: string;
   source?: string;
+  syncImmediately?: boolean;
 }
 
 interface TriggerSubscriberResyncInput {
   subscriberDocumentId: string;
   storeDocumentId: string;
+  skipWelcomeEmail?: boolean;
 }
 
 function normalizeEmail(value: string): string {
@@ -199,16 +201,118 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
       });
     }
 
-    setImmediate(async () => {
+    const queueAsyncSyncRetry = () => setImmediate(async () => {
       try {
         await (strapi.service('api::subscriber.subscriber') as any).syncSubscriberToSendGrid({
           subscriberDocumentId: subscriber.documentId,
-          storeDocumentId
+          storeDocumentId,
+          skipWelcomeEmail: true
         });
       } catch (error: any) {
         console.error('[SUBSCRIBER_SYNC] async sync failed:', error.message);
       }
     });
+
+    const syncImmediately = input?.syncImmediately !== false;
+
+    if (syncImmediately) {
+      try {
+        console.log('[SUBSCRIBER_SYNC] immediate sync start', {
+          subscriberDocumentId: subscriber.documentId,
+          storeDocumentId
+        });
+
+        const syncResult = await (strapi.service('api::subscriber.subscriber') as any).syncSubscriberToSendGrid({
+          subscriberDocumentId: subscriber.documentId,
+          storeDocumentId
+        });
+
+        console.log('[SUBSCRIBER_SYNC] immediate sync result', {
+          subscriberDocumentId: subscriber.documentId,
+          storeDocumentId,
+          success: !!syncResult?.success,
+          stage: syncResult?.stage || null,
+          error: syncResult?.error || null,
+          message: syncResult?.message || null
+        });
+
+        if (syncResult?.success) {
+          return {
+            success: true,
+            message: 'Subscriber saved and synced to SendGrid',
+            data: {
+              subscriberDocumentId: subscriber.documentId,
+              email: subscriber.Email,
+              storeDocumentId,
+              listDocumentId: targetList.documentId,
+              sync_status: 'synced',
+              sendgrid_sync: {
+                success: true,
+                sendgrid_list_id: syncResult?.data?.sendgrid_list_id,
+                sendgrid_contact_id: syncResult?.data?.sendgrid_contact_id,
+                jobId: syncResult?.data?.jobId || null
+              },
+              transactional_welcome: syncResult?.data?.transactional_welcome || null
+            }
+          };
+        }
+
+        queueAsyncSyncRetry();
+
+        return {
+          success: true,
+          message: 'Subscriber saved, SendGrid sync failed, retry queued',
+          data: {
+            subscriberDocumentId: subscriber.documentId,
+            email: subscriber.Email,
+            storeDocumentId,
+            listDocumentId: targetList.documentId,
+            sync_status: 'failed',
+            sync_stage: syncResult?.stage || 'unknown',
+            sync_error_code: syncResult?.error || 'sync_failed',
+            sync_error_message: syncResult?.message || 'SendGrid sync failed',
+            sendgrid_sync: {
+              success: false,
+              stage: syncResult?.stage || 'unknown',
+              error: syncResult?.error || syncResult?.message || 'sync_failed',
+              retry_queued: true
+            },
+            transactional_welcome: syncResult?.data?.transactional_welcome || null
+          }
+        };
+      } catch (error: any) {
+        console.warn('[SUBSCRIBER_SYNC] immediate sync exception', {
+          subscriberDocumentId: subscriber.documentId,
+          storeDocumentId,
+          error: error?.message || 'unknown_error'
+        });
+
+        queueAsyncSyncRetry();
+
+        return {
+          success: true,
+          message: 'Subscriber saved, immediate SendGrid sync failed unexpectedly, retry queued',
+          data: {
+            subscriberDocumentId: subscriber.documentId,
+            email: subscriber.Email,
+            storeDocumentId,
+            listDocumentId: targetList.documentId,
+            sync_status: 'pending',
+            sync_stage: 'exception',
+            sync_error_code: 'unexpected_sync_error',
+            sync_error_message: error?.message || 'Immediate sync threw before completing',
+            sendgrid_sync: {
+              success: false,
+              stage: 'exception',
+              error: error?.message || 'unexpected_sync_error',
+              retry_queued: true
+            }
+          }
+        };
+      }
+    }
+
+    queueAsyncSyncRetry();
 
     return {
       success: true,
@@ -230,10 +334,22 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
 
     const subscriberDocumentId = String(input?.subscriberDocumentId || '').trim();
     const storeDocumentId = String(input?.storeDocumentId || '').trim();
+    const skipWelcomeEmail = input?.skipWelcomeEmail === true;
+
+    console.log('[SUBSCRIBER_SYNC] syncSubscriberToSendGrid start', {
+      subscriberDocumentId,
+      storeDocumentId,
+      skipWelcomeEmail
+    });
 
     if (!subscriberDocumentId || !storeDocumentId) {
+      console.warn('[SUBSCRIBER_SYNC] missing required sync input', {
+        subscriberDocumentId,
+        storeDocumentId
+      });
       return {
         success: false,
+        stage: 'validate_input',
         message: 'subscriberDocumentId and storeDocumentId are required',
         error: 'missing_required_fields'
       };
@@ -245,8 +361,13 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
     }) as any;
 
     if (!subscriber) {
+      console.warn('[SUBSCRIBER_SYNC] subscriber not found for sync', {
+        subscriberDocumentId,
+        storeDocumentId
+      });
       return {
         success: false,
+        stage: 'load_subscriber',
         message: 'Subscriber not found',
         error: 'subscriber_not_found'
       };
@@ -264,8 +385,13 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
 
     const targetList = lists?.[0];
     if (!targetList) {
+      console.warn('[SUBSCRIBER_SYNC] default list not found for store', {
+        subscriberDocumentId,
+        storeDocumentId
+      });
       return {
         success: false,
+        stage: 'resolve_default_list',
         message: 'Default subscriber list not found for store',
         error: 'store_default_list_not_found'
       };
@@ -273,8 +399,90 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
 
     const extension = await findSendGridExtensionForStore(strapi, storeDocumentId);
     const credentials = resolveSendGridCredentialsForNewsletter(extension);
+    const configuredDefaultListId = String(extension?.config?.default_list_id || '').trim();
+    const preferredExistingListId = targetList.sendgrid_list_id || configuredDefaultListId || undefined;
+
+    const store = await (strapi.documents('api::store.store') as any).findOne({
+      documentId: storeDocumentId,
+      populate: ['Favicon', 'settings']
+    });
+
+    const sendTransactionalWelcome = async () => {
+      const toEmail = normalizeEmail(subscriber.Email);
+
+      const shouldSendWelcome = isWelcomeEmailEnabled(store);
+      if (!shouldSendWelcome) {
+        console.log('[SUBSCRIBER_SYNC] welcome email skipped by store setting', {
+          storeDocumentId,
+          subscriberDocumentId
+        });
+        return {
+          attempted: false,
+          success: false,
+          skipped: true,
+          reason: 'store_setting_disabled',
+          messageId: null,
+          error: null
+        };
+      }
+
+      const supportEmail = process.env.SENDGRID_REPLY_TO_EMAIL || 'support@markket.place';
+      const replyToEmail = store?.settings?.reply_to_email || supportEmail;
+
+      const welcomeHtml = buildWelcomeEmailHtml({
+        storeName: store?.title || 'Markkët',
+        storeDomain: store?.settings?.domain || 'https://markket.place',
+        storeLogoUrl: store?.Favicon?.url,
+        welcomeMessage: store?.settings?.welcome_email_text || 'Thanks for subscribing.',
+        supportEmail,
+        unsubscribeUrl: `https://markket.place/${store?.slug || ''}/subscription?code=${subscriberDocumentId}`,
+      });
+
+      const welcomeResult = await sendWelcomeEmail({
+        credentials,
+        toEmail,
+        subject: `Welcome to ${store?.title || 'Markkët'}`,
+        htmlContent: welcomeHtml,
+        fromEmail: extension?.config?.from_email,
+        fromName: extension?.config?.from_name,
+        senderId: extension?.config?.sender_id,
+        replyToEmail
+      });
+
+      if (!welcomeResult.success) {
+        console.warn('[SUBSCRIBER_SYNC] welcome email send failed (non-blocking)', {
+          storeDocumentId,
+          subscriberDocumentId,
+          toEmail,
+          error: welcomeResult.error
+        });
+      } else {
+        console.log('[SUBSCRIBER_SYNC] welcome email accepted', {
+          storeDocumentId,
+          subscriberDocumentId,
+          toEmail,
+          messageId: welcomeResult.messageId || null
+        });
+      }
+
+      return {
+        attempted: true,
+        success: !!welcomeResult.success,
+        skipped: false,
+        reason: null,
+        messageId: welcomeResult.messageId || null,
+        error: welcomeResult.error || null
+      };
+    };
 
     if (!credentials) {
+      console.warn('[SUBSCRIBER_SYNC] credentials missing', {
+        subscriberDocumentId,
+        storeDocumentId,
+        hasSendGridExtension: !!extension,
+        hasEnvApiKey: !!process.env.SENDGRID_API_KEY,
+        extensionKey: extension?.key || null
+      });
       await subscriberDocuments.update({
         documentId: subscriberDocumentId,
         data: {
@@ -286,6 +494,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
 
       return {
         success: false,
+        stage: 'resolve_credentials',
         message: 'SendGrid credentials not configured (env or extension)',
         error: 'missing_sendgrid_credentials'
       };
@@ -294,10 +503,24 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
     const ensuredList = await ensureStoreDefaultSendGridList({
       credentials,
       storeDocumentId,
-      existingListId: targetList.sendgrid_list_id || undefined
+      existingListId: preferredExistingListId
+    });
+
+    console.log('[SUBSCRIBER_SYNC] ensure list input', {
+      subscriberDocumentId,
+      storeDocumentId,
+      localListId: targetList.sendgrid_list_id || null,
+      extensionDefaultListId: configuredDefaultListId || null,
+      usingExistingListId: preferredExistingListId || null
     });
 
     if (!ensuredList.success || !ensuredList.listId) {
+      console.warn('[SUBSCRIBER_SYNC] ensure list failed', {
+        subscriberDocumentId,
+        storeDocumentId,
+        error: ensuredList.error || null,
+        message: ensuredList.message || null
+      });
       await subscriberDocuments.update({
         documentId: subscriberDocumentId,
         data: {
@@ -307,10 +530,20 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
         status: 'published'
       });
 
+      const transactionalWelcome = skipWelcomeEmail ? { attempted: false, skipped: true, reason: 'retry', success: false, messageId: null, error: null } : await sendTransactionalWelcome();
+
       return {
         success: false,
+        stage: 'ensure_list',
         message: 'Failed to ensure SendGrid list',
-        error: ensuredList.error || 'ensure_list_failed'
+        error: ensuredList.error || 'ensure_list_failed',
+        data: {
+          subscriberDocumentId,
+          storeDocumentId,
+          listDocumentId: targetList.documentId,
+          sync_status: 'failed',
+          transactional_welcome: transactionalWelcome
+        }
       };
     }
 
@@ -331,46 +564,17 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
       email: normalizeEmail(subscriber.Email)
     });
 
-    if (upsert.success) {
-      try {
-        const store = await (strapi.documents('api::store.store') as any).findOne({
-          documentId: storeDocumentId,
-          populate: ['Favicon', 'settings']
-        });
-
-        const shouldSendWelcome = isWelcomeEmailEnabled(store);
-        if (!shouldSendWelcome) {
-          console.log('[SUBSCRIBER_SYNC] welcome email skipped by store setting', {
-            storeDocumentId,
-            subscriberDocumentId
-          });
-        } else {
-          const supportEmail = 'support@markket.place';
-          const replyToEmail = store?.settings?.reply_to_email || supportEmail;
-
-          const welcomeHtml = buildWelcomeEmailHtml({
-            storeName: store?.title || 'Markkët',
-            storeDomain: store?.settings?.domain || 'https://markket.place',
-            storeLogoUrl: store?.Favicon?.url,
-            welcomeMessage: store?.settings?.welcome_email_text || 'Thanks for subscribing.',
-            supportEmail,
-            unsubscribeUrl: `https://markket.place/${store?.slug || ''}/subscription?code=${subscriberDocumentId}`,
-          });
-
-          await sendWelcomeEmail({
-            credentials,
-            toEmail: normalizeEmail(subscriber.Email),
-            subject: `Welcome to ${store?.title || 'Markkët'}`,
-            htmlContent: welcomeHtml,
-            fromEmail: extension?.config?.from_email,
-            fromName: extension?.config?.from_name,
-            replyToEmail
-          });
-        }
-      } catch (error: any) {
-        console.warn('[SUBSCRIBER_SYNC] welcome email skipped:', error.message);
-      }
+    if (!upsert.success) {
+      console.warn('[SUBSCRIBER_SYNC] contact upsert failed', {
+        subscriberDocumentId,
+        storeDocumentId,
+        listId: ensuredList.listId,
+        error: upsert.error || null,
+        message: upsert.message || null
+      });
     }
+
+    const transactionalWelcome = skipWelcomeEmail ? { attempted: false, skipped: true, reason: 'retry', success: false, messageId: null, error: null } : await sendTransactionalWelcome();
 
     const membershipRows = await membershipDocuments.findMany({
       filters: {
@@ -409,6 +613,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
 
     return {
       success: upsert.success,
+      stage: upsert.success ? 'completed' : 'upsert_contact',
       message: upsert.success ? 'Subscriber synced to SendGrid' : 'Subscriber sync failed',
       data: {
         subscriberDocumentId,
@@ -417,7 +622,8 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
         sendgrid_list_id: ensuredList.listId,
         sendgrid_contact_id: upsert.contactId,
         sync_status: syncStatus,
-        jobId: upsert.jobId
+        jobId: upsert.jobId,
+        transactional_welcome: transactionalWelcome
       },
       error: upsert.error
     };

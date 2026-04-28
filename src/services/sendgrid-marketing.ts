@@ -155,6 +155,7 @@ interface SendWelcomeEmailInput {
   htmlContent: string;
   fromEmail?: string;
   fromName?: string;
+  senderId?: string;
   replyToEmail?: string;
 }
 
@@ -162,7 +163,14 @@ interface SendWelcomeEmailResult {
   success: boolean;
   message: string;
   toEmail: string;
+  messageId?: string | null;
   error?: string;
+}
+
+interface ResolvedSenderIdentity {
+  fromEmail: string;
+  fromName: string;
+  source: 'input' | 'env' | 'sender_id' | 'fallback';
 }
 
 /**
@@ -618,6 +626,13 @@ async function createSendGridList(apiKey: string, listName: string): Promise<Sen
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.warn('[SENDGRID_SYNC] create list failed', {
+      listName,
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText
+    });
     return null;
   }
 
@@ -682,6 +697,11 @@ export async function ensureStoreDefaultSendGridList(
       error: 'Missing API key'
     };
   }
+
+  const keySource = credentials.use_default
+    ? 'env:SENDGRID_API_KEY'
+    : 'extension.credentials.api_key';
+  const keyFingerprint = `${apiKey.slice(0, 6)}...${apiKey.slice(-4)} (len:${apiKey.length})`;
 
   const targetListName = buildStoreDefaultListName(storeDocumentId, listNameSuffix);
 
@@ -891,6 +911,7 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
     htmlContent,
     fromEmail,
     fromName,
+    senderId,
     replyToEmail,
   } = input;
 
@@ -913,8 +934,49 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
     };
   }
 
-  const resolvedFromEmail = fromEmail || process.env.SENDGRID_FROM_EMAIL || 'support@markket.place';
-  const resolvedFromName = fromName || 'Markkët';
+  const keySource = credentials.use_default
+    ? 'env:SENDGRID_API_KEY'
+    : 'extension.credentials.api_key';
+  const keyFingerprint = `${apiKey.slice(0, 6)}...${apiKey.slice(-4)} (len:${apiKey.length})`;
+
+  const resolveSenderIdentity = async (): Promise<ResolvedSenderIdentity> => {
+    if (fromEmail) {
+      return {
+        fromEmail,
+        fromName: fromName || 'Markkët',
+        source: 'input'
+      };
+    }
+
+    if (process.env.SENDGRID_FROM_EMAIL) {
+      return {
+        fromEmail: process.env.SENDGRID_FROM_EMAIL,
+        fromName: fromName || process.env.SENDGRID_FROM_NAME || 'Markkët',
+        source: 'env'
+      };
+    }
+
+    if (senderId) {
+      const sender = await testVerifiedSender(apiKey, senderId);
+      if (sender?.data?.from_email && sender.data.from_email !== 'Unknown' && sender.data.from_email !== 'Unable to verify (check SendGrid dashboard)') {
+        return {
+          fromEmail: sender.data.from_email,
+          fromName: sender.data.from_name || fromName || 'Markkët',
+          source: 'sender_id'
+        };
+      }
+    }
+
+    return {
+      fromEmail: 'support@markket.place',
+      fromName: fromName || 'Markkët',
+      source: 'fallback'
+    };
+  };
+
+  const senderIdentity = await resolveSenderIdentity();
+  const resolvedFromEmail = senderIdentity.fromEmail;
+  const resolvedFromName = senderIdentity.fromName;
 
   try {
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -948,6 +1010,10 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
       const errorText = await response.text();
       console.warn('[SENDGRID_SYNC] Welcome email failed:', {
         toEmail,
+        keySource,
+        keyFingerprint,
+        senderSource: senderIdentity.source,
+        fromEmail: resolvedFromEmail,
         status: response.status,
         error: errorText
       });
@@ -960,12 +1026,23 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
       };
     }
 
-    console.log('[SENDGRID_SYNC] Welcome email sent', { toEmail });
+    const messageId = response.headers.get('x-message-id') || response.headers.get('X-Message-Id');
+
+    console.log('[SENDGRID_SYNC] Welcome email accepted', {
+      toEmail,
+      keySource,
+      keyFingerprint,
+      senderSource: senderIdentity.source,
+      fromEmail: resolvedFromEmail,
+      status: response.status,
+      messageId
+    });
 
     return {
       success: true,
-      message: 'Welcome email sent',
-      toEmail
+      message: 'Welcome email accepted by SendGrid',
+      toEmail,
+      messageId
     };
   } catch (error: any) {
     console.warn('[SENDGRID_SYNC] Welcome email exception:', error.message);
@@ -975,5 +1052,81 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
       toEmail,
       error: error.message
     };
+  }
+}
+
+const PLATFORM_STORE_OWNERS_LIST = 'markket:store_owners';
+
+interface EnrollStoreOwnerInput {
+  email: string;
+  storeDocumentId: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/**
+ * Enroll a store owner into the platform-level markket:store_owners SendGrid list.
+ * Uses the platform default API key. Non-fatal — logs errors but never throws.
+ */
+export async function enrollStoreOwnerContact(input: EnrollStoreOwnerInput): Promise<void> {
+  const { email, storeDocumentId, firstName, lastName } = input;
+
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    console.warn('[SENDGRID_OWNERS] No platform SENDGRID_API_KEY — skipping store owner enrollment');
+    return;
+  }
+
+  try {
+    let list = await findSendGridListByName(apiKey, PLATFORM_STORE_OWNERS_LIST);
+    if (!list) {
+      list = await createSendGridList(apiKey, PLATFORM_STORE_OWNERS_LIST);
+    }
+
+    if (!list?.id) {
+      console.warn('[SENDGRID_OWNERS] Could not resolve markket:store_owners list — skipping enrollment', { email });
+      return;
+    }
+
+    const payload = {
+      list_ids: [list.id],
+      contacts: [
+        {
+          email,
+          ...(firstName ? { first_name: firstName } : {}),
+          ...(lastName ? { last_name: lastName } : {}),
+        }
+      ]
+    };
+
+    const response = await fetch('https://api.sendgrid.com/v3/marketing/contacts', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn('[SENDGRID_OWNERS] Enrollment upsert failed', {
+        email,
+        storeDocumentId,
+        status: response.status,
+        error: errorText
+      });
+      return;
+    }
+
+    const result = await response.json() as { job_id?: string };
+    console.log('[SENDGRID_OWNERS] Store owner enrolled', {
+      email,
+      storeDocumentId,
+      listId: list.id,
+      jobId: result?.job_id || null
+    });
+  } catch (error: any) {
+    console.error('[SENDGRID_OWNERS] enrollStoreOwnerContact failed:', error.message);
   }
 }
