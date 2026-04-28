@@ -46,6 +46,12 @@ export default factories.createCoreController('api::subscriber.subscriber', ({ s
    * - return immediate success with sync_status=pending
    */
   async subscribe(ctx) {
+    console.log('[SUBSCRIBER_ROUTE] subscribe handler hit', {
+      path: ctx.request?.path,
+      method: ctx.request?.method,
+      hasBody: !!ctx.request?.body
+    });
+
     const body = ctx.request.body || {};
     const payload = body?.data || body;
 
@@ -75,7 +81,13 @@ export default factories.createCoreController('api::subscriber.subscriber', ({ s
       return ctx.badRequest(result?.message || 'Failed to subscribe');
     }
 
-    return ctx.send(result);
+    return ctx.send({
+      ...result,
+      route_debug: {
+        handler: 'api::subscriber.subscriber.subscribe',
+        ts: new Date().toISOString()
+      }
+    });
   },
 
   async unsubscribe(ctx) {
