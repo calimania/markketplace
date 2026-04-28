@@ -29,5 +29,17 @@ export default {
       handler: 'cliente.rsvp',
       config: { auth: false, policies: [], middlewares: [] },
     },
+    {
+      method: 'GET',
+      path: '/cliente/subscription/:documentId',
+      handler: 'cliente.subscription',
+      config: { auth: false, policies: [], middlewares: [] },
+    },
+    {
+      method: 'DELETE',
+      path: '/cliente/subscription/:documentId',
+      handler: 'cliente.unsubscribeSubscription',
+      config: { auth: false, policies: [], middlewares: [] },
+    },
   ],
 };

@@ -1,4 +1,5 @@
 import { requireUser } from '../../../services/api-auth';
+import { maskEmail } from '../../markket/services/notification/email.template';
 
 function getBuyerEmail(ctx: any): string | null {
   const user = requireUser(ctx);
@@ -69,7 +70,7 @@ export default {
       data: {
         documentId: rsvp.documentId,
         name: rsvp.name || null,
-        email: rsvp.email || null,
+        email: rsvp.email ? maskEmail(rsvp.email) : null,
         approved: rsvp.approved ?? null,
         event: event
           ? {
@@ -89,6 +90,81 @@ export default {
           : null,
       },
     });
+  },
+
+  /**
+   * GET /api/cliente/subscription/:documentId
+   * Public — returns masked subscriber info for a "manage subscription" frontend page.
+   */
+  async subscription(ctx: any) {
+    const documentId = String(ctx.params?.documentId || '').trim();
+    if (!documentId) {
+      return ctx.badRequest('documentId is required');
+    }
+
+    const subscriber = await (strapi.documents('api::subscriber.subscriber') as any).findOne({
+      documentId,
+      populate: ['stores'],
+    }) as any;
+
+    if (!subscriber) {
+      return ctx.notFound('Subscription not found');
+    }
+
+    const store = Array.isArray(subscriber.stores) ? subscriber.stores[0] : null;
+    const maskedEmail = maskEmail(subscriber.Email);
+
+    const isActive = subscriber.active !== false && !subscriber.unsubscribed_at;
+
+    return ctx.send({
+      ok: true,
+      data: {
+        documentId: subscriber.documentId,
+        email: maskedEmail,
+        active: isActive,
+        status: isActive ? 'active' : 'unsubscribed',
+        unsubscribed_at: subscriber.unsubscribed_at || null,
+        store: store
+          ? { documentId: store.documentId, Name: store.Name || null, slug: store.slug || null }
+          : null,
+      },
+    });
+  },
+
+  /**
+   * DELETE /api/cliente/subscription/:documentId
+   * Public — unsubscribes a subscriber by their documentId without requiring auth.
+   */
+  async unsubscribeSubscription(ctx: any) {
+    const documentId = String(ctx.params?.documentId || '').trim();
+    if (!documentId) {
+      return ctx.badRequest('documentId is required');
+    }
+
+    const subscriber = await (strapi.documents('api::subscriber.subscriber') as any).findOne({
+      documentId,
+      populate: ['stores'],
+    }) as any;
+
+    if (!subscriber) {
+      return ctx.notFound('Subscription not found');
+    }
+
+    const store = Array.isArray(subscriber.stores) ? subscriber.stores[0] : null;
+    if (!store?.documentId) {
+      return ctx.badRequest('No store associated with this subscription');
+    }
+
+    const result = await (strapi.service('api::subscriber.subscriber') as any).unsubscribeFromStore({
+      email: subscriber.Email,
+      storeDocumentId: store.documentId,
+    });
+
+    if (!result?.success) {
+      return ctx.badRequest(result?.message || 'Failed to unsubscribe');
+    }
+
+    return ctx.send({ ok: true, message: 'Unsubscribed successfully' });
   },
 
   /**

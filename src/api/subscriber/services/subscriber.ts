@@ -353,7 +353,8 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
             storeDomain: store?.settings?.domain || 'https://markket.place',
             storeLogoUrl: store?.Favicon?.url,
             welcomeMessage: store?.settings?.welcome_email_text || 'Thanks for subscribing.',
-            supportEmail
+            supportEmail,
+            unsubscribeUrl: `https://markket.place/${store?.slug || ''}/subscription?code=${subscriberDocumentId}`,
           });
 
           await sendWelcomeEmail({

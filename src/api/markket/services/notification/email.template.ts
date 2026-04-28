@@ -337,7 +337,7 @@ function formatEventTimeRange(start: any, end: any, timezone?: any): string {
   return endLabel ? `${startLabel} - ${endLabel}${tzLabel}` : `${startLabel}${tzLabel}`;
 }
 
-function maskEmail(value: any): string {
+export function maskEmail(value: any): string {
   const email = String(value || '').trim();
   const atIndex = email.indexOf('@');
   if (!email || atIndex <= 0) {
