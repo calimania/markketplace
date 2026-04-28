@@ -626,6 +626,13 @@ async function createSendGridList(apiKey: string, listName: string): Promise<Sen
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.warn('[SENDGRID_SYNC] create list failed', {
+      listName,
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText
+    });
     return null;
   }
 

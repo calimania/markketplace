@@ -20,7 +20,7 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
   } = input;
 
   const content = `
-    <p style="margin:0 0 18px 0;font-size:20px;line-height:1.3;">&#127881; You're in!</p>
+    <p style="margin:0 0 18px 0;font-size:20px;line-height:1.3;">🎉 You're in!</p>
     <p style="margin:0 0 18px 0;">${welcomeMessage || `We&rsquo;re excited to keep you in the loop with new releases, events, and stories from <strong>${storeName || 'Markkët'}</strong>.`}</p>
     <p style="margin:0 0 14px 0;font-size:14px;color:#6b7280;">Questions? Reach us at <a href="mailto:${supportEmail}" style="color:#06b6d4;text-decoration:none;">${supportEmail}</a>.</p>
     ${unsubscribeUrl ? `
@@ -36,7 +36,7 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
   `;
 
   return emailLayout({
-    title: `You're subscribed &#127881;`,
+    title: `You're subscribed 🎉`,
     content,
     store: {
       title: storeName || 'Markkët',

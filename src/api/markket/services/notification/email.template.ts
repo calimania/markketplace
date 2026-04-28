@@ -264,7 +264,7 @@ export const OrderNotificationHTml = (order: any) => {
   const theme = resolveTheme();
   const receiptUrl = `https://markket.place/receipt?session_id=${order?.data?.object?.id || ''}`;
   const content = `
-    <p style="margin:0 0 6px 0;font-size:20px;line-height:1.3;">&#127873; Order received!</p>
+    <p style="margin:0 0 6px 0;font-size:20px;line-height:1.3;">🎁 Order received!</p>
     <p style="margin:0 0 14px 0;">Thank you for your purchase. Your receipt is ready and the seller has already been notified.</p>
     ${renderInfoPanel('Order details', `
       <p style="margin:0 0 8px 0;"><strong>Order ID:</strong> ${escapeHtml(order?.data?.object?.id || 'Pending')}</p>
@@ -369,21 +369,21 @@ export const RSVPNotificationHTml = ({ rsvp, event, store }: { rsvp: any; event:
     : `${storeDomain}/rsvp`;
 
   const content = `
-    <p style="margin:0 0 6px 0;font-size:22px;line-height:1.3;">&#127881; You're going, ${escapeHtml(attendeeName)}!</p>
+    <p style="margin:0 0 6px 0;font-size:22px;line-height:1.3;">🎉 You're going, ${escapeHtml(attendeeName)}!</p>
     <p style="margin:0 0 18px 0;">Your spot at <strong>${escapeHtml(eventName)}</strong> is confirmed. Here are your details &mdash; save this email or open it at check-in.</p>
     ${renderInfoPanel('Event details', `
-      <p style="margin:0 0 8px 0;">&#128197; <strong>Date:</strong> ${escapeHtml(eventDate)}</p>
-      <p style="margin:0 0 8px 0;">&#128336; <strong>Time:</strong> ${escapeHtml(eventTime)}</p>
-      <p style="margin:0;">&#128231; <strong>Registered as:</strong> ${escapeHtml(attendeeEmail)}</p>
+      <p style="margin:0 0 8px 0;">📅 <strong>Date:</strong> ${escapeHtml(eventDate)}</p>
+      <p style="margin:0 0 8px 0;">🕐 <strong>Time:</strong> ${escapeHtml(eventTime)}</p>
+      <p style="margin:0;">📧 <strong>Registered as:</strong> ${escapeHtml(attendeeEmail)}</p>
     `, theme)}
-    ${renderButton('&#127918; View my RSVP', rsvpUrl, theme)}
-    ${calendarUrl ? renderButton('&#128197; Add to calendar', calendarUrl, theme, 'secondary') : ''}
-    <p style="margin:18px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Can't wait to see you there. &#10024; Bring this email if check-in is required.</p>
+    ${renderButton('🎮 View my RSVP', rsvpUrl, theme)}
+    ${calendarUrl ? renderButton('📅 Add to calendar', calendarUrl, theme, 'secondary') : ''}
+    <p style="margin:18px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Can't wait to see you there. ✨ Bring this email if check-in is required.</p>
   `;
 
-  const title = 'You\'re in! &#127881; RSVP confirmed';
+  const title = 'You\'re in! 🎉 RSVP confirmed';
 
-  return emailLayout({ content, title, store });
+  return emailLayout({ content, title, store, label: null });
 };
 
 /**
@@ -404,17 +404,17 @@ export const EventReminderEmailHtml = ({ event, store, rsvp }: { event: any; sto
   const rsvpUrl = rsvpDocumentId ? `${storeDomain}/rsvp?id=${encodeURIComponent(rsvpDocumentId)}` : null;
 
   const content = `
-    <p style="margin:0 0 6px 0;font-size:20px;line-height:1.3;">&#9889; See you tomorrow, ${escapeHtml(attendeeName)}!</p>
+    <p style="margin:0 0 6px 0;font-size:20px;line-height:1.3;">⚡ See you tomorrow, ${escapeHtml(attendeeName)}!</p>
     <p style="margin:0 0 14px 0;">Just a heads-up &mdash; <strong>${escapeHtml(eventName)}</strong> is happening tomorrow. Here are your details.</p>
     ${renderInfoPanel('Event details', `
-      <p style="margin:0 0 8px 0;">&#128197; <strong>Date:</strong> ${escapeHtml(eventDate)}</p>
-      <p style="margin:0 0 8px 0;">&#128336; <strong>Time:</strong> ${escapeHtml(eventTime)}</p>
+      <p style="margin:0 0 8px 0;">📅 <strong>Date:</strong> ${escapeHtml(eventDate)}</p>
+      <p style="margin:0 0 8px 0;">🕐 <strong>Time:</strong> ${escapeHtml(eventTime)}</p>
     `, theme)}
-    ${rsvpUrl ? renderButton('&#127918; View my RSVP', rsvpUrl, theme) : renderButton('View event details', eventUrl, theme, 'secondary')}
-    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">&#10024; Bring this email if check-in is required.</p>
+    ${rsvpUrl ? renderButton('🎮 View my RSVP', rsvpUrl, theme) : renderButton('View event details', eventUrl, theme, 'secondary')}
+    <p style="margin:16px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">✨ Bring this email if check-in is required.</p>
   `;
 
-  const title = `&#9889; Tomorrow: ${eventName}`;
+  const title = `⚡ Tomorrow: ${eventName}`;
 
   return emailLayout({ content, title, store });
 };
