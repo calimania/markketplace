@@ -1597,12 +1597,11 @@ export default {
       const credentials = sgExtension?.credentials || { use_default: true };
       const sgConfig = sgExtension?.config || {};
 
-      // Ensure a per-event SendGrid list exists (create if missing).
-      const listSuffix = `event-${event.slug || event.documentId}`;
+      // Use the store's canonical all-subscribers list for RSVPs.
+      // Event segmentation is handled via tags (newsletter-phase-2).
       const listResult = await ensureStoreDefaultSendGridList({
         credentials,
         storeDocumentId: access.store.documentId,
-        listNameSuffix: listSuffix,
         existingListId: sgConfig.sendgrid_list_id || undefined,
       });
 
