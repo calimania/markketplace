@@ -5,6 +5,36 @@
 
 import type { ContentTypeConfig } from './content-registry';
 
+/**
+ * Truncate text to a max length, preferring a clean break at sentence-ending
+ * punctuation (. ! ?) or a word boundary, then appending ellipsis when cut.
+ * Targets Google's ~160-char metaDescription recommendation.
+ */
+export function smartTruncate(text: string, max: number = 160): string {
+  const str = String(text || '').replace(/\s+/g, ' ').trim();
+  if (str.length <= max) return str;
+
+  const window = str.slice(0, max);
+
+  // Prefer last sentence-ending punctuation within the window
+  const sentenceEnd = Math.max(
+    window.lastIndexOf('. '),
+    window.lastIndexOf('! '),
+    window.lastIndexOf('? '),
+  );
+  if (sentenceEnd > max * 0.5) {
+    return str.slice(0, sentenceEnd + 1).trim();
+  }
+
+  // Fall back to last word boundary
+  const wordEnd = window.lastIndexOf(' ');
+  if (wordEnd > max * 0.5) {
+    return window.slice(0, wordEnd).trim() + '…';
+  }
+
+  return window.trim() + '…';
+}
+
 function slugifyValue(value: string): string {
   return String(value || '')
     .normalize('NFKD')
@@ -14,6 +44,35 @@ function slugifyValue(value: string): string {
     .replace(/^-+|-+$/g, '')
     .replace(/-{2,}/g, '-')
     .slice(0, 96);
+}
+
+/**
+ * Validate and normalise a store slug submitted by a client.
+ * Returns { ok, slug } on success or { ok: false, error } with a
+ * human-readable message the API can send directly to the client.
+ *
+ * Rules:
+ *  - Normalised to lowercase, accents stripped, spaces → hyphens
+ *  - Only a-z 0-9 and hyphens allowed after normalisation
+ *  - 2–96 characters
+ *  - Cannot start or end with a hyphen
+ */
+export function validateAndNormalizeSlug(
+  raw: string,
+): { ok: true; slug: string } | { ok: false; error: string } {
+  const normalised = slugifyValue(String(raw || '').trim());
+
+  if (!normalised) {
+    return { ok: false, error: 'slug is required and must contain at least one letter or number' };
+  }
+  if (normalised.length < 2) {
+    return { ok: false, error: 'slug must be at least 2 characters' };
+  }
+  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(normalised)) {
+    return { ok: false, error: 'slug may only contain lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen' };
+  }
+
+  return { ok: true, slug: normalised };
 }
 
 /**
@@ -66,7 +125,7 @@ export function autoFillSEO(data: any, config: ContentTypeConfig): any {
     data.SEO.metaTitle = String(data[config.titleField]).slice(0, 60);
   }
 
-  // Auto-fill metaDescription from content field (truncate to 160 chars)
+  // Auto-fill metaDescription from content field (smart truncation ~160 chars)
   if (!data.SEO.metaDescription && config.contentField && data[config.contentField]) {
     let content = data[config.contentField];
     // Handle blocks format (Strapi RichText)
@@ -75,7 +134,7 @@ export function autoFillSEO(data: any, config: ContentTypeConfig): any {
     } else if (typeof content !== 'string') {
       content = String(content);
     }
-    data.SEO.metaDescription = content.slice(0, 160).trim();
+    data.SEO.metaDescription = smartTruncate(content, 160);
   }
 
   return data;

@@ -225,7 +225,7 @@ export default {
     const { page, skip, limit } = getPagination(ctx);
     const q = String(ctx.query?.q || '').trim().toLowerCase();
 
-    const [orders, subscribers] = await Promise.all([
+    const [orders, subscribers, rsvps] = await Promise.all([
       strapi.documents('api::order.order').findMany({
         filters: { store: { documentId: scope.store.documentId } },
         populate: ['buyer'],
@@ -237,7 +237,24 @@ export default {
         sort: ['createdAt:desc'],
         limit: 500,
       }) as Promise<any[]>,
+      (strapi.documents as any)('api::rsvp.rsvp').findMany({
+        filters: { store: { documentId: scope.store.documentId } },
+        populate: ['event'],
+        sort: ['createdAt:desc'],
+        limit: 500,
+      }) as Promise<any[]>,
     ]);
+
+    const emptyRecord = (email: string) => ({
+      email,
+      name: null,
+      ordersCount: 0,
+      totalSpent: 0,
+      lastOrderAt: null,
+      rsvpsCount: 0,
+      lastRsvpAt: null,
+      subscriber: null,
+    });
 
     const byEmail = new Map<string, any>();
 
@@ -247,13 +264,10 @@ export default {
         continue;
       }
 
-      const prev = byEmail.get(email) || {
-        email,
-        ordersCount: 0,
-        totalSpent: 0,
-        lastOrderAt: null,
-        subscriber: null,
-      };
+      const prev = byEmail.get(email) || emptyRecord(email);
+      if (!prev.name && order?.Shipping_Address?.name) {
+        prev.name = order.Shipping_Address.name;
+      }
 
       prev.ordersCount += 1;
       prev.totalSpent += Number(order?.Amount || 0);
@@ -265,19 +279,36 @@ export default {
       byEmail.set(email, prev);
     }
 
+    for (const rsvp of rsvps || []) {
+      const email = String(rsvp?.email || '').trim().toLowerCase();
+      if (!email) {
+        continue;
+      }
+
+      const prev = byEmail.get(email) || emptyRecord(email);
+      if (!prev.name && rsvp?.name) {
+        prev.name = rsvp.name;
+      }
+
+      prev.rsvpsCount += 1;
+      const createdAt = rsvp?.createdAt || null;
+      if (createdAt && (!prev.lastRsvpAt || new Date(createdAt) > new Date(prev.lastRsvpAt))) {
+        prev.lastRsvpAt = createdAt;
+      }
+
+      byEmail.set(email, prev);
+    }
+
     for (const sub of subscribers || []) {
       const email = String(sub?.Email || '').trim().toLowerCase();
       if (!email) {
         continue;
       }
 
-      const prev = byEmail.get(email) || {
-        email,
-        ordersCount: 0,
-        totalSpent: 0,
-        lastOrderAt: null,
-        subscriber: null,
-      };
+      const prev = byEmail.get(email) || emptyRecord(email);
+      if (!prev.name && sub?.Name) {
+        prev.name = sub.Name;
+      }
 
       prev.subscriber = {
         documentId: sub.documentId,
@@ -291,7 +322,7 @@ export default {
 
     let data = Array.from(byEmail.values());
     if (q) {
-      data = data.filter((item: any) => item.email.includes(q));
+      data = data.filter((item: any) => item.email.includes(q) || (item.name || '').toLowerCase().includes(q));
     }
 
     data.sort((a: any, b: any) => b.totalSpent - a.totalSpent);
@@ -312,7 +343,7 @@ export default {
   },
 
   /**
-   * GET /api/crm/stripe/connect?storeRef=...
+   * GET /api/pagos/connect?storeRef=...
    */
   async stripeConnectStatus(ctx: any) {
     const scope = await requireStoreScope(ctx);
@@ -348,7 +379,7 @@ export default {
   },
 
   /**
-   * POST /api/crm/stripe/connect/onboarding
+   * POST /api/pagos/connect/onboarding?storeRef=...
    * Placeholder for Stripe Connect account/onboarding link creation.
    */
   async createStripeConnectOnboardingLink(ctx: any) {

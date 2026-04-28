@@ -13,6 +13,7 @@ import {
   getQuickStats,
   getVisibilityFlags,
 } from '../services/dashboard';
+import { checkStoreAccess as checkStoreOwnerAccess } from '../../../services/api-auth';
 import { decryptCredentials, sensitiveFields } from '../../../services/encryption';
 import { testSendGridConnection } from '../../../services/sendgrid-marketing';
 import { testOdooConnection } from '../../../services/odoo-partner';
@@ -122,6 +123,84 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
       return { data: rest, meta };
     }
     return { data, meta };
+  },
+
+  /**
+   * POST /api/stores/:id/actions/publish
+   * Compatibility endpoint for owner publish actions.
+   */
+  async publishAction(ctx: any) {
+    const { id } = ctx.params;
+    const user = ctx.state.user;
+    const locale = ctx.request.body?.locale;
+
+    if (!user?.id) {
+      return ctx.unauthorized('Authentication required');
+    }
+
+    const access = await checkStoreOwnerAccess(strapi, user.id, id);
+    if (!access.store) {
+      return ctx.notFound('Store not found');
+    }
+
+    if (!access.hasAccess) {
+      return ctx.forbidden('Access denied');
+    }
+
+    try {
+      await strapi.documents('api::store.store').publish({
+        documentId: access.store.documentId,
+        ...(locale ? { locale } : {}),
+      });
+
+      return ctx.send({
+        ok: true,
+        message: 'Store published successfully',
+        storeId: access.store.documentId,
+      });
+    } catch (error: any) {
+      console.error('[STORE_PUBLISH_ACTION] Failed:', error?.message || error);
+      return ctx.internalServerError(`Failed to publish store: ${error?.message || 'Unknown error'}`);
+    }
+  },
+
+  /**
+   * POST /api/stores/:id/actions/unpublish
+   * Compatibility endpoint for owner unpublish actions.
+   */
+  async unpublishAction(ctx: any) {
+    const { id } = ctx.params;
+    const user = ctx.state.user;
+    const locale = ctx.request.body?.locale;
+
+    if (!user?.id) {
+      return ctx.unauthorized('Authentication required');
+    }
+
+    const access = await checkStoreOwnerAccess(strapi, user.id, id);
+    if (!access.store) {
+      return ctx.notFound('Store not found');
+    }
+
+    if (!access.hasAccess) {
+      return ctx.forbidden('Access denied');
+    }
+
+    try {
+      await strapi.documents('api::store.store').unpublish({
+        documentId: access.store.documentId,
+        ...(locale ? { locale } : {}),
+      });
+
+      return ctx.send({
+        ok: true,
+        message: 'Store unpublished successfully',
+        storeId: access.store.documentId,
+      });
+    } catch (error: any) {
+      console.error('[STORE_UNPUBLISH_ACTION] Failed:', error?.message || error);
+      return ctx.internalServerError(`Failed to unpublish store: ${error?.message || 'Unknown error'}`);
+    }
   },
 
   /**

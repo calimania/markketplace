@@ -15,6 +15,16 @@ export default {
       },
     },
     {
+      method: 'POST',
+      path: '/subscribers/unsubscribe',
+      handler: 'subscriber.unsubscribe',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'GET',
       path: '/subscribers/:documentId/sync-status',
       handler: 'subscriber.syncStatus',

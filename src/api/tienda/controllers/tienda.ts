@@ -1,8 +1,10 @@
 import { checkStoreAccess, ERRORS, requireUser, sanitizeStore } from '../../../services/api-auth';
+import { ensureStoreDefaultSendGridList, upsertContactToList } from '../../../services/sendgrid-marketing';
 import {
   verifyItemBelongsToStore,
   autoFillSEO,
   ensureGeneratedSlug,
+  validateAndNormalizeSlug,
   pickAllowedFields,
   sanitizePayloadForUpdate,
   buildStoreRelation,
@@ -85,6 +87,22 @@ async function beforeActivities(_ctx: any, _action: string, _payload?: Record<st
 
 async function afterActivities(_ctx: any, _action: string, _result?: Record<string, any>): Promise<void> {
   // Reserved hook: alerting, audit trail, async webhooks, and usage tracking.
+}
+
+async function resolveDefaultLocaleCode(strapiInstance: any): Promise<string> {
+  let defaultLocale = 'en';
+
+  try {
+    const locales: any[] = await ((strapiInstance.plugin('i18n') as any)?.service('locales')?.find?.() || []);
+    const foundDefault = locales.find((locale: any) => locale?.isDefault);
+    if (foundDefault?.code) {
+      defaultLocale = foundDefault.code;
+    }
+  } catch (_error) {
+    // Keep fallback locale when i18n service is unavailable.
+  }
+
+  return defaultLocale;
 }
 
 function normalizeUploadFiles(ctx: any): any[] {
@@ -438,16 +456,26 @@ export default {
       return ctx.badRequest('title and slug are required');
     }
 
+    const slugResult = validateAndNormalizeSlug(data.slug);
+    if ('error' in slugResult) {
+      return ctx.badRequest(slugResult.error);
+    }
+    data.slug = slugResult.slug;
+
     try {
       await beforeActivities(ctx, 'store.create', data);
 
+      const defaultLocale = await resolveDefaultLocaleCode(strapi);
+
       const created = await strapi.documents('api::store.store').create({
+        locale: defaultLocale,
         data: data as any,
         populate: ['settings', 'users', 'admin_users'],
       }) as any;
 
       const updated = await strapi.documents('api::store.store').update({
         documentId: created.documentId,
+        locale: defaultLocale,
         data: {
           users: {
             connect: [user.id],
@@ -458,7 +486,115 @@ export default {
 
       await strapi.documents('api::store.store').publish({
         documentId: created.documentId,
+        locale: defaultLocale,
       });
+
+      // Seed starter content for new stores.
+      // Failures here should not block store creation.
+      try {
+        const storeDocumentId = created.documentId;
+        const storeName = (updated || created).title || data.title || 'My Store';
+        const storeSlug = (updated || created).slug || data.slug || 'my-store';
+
+        const eventStart = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+        const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000);
+
+        const starterPage = await strapi.documents('api::page.page').create({
+          locale: defaultLocale,
+          data: {
+            Title: `Welcome to ${storeName}`,
+            slug: 'home',
+            Active: true,
+            store: storeDocumentId,
+            owner: user.id,
+            SEO: {
+              metaTitle: `${storeName} Home`,
+              metaDescription: `Start shopping at ${storeName}. Fresh products, upcoming events, and more.`,
+            },
+          } as any,
+        });
+
+        const newsletterPage = await strapi.documents('api::page.page').create({
+          locale: defaultLocale,
+          data: {
+            Title: `${storeName} Newsletter`,
+            slug: 'newsletter',
+            Active: true,
+            store: storeDocumentId,
+            owner: user.id,
+            SEO: {
+              metaTitle: `${storeName} Newsletter`,
+              metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
+            },
+          } as any,
+        });
+
+        await strapi.documents('api::page.page').publish({ documentId: starterPage.documentId, locale: defaultLocale });
+        await strapi.documents('api::page.page').publish({ documentId: newsletterPage.documentId, locale: defaultLocale });
+
+        const starterArticle = await strapi.documents('api::article.article').create({
+          data: {
+            Title: `Welcome to ${storeName}`,
+            slug: `welcome-to-${storeSlug}`,
+            store: storeDocumentId,
+            SEO: {
+              metaTitle: `Welcome to ${storeName}`,
+              metaDescription: `We are live and excited to share what is coming next at ${storeName}.`,
+            },
+          } as any,
+        });
+        await strapi.documents('api::article.article').publish({ documentId: starterArticle.documentId });
+
+        await strapi.documents('api::product.product').create({
+          locale: defaultLocale,
+          data: {
+            Name: 'Starter Product',
+            slug: `starter-product-${storeSlug}`,
+            Description: 'A happy starter product to customize and launch in your new store.',
+            active: true,
+            usd_price: 0,
+            ...buildStoreRelation(storeDocumentId, {
+              uid: 'api::product.product',
+              titleField: 'Name',
+              mutableFields: [],
+              storeField: 'stores',
+              storeRelationType: 'manyToMany',
+              defaultPopulate: [],
+              hasDraftAndPublish: true,
+            } as any),
+          } as any,
+        });
+
+        await strapi.documents('api::event.event').create({
+          locale: defaultLocale,
+          data: {
+            Name: `${storeName} Launch Celebration`,
+            slug: `launch-party-${storeSlug}`,
+            Description: `Join us on Zoom in a few days to celebrate the launch of ${storeName}!`,
+            startDate: eventStart.toISOString(),
+            endDate: eventEnd.toISOString(),
+            active: true,
+            usd_price: 0,
+            ...buildStoreRelation(storeDocumentId, {
+              uid: 'api::event.event',
+              titleField: 'Name',
+              mutableFields: [],
+              storeField: 'stores',
+              storeRelationType: 'manyToMany',
+              defaultPopulate: [],
+              hasDraftAndPublish: true,
+            } as any),
+          } as any,
+        });
+      } catch (seedError: any) {
+        const seedDetails = seedError?.details?.errors || seedError?.details || null;
+        // Non-fatal — log with detail, but don't fail store creation
+        console.error('[TIENDA_STORE_CREATE] Starter content seed failed:', {
+          message: seedError?.message,
+          details: seedDetails,
+          stack: seedError?.stack,
+        });
+      }
 
       await afterActivities(ctx, 'store.create', { store: updated || created });
 
@@ -466,7 +602,10 @@ export default {
         ok: true,
         store: sanitizeStore(updated || created),
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.toLowerCase().includes('unique') || error?.details?.errors?.some?.((e: any) => e?.path?.includes('slug'))) {
+        return ctx.conflict(`A store with slug "${data.slug}" already exists. Please choose a different slug.`);
+      }
       console.error('[TIENDA_STORE_CREATE] Failed:', error.message);
       return ctx.internalServerError('Request failed');
     }
@@ -488,6 +627,15 @@ export default {
 
     if (Object.keys(data).length === 0) {
       return ctx.badRequest('No allowed fields provided');
+    }
+
+    // Validate slug if being changed
+    if (data.slug !== undefined) {
+      const slugResult = validateAndNormalizeSlug(data.slug);
+      if ('error' in slugResult) {
+        return ctx.badRequest(slugResult.error);
+      }
+      data.slug = slugResult.slug;
     }
 
     try {
@@ -514,8 +662,95 @@ export default {
         ok: true,
         store: sanitizeStore(updated),
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.toLowerCase().includes('unique') || error?.details?.errors?.some?.((e: any) => e?.path?.includes('slug'))) {
+        return ctx.conflict(`A store with slug "${data.slug}" already exists. Please choose a different slug.`);
+      }
       console.error('[TIENDA_STORE_UPDATE] Failed:', error.message);
+      return ctx.internalServerError('Request failed');
+    }
+  },
+
+  async publishStore(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) {
+      return;
+    }
+
+    const ref = String(ctx.params?.ref || '').trim();
+    if (!ref) {
+      return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+    }
+
+    const requestedLocale = String(ctx.request?.body?.locale || '').trim();
+
+    try {
+      const access = await checkStoreAccess(strapi, user.id, ref);
+      if (!access.store || !access.hasAccess) {
+        return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+      }
+
+      await strapi.documents('api::store.store').publish({
+        documentId: access.store.documentId,
+        ...(requestedLocale ? { locale: requestedLocale } : {}),
+      });
+
+      const refreshed = await strapi.documents('api::store.store').findOne({
+        documentId: access.store.documentId,
+        populate: ['settings', 'users', 'admin_users'],
+        ...(requestedLocale ? { locale: requestedLocale, status: 'published' as const } : { status: 'published' as const }),
+      }) as any;
+
+      await afterActivities(ctx, 'store.publish', { store: refreshed || access.store });
+
+      return ctx.send({
+        ok: true,
+        store: sanitizeStore(refreshed || access.store),
+      });
+    } catch (error: any) {
+      console.error('[TIENDA_STORE_PUBLISH] Failed:', error.message);
+      return ctx.internalServerError('Request failed');
+    }
+  },
+
+  async unpublishStore(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) {
+      return;
+    }
+
+    const ref = String(ctx.params?.ref || '').trim();
+    if (!ref) {
+      return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+    }
+
+    const requestedLocale = String(ctx.request?.body?.locale || '').trim();
+
+    try {
+      const access = await checkStoreAccess(strapi, user.id, ref);
+      if (!access.store || !access.hasAccess) {
+        return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+      }
+
+      await strapi.documents('api::store.store').unpublish({
+        documentId: access.store.documentId,
+        ...(requestedLocale ? { locale: requestedLocale } : {}),
+      });
+
+      const refreshed = await strapi.documents('api::store.store').findOne({
+        documentId: access.store.documentId,
+        populate: ['settings', 'users', 'admin_users'],
+        ...(requestedLocale ? { locale: requestedLocale } : {}),
+      }) as any;
+
+      await afterActivities(ctx, 'store.unpublish', { store: refreshed || access.store });
+
+      return ctx.send({
+        ok: true,
+        store: sanitizeStore(refreshed || access.store),
+      });
+    } catch (error: any) {
+      console.error('[TIENDA_STORE_UNPUBLISH] Failed:', error.message);
       return ctx.internalServerError('Request failed');
     }
   },
@@ -942,6 +1177,16 @@ export default {
         return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
       }
 
+      // Detect whether this document already has a published version so we can
+      // preserve draft-only items on save.
+      const hadPublishedBefore = config.hasDraftAndPublish
+        ? Boolean(await (strapi.documents as any)(config.uid).findOne({
+          documentId: itemId,
+          status: 'published',
+          ...(requestedLocale ? { locale: requestedLocale } : {}),
+        }))
+        : false;
+
       // Pick allowed fields only
       const updateData = pickAllowedFields(inputData, config);
       const hasStateOnlyAction = Boolean(
@@ -985,11 +1230,11 @@ export default {
 
       const warnings: string[] = [];
 
-      // Always republish unless client explicitly requests draft-only save.
-      // Note: Strapi v5 findOne returns draft by default (no publishedAt on draft),
-      // so we cannot rely on item.publishedAt to detect published state.
+      // Republish only if this item was already published before save,
+      // unless client explicitly requests draft behavior.
       const shouldRepublish = Boolean(
         config.hasDraftAndPublish &&
+        hadPublishedBefore &&
         !inputData.unpublishNow &&
         !inputData.saveAsDraft
       );
@@ -1038,6 +1283,7 @@ export default {
       console.log(`[TIENDA_UPDATE_CONTENT] Saved ${contentType}/${itemId}`, {
         fields: Object.keys(updateData),
         published: (shouldRepublish || inputData.publishNow) && warnings.length === 0,
+        hadPublishedBefore,
         locale: requestedLocale || 'default',
       });
 
@@ -1283,7 +1529,10 @@ export default {
 
   /**
    * POST /api/tienda/stores/:ref/events/:eventId/rsvps/sync
-   * Placeholder sync endpoint for future SendGrid list integration.
+   * Syncs approved RSVPs to a per-event SendGrid list.
+   * Resolves SendGrid credentials from the store's extension config,
+   * ensures a list named after the event slug exists, then upserts
+   * each pending/failed RSVP email. Writes sync_status and timestamps back.
    */
   async syncEventRsvps(ctx: any) {
     const user = requireUser(ctx);
@@ -1307,7 +1556,7 @@ export default {
       const eventConfig = resolveContentType('event');
       const event = await (strapi.documents as any)(eventConfig.uid).findOne({
         documentId: eventId,
-        populate: ['stores'],
+        populate: ['stores', 'extensions'],
       });
 
       if (!event) {
@@ -1318,28 +1567,114 @@ export default {
         return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
       }
 
+      // Resolve SendGrid credentials: prefer event extension, fall back to store extension.
+      const storeWithExtensions = await (strapi.documents as any)('api::store.store').findOne({
+        documentId: access.store.documentId,
+        populate: ['extensions'],
+      });
+
+      const allExtensions: any[] = [
+        ...(Array.isArray(event.extensions) ? event.extensions : []),
+        ...(Array.isArray(storeWithExtensions?.extensions) ? storeWithExtensions.extensions : []),
+      ];
+
+      const sgExtension = allExtensions.find(
+        (ext: any) => ext?.active && typeof ext?.credentials?.api_key === 'string'
+      );
+
+      const credentials = sgExtension?.credentials || { use_default: true };
+      const sgConfig = sgExtension?.config || {};
+
+      // Ensure a per-event SendGrid list exists (create if missing).
+      const listSuffix = `event-${event.slug || event.documentId}`;
+      const listResult = await ensureStoreDefaultSendGridList({
+        credentials,
+        storeDocumentId: access.store.documentId,
+        listNameSuffix: listSuffix,
+        existingListId: sgConfig.sendgrid_list_id || undefined,
+      });
+
+      if (!listResult.success || !listResult.listId) {
+        console.error('[TIENDA_EVENT_RSVP_SYNC] Could not resolve SendGrid list:', listResult.error);
+        return ctx.serviceUnavailable(
+          `SendGrid list unavailable: ${listResult.message}. Configure a SendGrid extension on this store or set SENDGRID_API_KEY.`
+        );
+      }
+
+      const listId = listResult.listId;
+
+      // Fetch RSVPs that need syncing (pending or failed), limit to 500 per call.
       const rsvpDocuments = (strapi.documents as any)('api::rsvp.rsvp');
-      const rsvps = await rsvpDocuments.findMany({
+      const rsvps: any[] = await rsvpDocuments.findMany({
         filters: {
           event: { documentId: { $eq: eventId } },
+          sync_status: { $in: ['pending', 'failed'] },
         },
         limit: 500,
       });
 
+      const results = { synced: 0, failed: 0, skipped: 0 };
+      const now = new Date().toISOString();
+
+      for (const rsvp of rsvps) {
+        if (!rsvp?.email) {
+          results.skipped++;
+          continue;
+        }
+
+        const nameParts = String(rsvp.name || '').trim().split(' ');
+        const upsertResult = await upsertContactToList({
+          credentials,
+          listId,
+          email: rsvp.email,
+          firstName: nameParts[0] || undefined,
+          lastName: nameParts.slice(1).join(' ') || undefined,
+        });
+
+        const newStatus = upsertResult.success ? 'synced' : 'failed';
+
+        try {
+          await rsvpDocuments.update({
+            documentId: rsvp.documentId,
+            data: {
+              sync_status: newStatus,
+              sendgrid_list_id: listId,
+              ...(upsertResult.contactId ? { sendgrid_contact_id: upsertResult.contactId } : {}),
+              last_synced_at: now,
+            },
+          });
+        } catch (updateErr: any) {
+          console.warn('[TIENDA_EVENT_RSVP_SYNC] Failed to persist sync status for RSVP:', rsvp.documentId, updateErr.message);
+        }
+
+        if (upsertResult.success) {
+          results.synced++;
+        } else {
+          results.failed++;
+          console.warn('[TIENDA_EVENT_RSVP_SYNC] Upsert failed for', rsvp.email, upsertResult.error);
+        }
+      }
+
+      console.log('[TIENDA_EVENT_RSVP_SYNC] Sync complete', {
+        eventId,
+        listId,
+        listCreated: listResult.created,
+        ...results,
+      });
+
       return ctx.send({
         ok: true,
-        placeholder: true,
-        message: 'RSVP sync placeholder ready. SendGrid event-list sync is not wired yet.',
         data: {
-          storeDocumentId: access.store.documentId,
           eventDocumentId: event.documentId,
           eventName: event.Name,
-          totalRsvps: Array.isArray(rsvps) ? rsvps.length : 0,
-          suggestedNextStep: 'Create or resolve a SendGrid list per event, then upsert attendee emails from this RSVP set.',
+          sendgridListId: listId,
+          sendgridListCreated: listResult.created,
+          ...results,
+          total: rsvps.length,
         },
       });
     } catch (error: any) {
-      console.error('[TIENDA_EVENT_RSVP_SYNC] Failed:', error.message);
+      console.error('[TIENDA_EVENT_RSVP_SYNC] Unexpected error:', error.message);
       return ctx.internalServerError('Request failed');
     }
   },

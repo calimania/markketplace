@@ -32,7 +32,7 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
     </table>
   `;
   const title = `${store?.title || 'Markkët'} Magic Login Link`;
-  return emailLayout({ content, title, store });
+  return emailLayout({ content, title, store, label: 'Secure sign in' });
 };
 
 /**

@@ -20,20 +20,9 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
   } = input;
 
   const content = `
-    <p style="margin:0 0 14px 0;">Welcome to ${storeName || 'Markkët'}.</p>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:#fff7fb;border:1px dashed #f6c4d8;border-radius:18px;">
-      <tr>
-        <td style="padding:20px 22px;">
-          <div style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.4;color:#06b6d4;letter-spacing:1.6px;text-transform:uppercase;font-weight:bold;margin:0 0 10px 0;">Newsletter archive</div>
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;color:#db2777;font-style:italic;margin:0 0 10px 0;">Thanks for subscribing</div>
-          <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1f2340;">
-            ${welcomeMessage || 'We are excited to keep you updated with new releases, events, and stories.'}
-          </div>
-          <div style="margin-top:12px;height:6px;background:#eab308;border-radius:999px;font-size:0;line-height:0;">&nbsp;</div>
-        </td>
-      </tr>
-    </table>
-    <p style="margin:0 0 14px 0;">If you have questions, contact <a href="mailto:${supportEmail}" style="color:#06b6d4;text-decoration:none;">${supportEmail}</a>.</p>
+    <p style="margin:0 0 18px 0;font-size:20px;line-height:1.3;">&#127881; You're in!</p>
+    <p style="margin:0 0 18px 0;">${welcomeMessage || `We&rsquo;re excited to keep you in the loop with new releases, events, and stories from <strong>${storeName || 'Markkët'}</strong>.`}</p>
+    <p style="margin:0 0 14px 0;font-size:14px;color:#6b7280;">Questions? Reach us at <a href="mailto:${supportEmail}" style="color:#06b6d4;text-decoration:none;">${supportEmail}</a>.</p>
     ${unsubscribeUrl ? `
       <p style="margin:0 0 10px 0;font-size:13px;line-height:1.7;color:#6b7280;">If you ever want to unsubscribe, use the link below.</p>
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 8px 0;">
@@ -47,7 +36,7 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
   `;
 
   return emailLayout({
-    title: `Welcome to ${storeName || 'Markkët'}`,
+    title: `You're subscribed &#127881;`,
     content,
     store: {
       title: storeName || 'Markkët',
@@ -57,7 +46,7 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
         url: storeLogoUrl || ''
       },
       settings: {
-        email_header_message: `Thanks for joining ${storeName || 'Markkët'}`,
+        email_header_message: `Welcome! You're now subscribed to ${storeName || 'Markkët'}`,
         store_name_override: storeName || 'Markkët',
         welcome_email_text: welcomeMessage || '',
         dashboard_url: '',

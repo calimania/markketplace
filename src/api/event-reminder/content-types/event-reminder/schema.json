@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "event_reminders",
+  "info": {
+    "singularName": "event-reminder",
+    "pluralName": "event-reminders",
+    "displayName": "Event Reminder",
+    "description": "Scheduled email reminder records for events. One reminder per event. Status tracks lifecycle."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::event.event"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
+    },
+    "scheduled_for": {
+      "type": "datetime",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "sent", "failed", "cancelled"],
+      "default": "pending",
+      "required": true
+    },
+    "sent_at": {
+      "type": "datetime"
+    },
+    "cancelled_at": {
+      "type": "datetime"
+    },
+    "recipients_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "failed_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "error": {
+      "type": "text"
+    },
+    "subject": {
+      "type": "string"
+    }
+  }
+}

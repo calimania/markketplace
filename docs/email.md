@@ -1,5 +1,62 @@
 # Email API
 
+## Current Markketplace Direction (2026)
+
+### Audience model: prefer fewer lists, more tags/segments
+
+Recommended model:
+- one primary list per store for marketing audience
+- contact metadata for segmentation, for example:
+  - source: buyer, event_rsvp, newsletter
+  - event_document_id
+  - product_document_id
+  - store_document_id
+  - purchase state flags
+- SendGrid dynamic segments for campaigns and reminders
+
+Why:
+- scales better than creating one list per event forever
+- easier cleanup and reporting
+- supports queries such as bought-this-product-only, RSVP-for-this-event, high-value buyers
+
+Current implementation note:
+- RSVP sync currently uses per-event lists via the Tienda RSVP sync endpoint.
+- This is acceptable short-term and can coexist with the tagged contact strategy during migration.
+
+### Event reminder lifecycle
+
+When event data changes:
+- update reminder schedule records for that event
+- recompute times for reminder windows, for example 24h and 1h before start
+
+When event is unpublished or canceled:
+- cancel pending reminder jobs for that event
+- keep audit status in Strapi for observability
+
+### Template system status and cleanup plan
+
+Current status:
+- there is a shared HTML email layout helper plus specialized builders
+- template logic is spread across notification and SendGrid helper files, which can feel confusing
+
+Target shape:
+- src/services/email/
+  - layout.ts: base shell and theme tokens
+  - templates/
+    - welcome.ts
+    - rsvp-confirmation.ts
+    - event-reminder.ts
+    - order-confirmation.ts
+    - store-order-notification.ts
+  - renderer.ts: render(templateKey, payload, storeTheme)
+  - delivery.ts: provider adapter (SendGrid today)
+
+Migration rule:
+- keep existing exported function names as wrappers until all callers are moved
+- avoid breaking existing API responses or webhook-triggered sends
+
+---
+
 Choosing between Mailchimp and SendGrid depends on your specific needs for email services. Here’s a comparison to help you decide which might be better for your Strapi integration:
 
 SendGrid

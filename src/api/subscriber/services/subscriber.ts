@@ -353,7 +353,8 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
             storeDomain: store?.settings?.domain || 'https://markket.place',
             storeLogoUrl: store?.Favicon?.url,
             welcomeMessage: store?.settings?.welcome_email_text || 'Thanks for subscribing.',
-            supportEmail
+            supportEmail,
+            unsubscribeUrl: `https://markket.place/${store?.slug || ''}/subscription?code=${subscriberDocumentId}`,
           });
 
           await sendWelcomeEmail({
@@ -419,6 +420,124 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
         jobId: upsert.jobId
       },
       error: upsert.error
+    };
+  },
+
+  async unsubscribeFromStore(input: { email: string; storeDocumentId: string }) {
+    const subscriberDocuments = strapi.documents('api::subscriber.subscriber') as any;
+    const membershipDocuments = (strapi.documents as any)('api::subscriber.subscriber-list-membership');
+    const listDocuments = (strapi.documents as any)('api::subscriber.subscriber-list');
+
+    const email = normalizeEmail(input?.email);
+    const storeDocumentId = String(input?.storeDocumentId || '').trim();
+
+    if (!email || !storeDocumentId) {
+      return { success: false, message: 'email and storeDocumentId are required', error: 'missing_required_fields' };
+    }
+
+    const existing = await subscriberDocuments.findMany({
+      filters: { Email: { $eqi: email } },
+      populate: ['stores'],
+      limit: 1,
+    }) as any[];
+
+    const subscriber = existing?.[0];
+    if (!subscriber) {
+      // Treat as success — nothing to unsubscribe.
+      return { success: true, message: 'No subscription found', data: { email, storeDocumentId } };
+    }
+
+    const now = new Date().toISOString();
+    const remainingStoreIds = (subscriber.stores || [])
+      .map((s: any) => s.documentId)
+      .filter((id: string) => id && id !== storeDocumentId);
+
+    await subscriberDocuments.update({
+      documentId: subscriber.documentId,
+      data: {
+        stores: remainingStoreIds,
+        sync_status: remainingStoreIds.length === 0 ? 'unsubscribed' : subscriber.sync_status,
+        unsubscribed_at: now,
+        active: remainingStoreIds.length > 0,
+      },
+      status: 'published',
+    });
+
+    // Mark all memberships for this store's lists as unsubscribed.
+    const storeLists = await listDocuments.findMany({
+      filters: { store: { documentId: { $eq: storeDocumentId } } },
+      limit: 100,
+    }) as any[];
+
+    if (storeLists.length > 0) {
+      const listIds = storeLists.map((l: any) => l.documentId).filter(Boolean);
+      const memberships = await membershipDocuments.findMany({
+        filters: {
+          subscriber: { documentId: { $eq: subscriber.documentId } },
+          list: { documentId: { $in: listIds } },
+          status: { $ne: 'unsubscribed' },
+        },
+        limit: 200,
+      }) as any[];
+
+      for (const membership of memberships) {
+        await membershipDocuments.update({
+          documentId: membership.documentId,
+          data: { status: 'unsubscribed', unsubscribed_at: now, unsubscribe_reason: 'user_request' },
+        });
+      }
+    }
+
+    // Best-effort SendGrid removal — fire and forget, no credential errors surface to client.
+    setImmediate(async () => {
+      try {
+        const extension = await findSendGridExtensionForStore(strapi, storeDocumentId);
+        const credentials = resolveSendGridCredentialsForNewsletter(extension);
+        if (!credentials) return;
+
+        const apiKey = credentials.use_default
+          ? process.env.SENDGRID_API_KEY
+          : credentials.api_key;
+        if (!apiKey) return;
+
+        // Find contact ID in SendGrid by email and remove from all store lists.
+        const searchRes = await fetch(
+          `https://api.sendgrid.com/v3/marketing/contacts/search/emails`,
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ emails: [email] }),
+          }
+        );
+        if (!searchRes.ok) return;
+        const searchData = await searchRes.json() as any;
+        const contactId = searchData?.result?.[email]?.contact?.id;
+        if (!contactId) return;
+
+        const listDocumentsInner = (strapi.documents as any)('api::subscriber.subscriber-list');
+        const storeListsInner = await listDocumentsInner.findMany({
+          filters: { store: { documentId: { $eq: storeDocumentId } }, sendgrid_list_id: { $notNull: true } },
+          limit: 50,
+        }) as any[];
+
+        for (const list of storeListsInner) {
+          if (!list.sendgrid_list_id) continue;
+          await fetch(
+            `https://api.sendgrid.com/v3/marketing/lists/${list.sendgrid_list_id}/contacts?contact_ids=${contactId}`,
+            { method: 'DELETE', headers: { Authorization: `Bearer ${apiKey}` } }
+          );
+        }
+
+        console.log('[SUBSCRIBER_UNSUB] SendGrid removal complete', { email, storeDocumentId });
+      } catch (err: any) {
+        console.warn('[SUBSCRIBER_UNSUB] SendGrid removal failed (non-blocking):', err.message);
+      }
+    });
+
+    return {
+      success: true,
+      message: 'Unsubscribed successfully',
+      data: { email, storeDocumentId, unsubscribed_at: now },
     };
   },
 

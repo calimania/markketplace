@@ -69,6 +69,11 @@
       "relation": "manyToOne",
       "required": true,
       "target": "api::event.event"
+    },
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
     }
   }
 }

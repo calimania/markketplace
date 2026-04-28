@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "strapi: dev",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["dev"],
+      "isBackground": true,
+      "group": "build"
+    },
+    {
+      "label": "strapi: build",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["build"],
+      "group": "build"
+    },
+    {
+      "label": "api: docs",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["api:docs"]
+    },
+    {
+      "label": "api: test helper",
+      "type": "shell",
+      "command": "yarn",
+      "args": ["api:test"]
+    }
+  ]
+}

@@ -46,6 +46,10 @@
     "endDate": {
       "type": "datetime"
     },
+    "timezone": {
+      "type": "string",
+      "default": "UTC"
+    },
     "Description": {
       "pluginOptions": {
         "i18n": {
