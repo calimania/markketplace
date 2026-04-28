@@ -155,6 +155,7 @@ interface SendWelcomeEmailInput {
   htmlContent: string;
   fromEmail?: string;
   fromName?: string;
+  senderId?: string;
   replyToEmail?: string;
 }
 
@@ -162,7 +163,14 @@ interface SendWelcomeEmailResult {
   success: boolean;
   message: string;
   toEmail: string;
+  messageId?: string | null;
   error?: string;
+}
+
+interface ResolvedSenderIdentity {
+  fromEmail: string;
+  fromName: string;
+  source: 'input' | 'env' | 'sender_id' | 'fallback';
 }
 
 /**
@@ -683,6 +691,11 @@ export async function ensureStoreDefaultSendGridList(
     };
   }
 
+  const keySource = credentials.use_default
+    ? 'env:SENDGRID_API_KEY'
+    : 'extension.credentials.api_key';
+  const keyFingerprint = `${apiKey.slice(0, 6)}...${apiKey.slice(-4)} (len:${apiKey.length})`;
+
   const targetListName = buildStoreDefaultListName(storeDocumentId, listNameSuffix);
 
   try {
@@ -891,6 +904,7 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
     htmlContent,
     fromEmail,
     fromName,
+    senderId,
     replyToEmail,
   } = input;
 
@@ -913,8 +927,44 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
     };
   }
 
-  const resolvedFromEmail = fromEmail || process.env.SENDGRID_FROM_EMAIL || 'support@markket.place';
-  const resolvedFromName = fromName || 'Markkët';
+  const resolveSenderIdentity = async (): Promise<ResolvedSenderIdentity> => {
+    if (fromEmail) {
+      return {
+        fromEmail,
+        fromName: fromName || 'Markkët',
+        source: 'input'
+      };
+    }
+
+    if (process.env.SENDGRID_FROM_EMAIL) {
+      return {
+        fromEmail: process.env.SENDGRID_FROM_EMAIL,
+        fromName: fromName || process.env.SENDGRID_FROM_NAME || 'Markkët',
+        source: 'env'
+      };
+    }
+
+    if (senderId) {
+      const sender = await testVerifiedSender(apiKey, senderId);
+      if (sender?.data?.from_email && sender.data.from_email !== 'Unknown' && sender.data.from_email !== 'Unable to verify (check SendGrid dashboard)') {
+        return {
+          fromEmail: sender.data.from_email,
+          fromName: sender.data.from_name || fromName || 'Markkët',
+          source: 'sender_id'
+        };
+      }
+    }
+
+    return {
+      fromEmail: 'support@markket.place',
+      fromName: fromName || 'Markkët',
+      source: 'fallback'
+    };
+  };
+
+  const senderIdentity = await resolveSenderIdentity();
+  const resolvedFromEmail = senderIdentity.fromEmail;
+  const resolvedFromName = senderIdentity.fromName;
 
   try {
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -948,6 +998,10 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
       const errorText = await response.text();
       console.warn('[SENDGRID_SYNC] Welcome email failed:', {
         toEmail,
+        keySource,
+        keyFingerprint,
+        senderSource: senderIdentity.source,
+        fromEmail: resolvedFromEmail,
         status: response.status,
         error: errorText
       });
@@ -960,12 +1014,23 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
       };
     }
 
-    console.log('[SENDGRID_SYNC] Welcome email sent', { toEmail });
+    const messageId = response.headers.get('x-message-id') || response.headers.get('X-Message-Id');
+
+    console.log('[SENDGRID_SYNC] Welcome email accepted', {
+      toEmail,
+      keySource,
+      keyFingerprint,
+      senderSource: senderIdentity.source,
+      fromEmail: resolvedFromEmail,
+      status: response.status,
+      messageId
+    });
 
     return {
       success: true,
-      message: 'Welcome email sent',
-      toEmail
+      message: 'Welcome email accepted by SendGrid',
+      toEmail,
+      messageId
     };
   } catch (error: any) {
     console.warn('[SENDGRID_SYNC] Welcome email exception:', error.message);

@@ -345,7 +345,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
             subscriberDocumentId
           });
         } else {
-          const supportEmail = 'support@markket.place';
+          const supportEmail = process.env.SENDGRID_REPLY_TO_EMAIL || 'support@markket.place';
           const replyToEmail = store?.settings?.reply_to_email || supportEmail;
 
           const welcomeHtml = buildWelcomeEmailHtml({
@@ -357,15 +357,32 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
             unsubscribeUrl: `https://markket.place/${store?.slug || ''}/subscription?code=${subscriberDocumentId}`,
           });
 
-          await sendWelcomeEmail({
+          const welcomeResult = await sendWelcomeEmail({
             credentials,
             toEmail: normalizeEmail(subscriber.Email),
             subject: `Welcome to ${store?.title || 'Markkët'}`,
             htmlContent: welcomeHtml,
             fromEmail: extension?.config?.from_email,
             fromName: extension?.config?.from_name,
+            senderId: extension?.config?.sender_id,
             replyToEmail
           });
+
+          if (!welcomeResult.success) {
+            console.warn('[SUBSCRIBER_SYNC] welcome email send failed (non-blocking)', {
+              storeDocumentId,
+              subscriberDocumentId,
+              toEmail: normalizeEmail(subscriber.Email),
+              error: welcomeResult.error
+            });
+          } else {
+            console.log('[SUBSCRIBER_SYNC] welcome email accepted', {
+              storeDocumentId,
+              subscriberDocumentId,
+              toEmail: normalizeEmail(subscriber.Email),
+              messageId: welcomeResult.messageId || null
+            });
+          }
         }
       } catch (error: any) {
         console.warn('[SUBSCRIBER_SYNC] welcome email skipped:', error.message);
