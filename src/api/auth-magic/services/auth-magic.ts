@@ -649,12 +649,17 @@ export default ({ strapi }) => ({
    * Welcome email for new users
    */
   async welcomeEmail(email: string, store: any) {
-    await strapi.plugin('email').service('email').send({
-      to: email,
-      subject: `Welcome to ${store?.title || 'Markkët'}`,
-      text: `Welcome to ${store?.title || 'Markkët'}`,
-      html: AccountCreatedHTML(email, store),
-    });
+    try {
+      await strapi.plugin('email').service('email').send({
+        to: email,
+        subject: `Welcome to ${store?.title || 'Markkët'}`,
+        text: `Welcome to ${store?.title || 'Markkët'}`,
+        html: AccountCreatedHTML(email, store),
+      });
+      console.log('[AUTH_MAGIC] welcome email sent', { email, store: store?.documentId || store?.id });
+    } catch (error: any) {
+      console.error('[AUTH_MAGIC] welcome email failed (non-fatal):', error?.message);
+    }
 
     return {};
   },

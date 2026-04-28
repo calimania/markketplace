@@ -41,6 +41,7 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
 export const AccountCreatedHTML = (email: string, store: Store) => {
   const accent = store?.settings?.email_theme?.tertiaryColor || store?.settings?.branding?.tertiaryColor || '#eab308';
   const dashboardUrl = store?.settings?.dashboard_url || new URL('/dashboard', store?.settings?.domain || 'https://de.markket.place/').toString();
+  const customWelcome = store?.settings?.welcome_email_text;
   const content = `
     <p style="margin:0 0 18px 0;font-size:20px;line-height:1.3;">🎉 You're in!</p>
     <p style="margin:0 0 14px 0;">Hi <strong>${email}</strong> — your account is ready.</p>
@@ -48,9 +49,8 @@ export const AccountCreatedHTML = (email: string, store: Store) => {
       <tr>
         <td style="padding:20px 22px;">
           <div style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.4;color:#db2777;letter-spacing:1.6px;text-transform:uppercase;font-weight:bold;margin:0 0 10px 0;">Studio unlocked</div>
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.3;color:#1f2340;font-style:italic;margin:0 0 12px 0;">Web publishing platform for nice people.</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1f2340;">
-            ${store?.settings?.welcome_email_text || 'Start by creating a store and adding some pictures.'}
+            ${customWelcome || 'Web publishing platform for nice people. Start by creating a store and adding some pictures.'}
           </div>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 0 0;">
             <tr>

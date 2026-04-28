@@ -3,6 +3,8 @@
  *
  * Uses store.settings records for customization and shortener for SMS-friendly links
  */
+import { enrollStoreOwnerContact } from '../../../services/sendgrid-marketing';
+
 export default ({ strapi }) => ({
   async preview(ctx) {
     const { code } = ctx.request.body || {};
@@ -167,6 +169,16 @@ export default ({ strapi }) => ({
         });
 
         console.info('new:user', { id: user.id, role: role.id, channel: magic.channel });
+
+        // Enroll new user in platform store owners list (non-fatal)
+        if (magic.email) {
+          enrollStoreOwnerContact({
+            email: magic.email,
+            storeDocumentId: magic.store?.documentId || magic.store_id || 'platform',
+          }).catch((err: any) => {
+            console.warn('[AUTH_MAGIC] owner enrollment skipped:', err?.message);
+          });
+        }
 
         // Send welcome message based on channel
         if (magic.channel === 'email') {
