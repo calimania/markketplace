@@ -1,5 +1,5 @@
 import { checkStoreAccess, ERRORS, requireUser, sanitizeStore } from '../../../services/api-auth';
-import { ensureStoreDefaultSendGridList, upsertContactToList } from '../../../services/sendgrid-marketing';
+import { ensureStoreDefaultSendGridList, upsertContactToList, enrollStoreOwnerContact } from '../../../services/sendgrid-marketing';
 import {
   verifyItemBelongsToStore,
   autoFillSEO,
@@ -488,6 +488,18 @@ export default {
         documentId: created.documentId,
         locale: defaultLocale,
       });
+
+      // Enroll store owner in platform marketing list (non-fatal)
+      if (user.email) {
+        enrollStoreOwnerContact({
+          email: user.email,
+          storeDocumentId: created.documentId,
+          firstName: user.firstname || undefined,
+          lastName: user.lastname || undefined,
+        }).catch((err: any) => {
+          console.warn('[TIENDA_STORE_CREATE] Owner enrollment skipped:', err?.message);
+        });
+      }
 
       // Seed starter content for new stores.
       // Failures here should not block store creation.

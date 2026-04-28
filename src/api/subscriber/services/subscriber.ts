@@ -19,6 +19,7 @@ interface SubscribeAndQueueSyncInput {
 interface TriggerSubscriberResyncInput {
   subscriberDocumentId: string;
   storeDocumentId: string;
+  skipWelcomeEmail?: boolean;
 }
 
 function normalizeEmail(value: string): string {
@@ -204,7 +205,8 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
       try {
         await (strapi.service('api::subscriber.subscriber') as any).syncSubscriberToSendGrid({
           subscriberDocumentId: subscriber.documentId,
-          storeDocumentId
+          storeDocumentId,
+          skipWelcomeEmail: true
         });
       } catch (error: any) {
         console.error('[SUBSCRIBER_SYNC] async sync failed:', error.message);
@@ -332,10 +334,12 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
 
     const subscriberDocumentId = String(input?.subscriberDocumentId || '').trim();
     const storeDocumentId = String(input?.storeDocumentId || '').trim();
+    const skipWelcomeEmail = input?.skipWelcomeEmail === true;
 
     console.log('[SUBSCRIBER_SYNC] syncSubscriberToSendGrid start', {
       subscriberDocumentId,
-      storeDocumentId
+      storeDocumentId,
+      skipWelcomeEmail
     });
 
     if (!subscriberDocumentId || !storeDocumentId) {
@@ -526,7 +530,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
         status: 'published'
       });
 
-      const transactionalWelcome = await sendTransactionalWelcome();
+      const transactionalWelcome = skipWelcomeEmail ? { attempted: false, skipped: true, reason: 'retry', success: false, messageId: null, error: null } : await sendTransactionalWelcome();
 
       return {
         success: false,
@@ -570,7 +574,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
       });
     }
 
-    const transactionalWelcome = await sendTransactionalWelcome();
+    const transactionalWelcome = skipWelcomeEmail ? { attempted: false, skipped: true, reason: 'retry', success: false, messageId: null, error: null } : await sendTransactionalWelcome();
 
     const membershipRows = await membershipDocuments.findMany({
       filters: {

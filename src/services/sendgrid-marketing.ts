@@ -1054,3 +1054,79 @@ export async function sendWelcomeEmail(input: SendWelcomeEmailInput): Promise<Se
     };
   }
 }
+
+const PLATFORM_STORE_OWNERS_LIST = 'markket:store_owners';
+
+interface EnrollStoreOwnerInput {
+  email: string;
+  storeDocumentId: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/**
+ * Enroll a store owner into the platform-level markket:store_owners SendGrid list.
+ * Uses the platform default API key. Non-fatal — logs errors but never throws.
+ */
+export async function enrollStoreOwnerContact(input: EnrollStoreOwnerInput): Promise<void> {
+  const { email, storeDocumentId, firstName, lastName } = input;
+
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    console.warn('[SENDGRID_OWNERS] No platform SENDGRID_API_KEY — skipping store owner enrollment');
+    return;
+  }
+
+  try {
+    let list = await findSendGridListByName(apiKey, PLATFORM_STORE_OWNERS_LIST);
+    if (!list) {
+      list = await createSendGridList(apiKey, PLATFORM_STORE_OWNERS_LIST);
+    }
+
+    if (!list?.id) {
+      console.warn('[SENDGRID_OWNERS] Could not resolve markket:store_owners list — skipping enrollment', { email });
+      return;
+    }
+
+    const payload = {
+      list_ids: [list.id],
+      contacts: [
+        {
+          email,
+          ...(firstName ? { first_name: firstName } : {}),
+          ...(lastName ? { last_name: lastName } : {}),
+        }
+      ]
+    };
+
+    const response = await fetch('https://api.sendgrid.com/v3/marketing/contacts', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn('[SENDGRID_OWNERS] Enrollment upsert failed', {
+        email,
+        storeDocumentId,
+        status: response.status,
+        error: errorText
+      });
+      return;
+    }
+
+    const result = await response.json() as { job_id?: string };
+    console.log('[SENDGRID_OWNERS] Store owner enrolled', {
+      email,
+      storeDocumentId,
+      listId: list.id,
+      jobId: result?.job_id || null
+    });
+  } catch (error: any) {
+    console.error('[SENDGRID_OWNERS] enrollStoreOwnerContact failed:', error.message);
+  }
+}
