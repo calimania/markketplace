@@ -49,6 +49,220 @@ const CONTENT_TYPE_ALIASES: Record<string, string> = {
   shortners: 'shortner',
 };
 
+type StarterPageTemplate = {
+  Title: string;
+  slug: string;
+  SEO: {
+    metaTitle: string;
+    metaDescription: string;
+  };
+  Content?: any[];
+};
+
+type StarterSeedContext = {
+  defaultLocale: string;
+  storeDocumentId: string;
+  storeName: string;
+  storeSlug: string;
+};
+
+const STARTER_PRODUCT_RELATION_CONFIG = {
+  uid: 'api::product.product',
+  titleField: 'Name',
+  mutableFields: [],
+  storeField: 'stores',
+  storeRelationType: 'manyToMany',
+  defaultPopulate: [],
+  hasDraftAndPublish: true,
+} as const;
+
+const STARTER_EVENT_RELATION_CONFIG = {
+  uid: 'api::event.event',
+  titleField: 'Name',
+  mutableFields: [],
+  storeField: 'stores',
+  storeRelationType: 'manyToMany',
+  defaultPopulate: [],
+  hasDraftAndPublish: true,
+} as const;
+
+function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
+  return [
+    {
+      Title: 'Homepage',
+      slug: 'home',
+      Content: [
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: `Welcome to ${storeName}`,
+            },
+          ],
+        },
+      ],
+      SEO: {
+        metaTitle: `${storeName} Home`,
+        metaDescription: `Start shopping at ${storeName}. Fresh products, upcoming events, and more.`,
+      },
+    },
+    {
+      Title: `${storeName} Newsletter`,
+      slug: 'newsletter',
+      SEO: {
+        metaTitle: `${storeName} Newsletter`,
+        metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
+      },
+    },
+    {
+      Title: `About ${storeName}`,
+      slug: 'about',
+      Content: [
+        {
+          type: 'heading',
+          level: 1,
+          children: [
+            {
+              type: 'text',
+              text: 'About',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: 'Welcome to our storefront.',
+            },
+            {
+              type: 'text',
+              text: 'Visit our blog and subscribe for updates to learn more',
+              bold: true,
+            },
+          ],
+        },
+      ],
+      SEO: {
+        metaTitle: `About ${storeName}`,
+        metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
+      },
+    },
+  ];
+}
+
+async function seedAndPublishStarterPages(params: {
+  defaultLocale: string;
+  storeDocumentId: string;
+  ownerId: number | string;
+  storeName: string;
+}) {
+  const { defaultLocale, storeDocumentId, ownerId, storeName } = params;
+  const createdPages = [] as Array<{ documentId: string }>;
+
+  for (const template of buildStarterPageTemplates(storeName)) {
+    const page = await strapi.documents('api::page.page').create({
+      locale: defaultLocale,
+      data: {
+        Title: template.Title,
+        slug: template.slug,
+        Active: true,
+        store: storeDocumentId,
+        owner: ownerId,
+        SEO: template.SEO,
+        ...(template.Content ? { Content: template.Content } : {}),
+      } as any,
+    });
+
+    if (page?.documentId) {
+      createdPages.push({ documentId: page.documentId });
+    }
+  }
+
+  await Promise.all(
+    createdPages.map(page => strapi.documents('api::page.page').publish({
+      documentId: page.documentId,
+      locale: defaultLocale,
+    }))
+  );
+}
+
+function buildStarterEventWindow(baseDate = new Date()) {
+  const startDate = new Date(baseDate);
+  startDate.setDate(startDate.getDate() + 7);
+  startDate.setHours(17, 0, 0, 0);
+
+  const endDate = new Date(startDate);
+  endDate.setHours(18, 0, 0, 0);
+
+  return {
+    startDate,
+    endDate,
+  };
+}
+
+async function seedStarterArticle({ storeDocumentId, storeName, storeSlug }: StarterSeedContext) {
+  const starterArticle = await strapi.documents('api::article.article').create({
+    data: {
+      Title: `Welcome to ${storeName}`,
+      slug: `welcome-to-${storeSlug}`,
+      store: storeDocumentId,
+      SEO: {
+        metaTitle: `Welcome to ${storeName}`,
+        metaDescription: `We are live and excited to share what is coming next at ${storeName}.`,
+      },
+    } as any,
+  });
+
+  await strapi.documents('api::article.article').publish({ documentId: starterArticle.documentId });
+}
+
+async function seedStarterProduct({ defaultLocale, storeDocumentId, storeSlug }: StarterSeedContext) {
+  await strapi.documents('api::product.product').create({
+    locale: defaultLocale,
+    data: {
+      Name: 'Starter Product',
+      slug: `starter-product-${storeSlug}`,
+      Description: 'A happy starter product to customize and launch in your new store.',
+      active: true,
+      usd_price: 0,
+      ...buildStoreRelation(storeDocumentId, STARTER_PRODUCT_RELATION_CONFIG as any),
+    } as any,
+  });
+}
+
+async function seedStarterEvent({ defaultLocale, storeDocumentId, storeName, storeSlug }: StarterSeedContext) {
+  const eventWindow = buildStarterEventWindow();
+
+  await strapi.documents('api::event.event').create({
+    locale: defaultLocale,
+    data: {
+      Name: `${storeName} Launch Celebration`,
+      slug: `launch-party-${storeSlug}`,
+      Description: `Join us on Zoom in one week to celebrate the launch of ${storeName}!`,
+      startDate: eventWindow.startDate.toISOString(),
+      endDate: eventWindow.endDate.toISOString(),
+      active: true,
+      usd_price: 0,
+      ...buildStoreRelation(storeDocumentId, STARTER_EVENT_RELATION_CONFIG as any),
+    } as any,
+  });
+}
+
+async function seedStarterContent(context: StarterSeedContext & { ownerId: number | string }) {
+  await seedAndPublishStarterPages({
+    defaultLocale: context.defaultLocale,
+    storeDocumentId: context.storeDocumentId,
+    ownerId: context.ownerId,
+    storeName: context.storeName,
+  });
+
+  await seedStarterArticle(context);
+  await seedStarterProduct(context);
+  await seedStarterEvent(context);
+}
+
 function getRequestData(ctx: any): Record<string, any> {
   const body = ctx.request?.body;
   if (!body) {
@@ -508,95 +722,12 @@ export default {
         const storeName = (updated || created).title || data.title || 'My Store';
         const storeSlug = (updated || created).slug || data.slug || 'my-store';
 
-        const eventStart = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-        const eventEnd = new Date(eventStart.getTime() + 60 * 60 * 1000);
-
-        const starterPage = await strapi.documents('api::page.page').create({
-          locale: defaultLocale,
-          data: {
-            Title: `Welcome to ${storeName}`,
-            slug: 'home',
-            Active: true,
-            store: storeDocumentId,
-            owner: user.id,
-            SEO: {
-              metaTitle: `${storeName} Home`,
-              metaDescription: `Start shopping at ${storeName}. Fresh products, upcoming events, and more.`,
-            },
-          } as any,
-        });
-
-        const newsletterPage = await strapi.documents('api::page.page').create({
-          locale: defaultLocale,
-          data: {
-            Title: `${storeName} Newsletter`,
-            slug: 'newsletter',
-            Active: true,
-            store: storeDocumentId,
-            owner: user.id,
-            SEO: {
-              metaTitle: `${storeName} Newsletter`,
-              metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
-            },
-          } as any,
-        });
-
-        await strapi.documents('api::page.page').publish({ documentId: starterPage.documentId, locale: defaultLocale });
-        await strapi.documents('api::page.page').publish({ documentId: newsletterPage.documentId, locale: defaultLocale });
-
-        const starterArticle = await strapi.documents('api::article.article').create({
-          data: {
-            Title: `Welcome to ${storeName}`,
-            slug: `welcome-to-${storeSlug}`,
-            store: storeDocumentId,
-            SEO: {
-              metaTitle: `Welcome to ${storeName}`,
-              metaDescription: `We are live and excited to share what is coming next at ${storeName}.`,
-            },
-          } as any,
-        });
-        await strapi.documents('api::article.article').publish({ documentId: starterArticle.documentId });
-
-        await strapi.documents('api::product.product').create({
-          locale: defaultLocale,
-          data: {
-            Name: 'Starter Product',
-            slug: `starter-product-${storeSlug}`,
-            Description: 'A happy starter product to customize and launch in your new store.',
-            active: true,
-            usd_price: 0,
-            ...buildStoreRelation(storeDocumentId, {
-              uid: 'api::product.product',
-              titleField: 'Name',
-              mutableFields: [],
-              storeField: 'stores',
-              storeRelationType: 'manyToMany',
-              defaultPopulate: [],
-              hasDraftAndPublish: true,
-            } as any),
-          } as any,
-        });
-
-        await strapi.documents('api::event.event').create({
-          locale: defaultLocale,
-          data: {
-            Name: `${storeName} Launch Celebration`,
-            slug: `launch-party-${storeSlug}`,
-            Description: `Join us on Zoom in a few days to celebrate the launch of ${storeName}!`,
-            startDate: eventStart.toISOString(),
-            endDate: eventEnd.toISOString(),
-            active: true,
-            usd_price: 0,
-            ...buildStoreRelation(storeDocumentId, {
-              uid: 'api::event.event',
-              titleField: 'Name',
-              mutableFields: [],
-              storeField: 'stores',
-              storeRelationType: 'manyToMany',
-              defaultPopulate: [],
-              hasDraftAndPublish: true,
-            } as any),
-          } as any,
+        await seedStarterContent({
+          defaultLocale,
+          storeDocumentId,
+          ownerId: user.id,
+          storeName,
+          storeSlug,
         });
       } catch (seedError: any) {
         const seedDetails = seedError?.details?.errors || seedError?.details || null;
