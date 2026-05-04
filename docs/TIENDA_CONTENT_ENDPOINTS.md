@@ -61,7 +61,9 @@ List all items of a specific type for a store with pagination, search, and filte
 - `page` (int, default: 1) - Page number
 - `pageSize` (int, default: 25, max: 100) - Items per page
 - `search` (string) - Search across title, keywords, description
-- `status` (string) - Filter by `draft` or `published` (only for draftAndPublish types)
+- `status` (string) - Filter by `draft` or `published` (only for draftAndPublish types); omit for merged owner preview view
+- `filters` (object) - Additional Strapi-style filters merged with mandatory store scope e.g. `filters[active][$eq]=true`
+- `populate` (string/object) - Extra relations to populate, merged with defaults; `SEO` and `SEO.socialImage` are always included
 
 **Example Request:**
 ```bash

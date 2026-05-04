@@ -21,6 +21,7 @@ The `:ref` param accepts either a **documentId** or a **slug** on all store-scop
 | `PUT` | `/api/tienda/stores/:ref` | `{ title?, slug?, … }` | Update store fields |
 | `GET` | `/api/tienda/stores/:ref/settings` | — | Get store settings |
 | `PUT` | `/api/tienda/stores/:ref/settings` | `{ … }` | Update store settings |
+| `GET` | `/api/tienda/tendero/:ref` | — | Lightweight ownership check — returns `{ ok, store: { documentId, slug } }` |
 
 ---
 
@@ -31,9 +32,9 @@ See [TIENDA_CONTENT_ENDPOINTS.md](./TIENDA_CONTENT_ENDPOINTS.md) for the full co
 
 | Method | Path | Body / Query | Description |
 |---|---|---|---|
-| `GET` | `/api/tienda/stores/:ref/content/:type` | `?status=draft\|published&search=&page=&pageSize=` | List items — returns draft + published state per item |
+| `GET` | `/api/tienda/stores/:ref/content/:type` | `?status=draft\|published&search=&page=&pageSize=&filters[…]=…&populate=…` | List items — returns draft + published state per item |
 | `POST` | `/api/tienda/stores/:ref/content/:type` | `{ …fields, publishNow?: true }` | Create item, optionally publish immediately |
-| `GET` | `/api/tienda/stores/:ref/content/:type/:itemId` | `?status=draft\|published` | Get single item |
+| `GET` | `/api/tienda/stores/:ref/content/:type/:itemId` | `?status=draft\|published&populate=…` | Get single item |
 | `PUT` | `/api/tienda/stores/:ref/content/:type/:itemId` | `{ …fields, publishNow?: true, unpublishNow?: true, saveAsDraft?: true }` | Update — pass `publishNow` or `unpublishNow` to change publish state |
 | `DELETE` | `/api/tienda/stores/:ref/content/:type/:itemId` | `{ hard?: true }` | Soft-delete (unpublish) by default; `hard: true` to permanently delete |
 
@@ -45,8 +46,8 @@ Every content item includes a `tiendaPublication` block:
 {
   "tiendaPublication": {
     "hasDraft": true,
-    "hasPublished": false,
-    "visibleStatus": "unpublished"
+    "hasPublished": true,
+    "visibleStatus": "draft"
   }
 }
 ```
@@ -55,9 +56,40 @@ Every content item includes a `tiendaPublication` block:
 
 | Value | Meaning |
 |---|---|
-| `published` | Live, no pending draft |
-| `draft` | Published but has unpublished edits |
-| `unpublished` | Never published or actively unpublished |
+| `published` | Live, no unsaved edits |
+| `draft` | Live **and** has pending unpublished edits — dashboard shows the draft for preview/editing |
+| `unpublished` | Only a draft exists (never published) or was soft-deleted |
+
+Public storefront consumers should always request `?status=published`. The owner dashboard omits `status` to get the merged preview view.
+
+### SEO & social image
+
+All SEO-enabled types always return a populated `SEO.socialImage` — no extra populate param needed:
+
+```json
+{
+  "SEO": {
+    "metaTitle": "…",
+    "metaDescription": "…",
+    "socialImage": { "url": "https://…", "width": 1200, "height": 630 },
+    "metaUrl": "…",
+    "metaAuthor": "…",
+    "excludeFromSearch": false
+  }
+}
+```
+
+Use `SEO.socialImage` for `og:image` / Twitter card meta tags.
+
+### Extra populate & filters
+
+Both list and single-item endpoints accept `populate` and `filters` query params merged safely with the mandatory store scope:
+
+```
+?populate=cover,Tags&filters[active][$eq]=true
+```
+
+Store ownership scoping is always enforced regardless of client filters.
 
 ---
 

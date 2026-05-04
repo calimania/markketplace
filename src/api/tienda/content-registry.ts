@@ -32,7 +32,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     mutableFields: ['Title', 'slug', 'Content', 'cover', 'Tags', 'SEO', 'category', 'description', 'keywords'],
     readOnlyFields: ['Creator'],
     autoSetCreator: 'Creator',
-    defaultPopulate: ['cover', 'Tags', 'SEO', 'category', 'Creator', 'store'],
+    defaultPopulate: ['cover', 'Tags', 'SEO', 'SEO.socialImage', 'category', 'Creator', 'store'],
     mediaFields: ['cover'],
     relationFields: ['category'],
     componentFields: ['Tags'],
@@ -46,7 +46,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     hasDraftAndPublish: true,
     mutableFields: ['Title', 'slug', 'Content', 'Active', 'menuOrder', 'SEO', 'albums', 'description', 'keywords'],
     autoSetCreator: 'owner',
-    defaultPopulate: ['SEO', 'albums', 'creator', 'owner', 'store'],
+    defaultPopulate: ['SEO', 'SEO.socialImage', 'albums', 'creator', 'owner', 'store'],
     relationFields: ['albums'],
   },
   album: {
@@ -58,7 +58,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     hasDraftAndPublish: true,
     mutableFields: ['title', 'slug', 'description', 'content', 'SEO', 'cover', 'tracks', 'keywords'],
     autoSetCreator: 'owner',
-    defaultPopulate: ['cover', 'SEO', 'tracks', 'owner', 'store'],
+    defaultPopulate: ['cover', 'SEO', 'SEO.socialImage', 'tracks', 'owner', 'store'],
   },
   track: {
     uid: 'api::album.track',
@@ -69,7 +69,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     hasDraftAndPublish: true,
     mutableFields: ['title', 'slug', 'description', 'content', 'SEO', 'media', 'urls', 'keywords'],
     autoSetCreator: 'owner',
-    defaultPopulate: ['media', 'SEO', 'urls', 'owner', 'store'],
+    defaultPopulate: ['media', 'SEO', 'SEO.socialImage', 'urls', 'owner', 'store'],
   },
   category: {
     uid: 'api::category.category',
@@ -80,7 +80,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     hasDraftAndPublish: true,
     mutableFields: ['Name', 'slug', 'Description', 'SEO', 'Active', 'keywords'],
     autoSetCreator: 'owner',
-    defaultPopulate: ['SEO', 'articles', 'owner', 'store'],
+    defaultPopulate: ['SEO', 'SEO.socialImage', 'articles', 'owner', 'store'],
   },
   product: {
     uid: 'api::product.product',
@@ -95,7 +95,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     ],
     readOnlyFields: ['SKU', 'slug'], // SKU is auto-synced with Stripe, slug is UID field
     autoSetCreator: 'creator',
-    defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'Tag', 'PRICES', 'stores', 'creator'],
+    defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'SEO.socialImage', 'Tag', 'PRICES', 'stores', 'creator'],
     mediaFields: ['Thumbnail', 'Slides'],
     componentFields: ['Tag', 'PRICES'],
   },
@@ -112,7 +112,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     ],
     readOnlyFields: ['STRIPE_PRODUCT_ID', 'slug', 'amountSold'],
     autoSetCreator: 'creator',
-    defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'Tag', 'PRICES', 'stores', 'creator'],
+    defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'SEO.socialImage', 'Tag', 'PRICES', 'stores', 'creator'],
     mediaFields: ['Thumbnail', 'Slides'],
     componentFields: ['Tag', 'PRICES'],
   },
