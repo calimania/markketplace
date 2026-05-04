@@ -49,6 +49,79 @@ const CONTENT_TYPE_ALIASES: Record<string, string> = {
   shortners: 'shortner',
 };
 
+const FORCED_CONTENT_POPULATE_FIELDS = ['SEO', 'SEO.socialImage'];
+
+function normalizePopulatePath(value: unknown): string[] {
+  if (typeof value !== 'string') {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map(entry => entry.trim())
+    .filter(Boolean);
+}
+
+function collectPopulateFields(input: unknown, parentPath = ''): string[] {
+  if (input == null || input === false) {
+    return [];
+  }
+
+  if (typeof input === 'string') {
+    const normalized = input.trim().toLowerCase();
+    if (normalized === 'true') {
+      return parentPath ? [parentPath] : [];
+    }
+    if (normalized === 'false') {
+      return [];
+    }
+    return normalizePopulatePath(input);
+  }
+
+  if (typeof input === 'number') {
+    return input > 0 && parentPath ? [parentPath] : [];
+  }
+
+  if (Array.isArray(input)) {
+    return input.flatMap(entry => collectPopulateFields(entry, parentPath));
+  }
+
+  if (typeof input === 'object') {
+    return Object.entries(input as Record<string, unknown>).flatMap(([rawKey, rawValue]) => {
+      const key = String(rawKey).trim();
+      if (!key) {
+        return [];
+      }
+
+      // Support qs-style formats: populate[SEO][populate][0]=socialImage
+      if (key === 'populate') {
+        return collectPopulateFields(rawValue, parentPath);
+      }
+
+      // Numeric keys are list indexes from query parser.
+      if (/^\d+$/.test(key)) {
+        return collectPopulateFields(rawValue, parentPath);
+      }
+
+      const nextPath = parentPath ? `${parentPath}.${key}` : key;
+      const nested = collectPopulateFields(rawValue, nextPath);
+      return nested.length > 0 ? nested : [nextPath];
+    });
+  }
+
+  return [];
+}
+
+function resolveContentPopulate(defaultPopulate: string[], requestedPopulate: unknown): string[] {
+  const merged = new Set<string>([
+    ...defaultPopulate,
+    ...collectPopulateFields(requestedPopulate),
+    ...FORCED_CONTENT_POPULATE_FIELDS,
+  ]);
+
+  return Array.from(merged);
+}
+
 type StarterPageTemplate = {
   Title: string;
   slug: string;
@@ -550,7 +623,7 @@ async function findOwnerContentItem(
   documentsApi: any,
   config: any,
   documentId: string,
-  populate: string[],
+  populate: any,
   requestedStatus: 'draft' | 'published' | null,
   locale?: string,
 ) {
@@ -1079,9 +1152,21 @@ export default {
       const { skip, limit } = applyPagination(ctx);
       const requestedStatus = resolveRequestedPublicationStatus(ctx.query.status);
       const documentsApi = (strapi.documents as any)(config.uid);
+      const populate = resolveContentPopulate(config.defaultPopulate, ctx.query.populate);
+      const storeFilter = buildStoreFilter(access.store.documentId, config);
+      const clientFilters =
+        ctx.query.filters && typeof ctx.query.filters === 'object' && !Array.isArray(ctx.query.filters)
+          ? ctx.query.filters
+          : null;
+      const filterClauses: any[] = [storeFilter];
+
+      if (clientFilters) {
+        filterClauses.push(clientFilters);
+      }
+
       const query: any = {
-        filters: buildStoreFilter(access.store.documentId, config),
-        populate: config.defaultPopulate,
+        filters: filterClauses.length === 1 ? filterClauses[0] : { $and: filterClauses },
+        populate,
       };
 
       // Apply search if provided
@@ -1089,14 +1174,15 @@ export default {
         const searchTerm = String(ctx.query.search).trim();
         if (searchTerm.length > 0) {
           const titleField = config.titleField;
-          query.filters = {
-            ...query.filters,
+          filterClauses.push({
             $or: [
               { [titleField]: { $containsi: searchTerm } },
               { keywords: { $containsi: searchTerm } }, // Search tags/keywords too
               { description: { $containsi: searchTerm } },
             ],
-          };
+          });
+
+          query.filters = filterClauses.length === 1 ? filterClauses[0] : { $and: filterClauses };
         }
       }
 
@@ -1238,6 +1324,7 @@ export default {
       const access = await checkStoreAccess(strapi, user.id, ref);
       const requestedStatus = resolveRequestedPublicationStatus(ctx.query.status);
       const documentsApi = (strapi.documents as any)(config.uid);
+      const populate = resolveContentPopulate(config.defaultPopulate, ctx.query.populate);
 
       if (!access.hasAccess) {
         return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
@@ -1247,7 +1334,7 @@ export default {
         documentsApi,
         config,
         itemId,
-        config.defaultPopulate,
+        populate,
         requestedStatus,
       );
 
