@@ -23,7 +23,7 @@ async function findStoreByRef(strapi: any, ref: string): Promise<any | null> {
 
   const byDocumentId = await strapi.documents('api::store.store').findOne({
     documentId: normalizedRef,
-    populate: ['settings', 'users', 'admin_users'],
+    populate: ['settings', 'users', 'admin_users', 'owner'],
   }) as any;
 
   if (byDocumentId) {
@@ -32,7 +32,7 @@ async function findStoreByRef(strapi: any, ref: string): Promise<any | null> {
 
   const bySlug = await strapi.documents('api::store.store').findMany({
     filters: { slug: normalizedRef },
-    populate: ['settings', 'users', 'admin_users'],
+    populate: ['settings', 'users', 'admin_users', 'owner'],
     limit: 1,
   }) as any[];
 
@@ -43,15 +43,26 @@ export async function checkStoreAccess(
   strapi: any,
   userId: string | number,
   storeRef: string,
-): Promise<{ hasAccess: boolean; store: any | null; isAdmin: boolean }> {
+): Promise<{ hasAccess: boolean; store: any | null; isAdmin: boolean; membership: any | null; isOwner: boolean }> {
   const store = await findStoreByRef(strapi, storeRef);
 
   if (!store) {
-    return { hasAccess: false, store: null, isAdmin: false };
+    return { hasAccess: false, store: null, isAdmin: false, membership: null, isOwner: false };
   }
 
   const userIdNum = Number(userId);
   const userIdStr = String(userId);
+
+  const storeMemberships = await strapi.documents('api::store-membership.store-membership').findMany({
+    filters: {
+      store: { documentId: store.documentId },
+      user: { id: userIdNum },
+      status: 'active',
+    } as any,
+    limit: 1,
+  }) as any[];
+
+  const membership = storeMemberships?.[0] || null;
 
   const isStoreUser = Array.isArray(store.users)
     ? store.users.some((user: any) => Number(user?.id) === userIdNum)
@@ -61,10 +72,14 @@ export async function checkStoreAccess(
     ? store.admin_users.some((admin: any) => String(admin?.id) === userIdStr)
     : false;
 
+  const isOwner = Number(store.owner?.id) === userIdNum || membership?.role === 'owner';
+
   return {
-    hasAccess: isStoreUser || isAdminUser,
+    hasAccess: Boolean(membership) || isStoreUser || isAdminUser,
     store,
     isAdmin: isAdminUser,
+    membership,
+    isOwner,
   };
 }
 
@@ -73,7 +88,7 @@ export function sanitizeStore(store: any): any {
     return null;
   }
 
-  const { users, admin_users, extensions, ...rest } = store;
+  const { users, admin_users, memberships, extensions, ...rest } = store;
   return rest;
 }
 

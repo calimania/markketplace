@@ -112,6 +112,174 @@ Slugs are normalised automatically before saving:
 | `GET` | `/api/tienda/stores/:ref/media-targets` | List uploadable fields (for upload UI) |
 | `GET` | `/api/tienda/stores/:ref/events/:eventId/rsvps` | List RSVPs for an event |
 | `POST` | `/api/tienda/stores/:ref/events/:eventId/rsvps/sync` | Sync RSVPs to SendGrid |
+| `POST` | `/api/tienda/stores/:ref/invite` | Send a collaborator invite by email |
+| `GET` | `/api/tienda/stores/:ref/invites` | List all invites sent for the store |
+
+---
+
+## Collaborator Invites
+
+Store members can invite collaborators by email. Invitees receive a one-time 24-hour magic link. On acceptance they are automatically authenticated and added to the store — no password needed.
+
+---
+
+### Send an invite
+
+```
+POST /api/tienda/stores/:ref/invite
+Authorization: Bearer {JWT}
+Content-Type: application/json
+```
+
+**Request body**
+```json
+{ "email": "collaborator@example.com" }
+```
+
+**Success — 200**
+```json
+{
+  "ok": true,
+  "message": "Invite sent to collaborator@example.com.",
+  "store": {
+    "documentId": "abc123xyz",
+    "slug": "my-store"
+  }
+}
+```
+
+**Error responses**
+
+| Status | Body | Cause |
+|--------|------|-------|
+| 400 | `{ "error": { "message": "A valid email address is required." } }` | Missing or malformed email |
+| 403 | `{ "error": { "message": "Store not found or access denied." } }` | Not an owner/member of this store |
+| 429 | `{ "error": { "message": "Too many invites sent recently. Please wait before sending another." } }` | Rate limit hit |
+
+**JS example**
+```js
+const res = await fetch(`/api/tienda/stores/${storeRef}/invite`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwt}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ email: 'collaborator@example.com' }),
+});
+const data = await res.json();
+// data.ok === true on success
+```
+
+---
+
+### List invites
+
+```
+GET /api/tienda/stores/:ref/invites
+Authorization: Bearer {JWT}
+```
+
+**Success — 200**
+```json
+{
+  "store": {
+    "documentId": "abc123xyz",
+    "slug": "my-store"
+  },
+  "total": 3,
+  "invites": [
+    {
+      "email": "alex@example.com",
+      "status": "accepted",
+      "sentAt": "2026-05-19T10:00:00.000Z",
+      "acceptedAt": "2026-05-19T10:42:00.000Z",
+      "expiresAt": "2026-05-20T10:00:00.000Z"
+    },
+    {
+      "email": "sam@example.com",
+      "status": "pending",
+      "sentAt": "2026-05-19T11:00:00.000Z",
+      "acceptedAt": null,
+      "expiresAt": "2026-05-20T11:00:00.000Z"
+    },
+    {
+      "email": "old@example.com",
+      "status": "expired",
+      "sentAt": "2026-05-01T08:00:00.000Z",
+      "acceptedAt": null,
+      "expiresAt": "2026-05-02T08:00:00.000Z"
+    }
+  ]
+}
+```
+
+`status` is derived at read time:
+
+| Value | Meaning |
+|-------|---------|
+| `pending` | Email sent, link not clicked yet |
+| `accepted` | Invitee clicked the link and joined |
+| `expired` | 24-hour window passed without acceptance |
+
+> The one-time magic code is **never** returned in this response.
+
+**JS example**
+```js
+const res = await fetch(`/api/tienda/stores/${storeRef}/invites`, {
+  headers: { 'Authorization': `Bearer ${jwt}` },
+});
+const { invites, total } = await res.json();
+```
+
+---
+
+### Invite acceptance flow (invitee side)
+
+The invitee receives a branded email with a single **Accept invite** button. The link has the form:
+
+```
+https://markket.place/auth/magic?code={ONE_TIME_CODE}
+```
+
+Your client app calls the verify endpoint with that code:
+
+```
+GET /api/auth-magic/verify?code={ONE_TIME_CODE}
+```
+
+**Success — 200**
+```json
+{
+  "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 42,
+    "username": "collaborator",
+    "email": "collaborator@example.com"
+  }
+}
+```
+
+Store that `jwt` and use it as `Authorization: Bearer` for all subsequent calls. The invitee is already added to the store — no extra step needed.
+
+If the code is invalid, already used, or expired:
+
+**Error — 400**
+```json
+{ "error": { "message": "Invalid or expired magic link." } }
+```
+
+**JS example (in your `/auth/magic` page)**
+```js
+const code = new URL(window.location.href).searchParams.get('code');
+const res = await fetch(`/api/auth-magic/verify?code=${code}`);
+if (!res.ok) {
+  // show "Link expired — ask the store owner to resend"
+  return;
+}
+const { jwt, user } = await res.json();
+localStorage.setItem('jwt', jwt);
+// redirect to dashboard
+```
 
 ---
 

@@ -108,13 +108,13 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     hasDraftAndPublish: true,
     mutableFields: [
       'Name', 'Description', 'usd_price', 'startDate', 'endDate', 'maxCapacity',
-      'active', 'Thumbnail', 'Slides', 'SEO', 'Tag', 'PRICES', 'keywords', 'description'
+      'active', 'Thumbnail', 'Slides', 'SEO', 'Tag', 'PRICES', 'keywords', 'description', 'timezone', 'locations'
     ],
     readOnlyFields: ['STRIPE_PRODUCT_ID', 'slug', 'amountSold'],
     autoSetCreator: 'creator',
-    defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'SEO.socialImage', 'Tag', 'PRICES', 'stores', 'creator'],
+    defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'SEO.socialImage', 'Tag', 'PRICES', 'stores', 'creator', 'locations'],
     mediaFields: ['Thumbnail', 'Slides'],
-    componentFields: ['Tag', 'PRICES'],
+    componentFields: ['Tag', 'PRICES', 'locations'],
   },
   shortner: {
     uid: 'api::shortner.shortner',

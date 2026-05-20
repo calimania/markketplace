@@ -158,6 +158,33 @@ export default {
       },
     },
     {
+      method: 'POST',
+      path: '/tienda/stores/:ref/invite',
+      handler: 'tienda.inviteUser',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/tienda/stores/:ref/members',
+      handler: 'tienda.listMembers',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'GET',
+      path: '/tienda/stores/:ref/invites',
+      handler: 'tienda.listInvites',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'GET',
       path: '/tienda/:ref',
       handler: 'tienda.store',

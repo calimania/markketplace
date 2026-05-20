@@ -35,6 +35,66 @@ export function smartTruncate(text: string, max: number = 160): string {
   return window.trim() + '…';
 }
 
+function stripMarkdownAndRichText(value: any): string {
+  if (value == null) {
+    return '';
+  }
+
+  let text = '';
+
+  if (Array.isArray(value)) {
+    // Strapi rich text blocks format
+    text = value
+      .map((block: any) => {
+        if (Array.isArray(block?.children)) {
+          return block.children.map((child: any) => String(child?.text || '')).join(' ');
+        }
+        return String(block?.text || '');
+      })
+      .join(' ');
+  } else {
+    text = String(value);
+  }
+
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, ' ')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/(^|\s)[#>*_~\-]{1,3}(?=\S)/g, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[|{}\[\]\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function generateKeywordsFromText(title: string, content: string, maxKeywords = 8): string {
+  const source = `${title || ''} ${content || ''}`.toLowerCase();
+  const tokens = source
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .map(token => token.trim())
+    .filter(token => token.length >= 3);
+
+  const stopWords = new Set([
+    'the', 'and', 'for', 'with', 'from', 'that', 'this', 'your', 'you', 'are', 'was', 'were', 'will',
+    'our', 'about', 'into', 'have', 'has', 'had', 'not', 'but', 'all', 'new', 'now', 'can', 'its', 'out',
+    'una', 'uno', 'para', 'con', 'del', 'las', 'los', 'que', 'por', 'una', 'como', 'desde', 'sobre',
+  ]);
+
+  const counts = new Map<string, number>();
+  for (const token of tokens) {
+    if (stopWords.has(token)) continue;
+    counts.set(token, (counts.get(token) || 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxKeywords)
+    .map(([word]) => word)
+    .join(', ');
+}
+
 function slugifyValue(value: string): string {
   return String(value || '')
     .normalize('NFKD')
@@ -120,21 +180,41 @@ export function autoFillSEO(data: any, config: ContentTypeConfig): any {
     data.SEO = {};
   }
 
+  const titleText = stripMarkdownAndRichText(data[config.titleField] || '');
+  const contentText = stripMarkdownAndRichText(
+    config.contentField ? data[config.contentField] : (data.description || data.Description || '')
+  );
+
   // Auto-fill metaTitle from title field
-  if (!data.SEO.metaTitle && data[config.titleField]) {
-    data.SEO.metaTitle = String(data[config.titleField]).slice(0, 60);
+  if (!data.SEO.metaTitle && titleText) {
+    data.SEO.metaTitle = smartTruncate(titleText, 60).replace(/…$/, '');
   }
 
   // Auto-fill metaDescription from content field (smart truncation ~160 chars)
-  if (!data.SEO.metaDescription && config.contentField && data[config.contentField]) {
-    let content = data[config.contentField];
-    // Handle blocks format (Strapi RichText)
-    if (Array.isArray(content) && content[0]?.children) {
-      content = content.map((block: any) => block.children?.map((c: any) => c.text).join('')).join(' ');
-    } else if (typeof content !== 'string') {
-      content = String(content);
+  if (!data.SEO.metaDescription) {
+    const summarySource = contentText || titleText;
+    if (summarySource) {
+      data.SEO.metaDescription = smartTruncate(summarySource, 158);
     }
-    data.SEO.metaDescription = smartTruncate(content, 160);
+  }
+
+  // Keep generic summary fields in sync when available and empty.
+  if (Object.prototype.hasOwnProperty.call(data, 'description') && !data.description && contentText) {
+    data.description = smartTruncate(contentText, 220);
+  }
+  if (Object.prototype.hasOwnProperty.call(data, 'Description') && !data.Description && contentText) {
+    data.Description = smartTruncate(contentText, 220);
+  }
+
+  // Generate keywords when empty.
+  if (!data.SEO.metaKeywords) {
+    const keywords = generateKeywordsFromText(titleText, contentText);
+    if (keywords) {
+      data.SEO.metaKeywords = keywords;
+      if (Object.prototype.hasOwnProperty.call(data, 'keywords') && !data.keywords) {
+        data.keywords = keywords;
+      }
+    }
   }
 
   return data;

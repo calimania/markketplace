@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "store_memberships",
+  "info": {
+    "singularName": "store-membership",
+    "pluralName": "store-memberships",
+    "displayName": "Store Membership",
+    "description": "Track store membership and future store-scoped roles"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": false
+    }
+  },
+  "attributes": {
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store",
+      "inversedBy": "memberships",
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "store_memberships",
+      "required": true
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": ["owner", "editor", "manager", "viewer"],
+      "default": "editor",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["active", "inactive"],
+      "default": "active",
+      "required": true
+    },
+    "invited_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "joined_at": {
+      "type": "datetime"
+    }
+  }
+}

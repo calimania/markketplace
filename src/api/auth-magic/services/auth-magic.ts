@@ -52,6 +52,7 @@ export default ({ strapi }) => ({
       reusable?: boolean;
       expiresInMinutes?: number;
       maxUses?: number;
+      existingDocumentId?: string;
     } = {}
   ) {
     console.log('generateCode magic link:', { identifier, store_id, channel });
@@ -164,16 +165,36 @@ export default ({ strapi }) => ({
       console.log('Shortener ID stored:', data.shortner);
     }
 
-    const magicCode = await strapi.documents('api::auth-magic.magic-code').create({
-      data
-    });
+    let magicCode;
+
+    if (options?.existingDocumentId) {
+      magicCode = await strapi.documents('api::auth-magic.magic-code').update({
+        documentId: options.existingDocumentId,
+        data: {
+          ...data,
+          used: false,
+          usedAt: null,
+          useCount: 0,
+          attempts: 0,
+        },
+      });
+    } else {
+      magicCode = await strapi.documents('api::auth-magic.magic-code').create({
+        data
+      });
+    }
 
     // Update user's communication preferences if this is a phone-based channel
     if (channel === 'sms' || channel === 'whatsapp') {
       await this.updateUserChannelPreference(identifier, channel);
     }
 
-    return { code, shortner: data.shortner, attempts: magicCode?.attempts };
+    return {
+      code,
+      shortner: data.shortner,
+      attempts: magicCode?.attempts,
+      documentId: magicCode?.documentId,
+    };
   },
 
   obfuscateEmail(email?: string | null) {
@@ -603,7 +624,22 @@ export default ({ strapi }) => ({
   async verifyCode(code: string, ipAddress?: string, userAgent?: string) {
     const magic = await this.findCodeRecord(code);
 
-    if (!magic || magic.purpose !== 'auth_login' || magic.used) return null;
+    const VERIFIABLE_PURPOSES = ['auth_login', 'store_invite'];
+
+    if (!magic) {
+      console.warn('[AUTH_MAGIC] verifyCode: code not found');
+      return null;
+    }
+
+    if (!VERIFIABLE_PURPOSES.includes(magic.purpose)) {
+      console.warn('[AUTH_MAGIC] verifyCode: rejected purpose', magic.purpose);
+      return null;
+    }
+
+    if (magic.used) {
+      console.warn('[AUTH_MAGIC] verifyCode: code already used', { purpose: magic.purpose, email: magic.email });
+      return null;
+    }
 
     // Check if expired
     if (this.isCodeExpired(magic)) {

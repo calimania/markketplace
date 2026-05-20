@@ -79,8 +79,14 @@ async function checkUserStoreAccess(
 }
 
 async function resolveStoreDocumentId(strapi: any, storeRef: string): Promise<string | null> {
+  const normalizedRef = String(storeRef || '').trim();
+
+  if (!normalizedRef) {
+    return null;
+  }
+
   const storeByDocumentId = await strapi.documents('api::store.store').findOne({
-    documentId: storeRef,
+    documentId: normalizedRef,
     fields: ['documentId'],
   }) as any;
 
@@ -89,12 +95,16 @@ async function resolveStoreDocumentId(strapi: any, storeRef: string): Promise<st
   }
 
   const storesBySlug = await strapi.documents('api::store.store').findMany({
-    filters: { slug: storeRef },
+    filters: { slug: normalizedRef },
     fields: ['documentId'],
     limit: 1,
   }) as any[];
 
-  return storesBySlug?.[0]?.documentId || null;
+  if (storesBySlug?.[0]?.documentId) {
+    return storesBySlug[0].documentId;
+  }
+
+  return null;
 }
 
 export default factories.createCoreController('api::store.store', ({ strapi }) => ({
