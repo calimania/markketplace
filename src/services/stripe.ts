@@ -9,7 +9,7 @@ console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_KEY:', !!STRIPE_SECRET_KEY
 console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_TEST_KEY:', !!STRIPE_SECRET_TEST_KEY);
 
 // Fix: Add missing Stripe API version for initialization (required by Stripe SDK)
-const STRIPE_API_VERSION = '2026-03-25.dahlia';
+export const STRIPE_API_VERSION = '2026-04-22.dahlia';
 
 // Initialize Stripe clients
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION }) : null;

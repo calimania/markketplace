@@ -48,7 +48,13 @@
     },
     "timezone": {
       "type": "string",
-      "default": "UTC"
+      "default": "America/New_York"
+    },
+    "locations": {
+      "type": "component",
+      "repeatable": true,
+      "pluginOptions": {},
+      "component": "common.address"
     },
     "Description": {
       "pluginOptions": {

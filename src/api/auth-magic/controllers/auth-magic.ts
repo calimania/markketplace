@@ -151,11 +151,31 @@ export default ({ strapi }) => ({
         });
       }
 
+      if (user && !user.confirmed) {
+        user = await strapi.query('plugin::users-permissions.user').update({
+          where: { id: user.id },
+          data: { confirmed: true },
+        });
+        console.info('[AUTH_MAGIC] user auto-confirmed after magic verify', { userId: user.id, purpose: magic.purpose });
+      }
+
       // Create user if doesn't exist
       if (!user && cleanIdentifier) {
-        const role = await strapi.db.query('plugin::users-permissions.role').findOne({
-          where: { name: 'Store Owners' },
+        const preferredRoleName = 'Store Owners';
+        let role = await strapi.db.query('plugin::users-permissions.role').findOne({
+          where: { name: preferredRoleName },
         });
+
+        if (!role) {
+          const fallbackRoleName = 'Authenticated';
+          role = await strapi.db.query('plugin::users-permissions.role').findOne({
+            where: { name: fallbackRoleName },
+          });
+        }
+
+        if (!role) {
+          throw new Error('No users-permissions role found for magic-auth user');
+        }
 
         const userData = {
           username: cleanIdentifier, // Use clean identifier for username
@@ -188,7 +208,152 @@ export default ({ strapi }) => ({
         }
       }
 
+      if (user && magic.purpose === 'store_invite') {
+        const storeOwnersRole = await strapi.db.query('plugin::users-permissions.role').findOne({
+          where: { name: 'Store Owners' },
+        });
+
+        const currentRoleRaw = (user as any)?.role;
+        const currentRoleId = Number((user as any)?.role?.id || currentRoleRaw || 0);
+        const currentRoleName = typeof currentRoleRaw === 'object' ? String(currentRoleRaw?.name || '') : '';
+
+        if (storeOwnersRole && currentRoleId !== Number(storeOwnersRole.id)) {
+          user = await strapi.query('plugin::users-permissions.user').update({
+            where: { id: user.id },
+            data: { role: storeOwnersRole.id },
+          });
+          console.info('[AUTH_MAGIC] user role corrected for store invite', {
+            userId: user.id,
+            previousRoleId: currentRoleId || null,
+            previousRoleName: currentRoleName || null,
+            roleId: storeOwnersRole.id,
+            roleName: storeOwnersRole.name || 'Store Owners',
+          });
+        }
+      }
+
       const jwt = strapi.plugin('users-permissions').service('jwt').issue({ id: user.id });
+
+      // Handle store_invite: connect the verified user to the invited store
+      if (magic.purpose === 'store_invite') {
+        if (!magic.meta?.storeDocumentId) {
+          console.warn('[AUTH_MAGIC] store_invite: missing storeDocumentId in meta', { meta: magic.meta });
+        }
+      }
+      if (magic.purpose === 'store_invite' && magic.meta?.storeDocumentId) {
+        const storeDocumentId = String(magic.meta.storeDocumentId);
+        console.info('[AUTH_MAGIC] store_invite: processing', { storeDocumentId, userId: user.id, meta: magic.meta });
+        try {
+          const store = await strapi.documents('api::store.store').findOne({
+            documentId: storeDocumentId,
+            populate: ['users', 'owner'],
+          }) as any;
+
+          console.info('[AUTH_MAGIC] store_invite: store found', { found: !!store, userCount: store?.users?.length });
+
+          if (store) {
+            const alreadyMember = store.users?.some((u: any) => Number(u.id) === Number(user.id));
+            console.info('[AUTH_MAGIC] store_invite: alreadyMember', { alreadyMember, userId: user.id });
+            if (!alreadyMember) {
+              let updateResult: any = null;
+              try {
+                updateResult = await strapi.documents('api::store.store').update({
+                  documentId: storeDocumentId,
+                  data: { users: { connect: [{ id: user.id }] } } as any,
+                });
+              } catch (primaryConnectErr: any) {
+                console.warn('[AUTH_MAGIC] store_invite: primary connect shape failed', {
+                  storeDocumentId,
+                  userId: user.id,
+                  error: primaryConnectErr?.message,
+                });
+                updateResult = await strapi.documents('api::store.store').update({
+                  documentId: storeDocumentId,
+                  data: { users: { connect: [user.id] } } as any,
+                });
+              }
+
+              const verifyStore = await strapi.documents('api::store.store').findOne({
+                documentId: storeDocumentId,
+                populate: ['users'],
+              }) as any;
+              const linked = Array.isArray(verifyStore?.users)
+                ? verifyStore.users.some((u: any) => Number(u?.id) === Number(user.id))
+                : false;
+
+              console.info('[AUTH_MAGIC] store_invite: user connected to store', {
+                userId: user.id,
+                storeDocumentId,
+                updateOk: !!updateResult,
+                linked,
+                resultingUserCount: verifyStore?.users?.length || 0,
+              });
+            }
+
+            const existingMembership = await strapi.documents('api::store-membership.store-membership').findMany({
+              filters: {
+                store: { documentId: storeDocumentId },
+                user: { id: user.id },
+              } as any,
+              limit: 1,
+            }) as any[];
+
+            if (!existingMembership?.length) {
+              await strapi.documents('api::store-membership.store-membership').create({
+                data: {
+                  store: storeDocumentId,
+                  user: user.id,
+                  role: Number(store.owner?.id) === Number(user.id) ? 'owner' : 'editor',
+                  status: 'active',
+                  invited_by: Number(magic.meta?.invitedByUserId) || undefined,
+                  joined_at: new Date().toISOString(),
+                } as any,
+              });
+            }
+
+            strapi.documents('api::markket.markket').create({
+              data: {
+                Key: 'invite.accepted',
+                EventType: 'invite',
+                EventSubType: 'accepted',
+                Source: 'auth-magic.verify',
+                ReceivedAt: new Date().toISOString(),
+                user_key_or_id: String(user.id),
+                Content: {
+                  storeDocumentId,
+                  storeSlug: store.slug,
+                  inviteeEmail: magic.email || null,
+                  inviteeUserId: user.id,
+                  alreadyMember,
+                },
+              },
+            } as any).catch((err: any) => {
+              console.warn('[AUTH_MAGIC] invite.accepted audit log failed (non-fatal):', err?.message);
+            });
+
+            // Send congrats/welcome email to the new member
+            if (magic.email) {
+              const { buildStoreOwnerCongratsEmailHtml } = await import('../../../services/sendgrid-email-templates');
+              const html = buildStoreOwnerCongratsEmailHtml({
+                ownerName: user.username || user.email,
+                storeName: store.title || store.slug || storeDocumentId,
+                storeSlug: store.slug,
+                isFirstStore: false,
+                introLine: `You have been added to ${store.title || 'the store'} on Markketplace.`,
+                adviceLine: 'Explore the dashboard and start publishing content.',
+              });
+              await strapi.plugin('email').service('email').send({
+                to: magic.email,
+                subject: `You joined ${store.title || 'a store'} on Markketplace`,
+                html,
+              });
+            }
+          }
+        } catch (inviteErr: any) {
+          console.error('[AUTH_MAGIC] store_invite side-effect failed:', inviteErr?.message);
+          // Non-fatal — user still gets their JWT
+        }
+      }
 
       ctx.send({
         jwt,

@@ -1,0 +1,33 @@
+{
+  "collectionName": "store_metas",
+  "info": {
+    "singularName": "store-meta",
+    "pluralName": "store-metas",
+    "displayName": "Store Meta",
+    "description": "Visibility and summary data for stores"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "store": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store.store",
+      "inversedBy": "meta"
+    },
+    "show_blog": { "type": "boolean" },
+    "show_events": { "type": "boolean" },
+    "show_shop": { "type": "boolean" },
+    "show_about": { "type": "boolean" },
+    "show_newsletter": { "type": "boolean" },
+    "show_home": { "type": "boolean" },
+    "has_upcoming_events": { "type": "boolean" },
+    "has_events": { "type": "boolean" },
+    "content_summary": { "type": "json" },
+    "magic_pages_detected": { "type": "json" },
+    "settings_overrides": { "type": "json" },
+    "summary": { "type": "json" },
+    "_debug": { "type": "json" }
+  }
+}

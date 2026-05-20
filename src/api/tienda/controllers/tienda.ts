@@ -1,5 +1,12 @@
 import { checkStoreAccess, ERRORS, requireUser, sanitizeStore } from '../../../services/api-auth';
-import { ensureStoreDefaultSendGridList, upsertContactToList, enrollStoreOwnerContact } from '../../../services/sendgrid-marketing';
+import {
+  ensureStoreDefaultSendGridList,
+  upsertContactToList,
+  enrollStoreOwnerContact,
+  sendWelcomeEmail,
+} from '../../../services/sendgrid-marketing';
+import { buildStoreOwnerCongratsEmailHtml, buildInviteEmailHtml } from '../../../services/sendgrid-email-templates';
+import { decryptCredentials } from '../../../services/encryption';
 import {
   verifyItemBelongsToStore,
   autoFillSEO,
@@ -15,6 +22,7 @@ import {
 } from '../helpers';
 import { resolveContentType, RATE_LIMIT_CONFIG } from '../content-registry';
 import { getMediaFieldConfig, getMediaTargetConfig, getMediaTargetsForClient } from '../media-targets';
+import { warmStoreStatsCache } from '../../store/services/dashboard';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_UPLOAD_MIME_PREFIXES = ['image/']; // 'video/', 'audio/'];
@@ -23,6 +31,9 @@ const ALLOWED_UPLOAD_MIME_EXACT = new Set([
   'text/plain',
   'application/json',
 ]);
+const DEFAULT_EVENT_TIMEZONE = 'America/New_York';
+const ISO_UTC_OR_OFFSET_RE = /(Z|[+-]\d{2}:\d{2})$/i;
+const LOCAL_DATETIME_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(\.\d{1,3})?)?$/;
 
 const STORE_MUTABLE_FIELDS = [
   'title',
@@ -139,26 +150,6 @@ type StarterSeedContext = {
   storeSlug: string;
 };
 
-const STARTER_PRODUCT_RELATION_CONFIG = {
-  uid: 'api::product.product',
-  titleField: 'Name',
-  mutableFields: [],
-  storeField: 'stores',
-  storeRelationType: 'manyToMany',
-  defaultPopulate: [],
-  hasDraftAndPublish: true,
-} as const;
-
-const STARTER_EVENT_RELATION_CONFIG = {
-  uid: 'api::event.event',
-  titleField: 'Name',
-  mutableFields: [],
-  storeField: 'stores',
-  storeRelationType: 'manyToMany',
-  defaultPopulate: [],
-  hasDraftAndPublish: true,
-} as const;
-
 function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
   return [
     {
@@ -171,6 +162,15 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
             {
               type: 'text',
               text: `Welcome to ${storeName}`,
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: 'This starter homepage is here to help you launch quickly. Replace this copy with your own voice, offer, and links.',
             },
           ],
         },
@@ -211,8 +211,17 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
             },
             {
               type: 'text',
-              text: 'Visit our blog and subscribe for updates to learn more',
+              text: ' Visit our blog and subscribe for updates to learn more.',
               bold: true,
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: 'Use this section to explain who you are, where to find you, and what you are building for your community.',
             },
           ],
         },
@@ -261,26 +270,13 @@ async function seedAndPublishStarterPages(params: {
   );
 }
 
-function buildStarterEventWindow(baseDate = new Date()) {
-  const startDate = new Date(baseDate);
-  startDate.setDate(startDate.getDate() + 7);
-  startDate.setHours(17, 0, 0, 0);
-
-  const endDate = new Date(startDate);
-  endDate.setHours(18, 0, 0, 0);
-
-  return {
-    startDate,
-    endDate,
-  };
-}
-
 async function seedStarterArticle({ storeDocumentId, storeName, storeSlug }: StarterSeedContext) {
   const starterArticle = await strapi.documents('api::article.article').create({
     data: {
       Title: `Welcome to ${storeName}`,
       slug: `welcome-to-${storeSlug}`,
       store: storeDocumentId,
+      description: 'Your store is live. This placeholder article helps you publish your first update quickly.',
       SEO: {
         metaTitle: `Welcome to ${storeName}`,
         metaDescription: `We are live and excited to share what is coming next at ${storeName}.`,
@@ -289,38 +285,6 @@ async function seedStarterArticle({ storeDocumentId, storeName, storeSlug }: Sta
   });
 
   await strapi.documents('api::article.article').publish({ documentId: starterArticle.documentId });
-}
-
-async function seedStarterProduct({ defaultLocale, storeDocumentId, storeSlug }: StarterSeedContext) {
-  await strapi.documents('api::product.product').create({
-    locale: defaultLocale,
-    data: {
-      Name: 'Starter Product',
-      slug: `starter-product-${storeSlug}`,
-      Description: 'A happy starter product to customize and launch in your new store.',
-      active: true,
-      usd_price: 0,
-      ...buildStoreRelation(storeDocumentId, STARTER_PRODUCT_RELATION_CONFIG as any),
-    } as any,
-  });
-}
-
-async function seedStarterEvent({ defaultLocale, storeDocumentId, storeName, storeSlug }: StarterSeedContext) {
-  const eventWindow = buildStarterEventWindow();
-
-  await strapi.documents('api::event.event').create({
-    locale: defaultLocale,
-    data: {
-      Name: `${storeName} Launch Celebration`,
-      slug: `launch-party-${storeSlug}`,
-      Description: `Join us on Zoom in one week to celebrate the launch of ${storeName}!`,
-      startDate: eventWindow.startDate.toISOString(),
-      endDate: eventWindow.endDate.toISOString(),
-      active: true,
-      usd_price: 0,
-      ...buildStoreRelation(storeDocumentId, STARTER_EVENT_RELATION_CONFIG as any),
-    } as any,
-  });
 }
 
 async function seedStarterContent(context: StarterSeedContext & { ownerId: number | string }) {
@@ -332,8 +296,214 @@ async function seedStarterContent(context: StarterSeedContext & { ownerId: numbe
   });
 
   await seedStarterArticle(context);
-  await seedStarterProduct(context);
-  await seedStarterEvent(context);
+}
+
+function normalizeEventDatesToUTC(input: Record<string, any>, config: any): Record<string, any> {
+  if (!input || typeof input !== 'object') return input;
+  if (config?.uid !== 'api::event.event') return input;
+
+  const next = { ...input };
+  const timezoneAliases = ['timeZone', 'clientTimezone', 'browserTimezone'];
+  if (!Object.prototype.hasOwnProperty.call(next, 'timezone')) {
+    for (const alias of timezoneAliases) {
+      if (Object.prototype.hasOwnProperty.call(next, alias)) {
+        next.timezone = next[alias];
+        break;
+      }
+    }
+  }
+
+  let resolvedTimezone: string | null = null;
+  if (Object.prototype.hasOwnProperty.call(next, 'timezone')) {
+    const normalizedTimezone = normalizeTimezoneInput(next.timezone);
+    if (normalizedTimezone === null) {
+      throw new Error('Invalid event timezone. Please send a valid IANA timezone like "America/New_York".');
+    }
+    if (normalizedTimezone) {
+      resolvedTimezone = normalizedTimezone;
+      next.timezone = normalizedTimezone;
+    }
+  }
+
+  let hasDateFieldInPayload = false;
+  for (const field of ['startDate', 'endDate']) {
+    if (!Object.prototype.hasOwnProperty.call(next, field)) continue;
+    hasDateFieldInPayload = true;
+    const raw = next[field];
+    if (!raw) continue;
+
+    const normalizedDate = normalizeEventDateValue(raw, resolvedTimezone);
+    if (!normalizedDate) {
+      throw new Error(`Invalid event ${field}. Please send an ISO datetime or datetime-local string.`);
+    }
+    next[field] = normalizedDate;
+  }
+
+  // Do not silently overwrite timezone on updates that do not touch date/time fields.
+  if (
+    hasDateFieldInPayload
+    && Object.prototype.hasOwnProperty.call(next, 'timezone')
+    && (!next.timezone || String(next.timezone).trim().length === 0)
+  ) {
+    next.timezone = DEFAULT_EVENT_TIMEZONE;
+  }
+
+  return next;
+}
+
+function resolveSendGridCredentialsForTienda(extension: any): { api_key: string; use_default?: boolean } | null {
+  if (process.env.SENDGRID_API_KEY) {
+    return {
+      api_key: '',
+      use_default: true,
+    };
+  }
+
+  if (!extension?.credentials) {
+    return null;
+  }
+
+  try {
+    const creds = decryptCredentials(extension.credentials);
+    if (creds?.api_key || creds?.use_default) {
+      return creds;
+    }
+  } catch (error: any) {
+    console.warn('[TIENDA_SENDGRID] Failed to decrypt extension credentials:', error?.message);
+  }
+
+  if (typeof extension?.credentials?.api_key === 'string' && extension.credentials.api_key.trim()) {
+    return extension.credentials;
+  }
+
+  return null;
+}
+
+function resolveSendGridCredentialSource(credentials: { api_key: string; use_default?: boolean } | null): 'env' | 'extension' | 'unknown' {
+  if (!credentials) {
+    return 'unknown';
+  }
+
+  if (credentials.use_default) {
+    return 'env';
+  }
+
+  return 'extension';
+}
+
+function normalizeTimezoneInput(value: any): string | '' | null {
+  if (value === undefined || value === null) {
+    return '';
+  }
+
+  const timezone = String(value).trim();
+  if (!timezone) {
+    return '';
+  }
+
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+    const canonical = formatter.resolvedOptions().timeZone;
+    return canonical || timezone;
+  } catch {
+    return null;
+  }
+}
+
+function getTimeZoneOffsetMs(date: Date, timeZone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      map[part.type] = part.value;
+    }
+  }
+
+  const asUtc = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour),
+    Number(map.minute),
+    Number(map.second),
+    0,
+  );
+
+  return asUtc - date.getTime();
+}
+
+function convertLocalDateTimeToUtcIso(rawValue: string, timezone: string): string | null {
+  const match = rawValue.match(LOCAL_DATETIME_RE);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6] || '0');
+  const msText = match[7] || '';
+  const millisecond = msText ? Number(msText.slice(1).padEnd(3, '0')) : 0;
+
+  const localWallClockAsUtc = Date.UTC(year, month, day, hour, minute, second, millisecond);
+
+  let corrected = localWallClockAsUtc;
+  for (let i = 0; i < 4; i += 1) {
+    const offsetMs = getTimeZoneOffsetMs(new Date(corrected), timezone);
+    const next = localWallClockAsUtc - offsetMs;
+    if (next === corrected) {
+      break;
+    }
+    corrected = next;
+  }
+
+  return new Date(corrected).toISOString();
+}
+
+function normalizeEventDateValue(rawValue: any, timezone: string | null): string | null {
+  if (rawValue instanceof Date) {
+    return Number.isNaN(rawValue.getTime()) ? null : rawValue.toISOString();
+  }
+
+  if (typeof rawValue === 'number') {
+    const parsedFromNumber = new Date(rawValue);
+    return Number.isNaN(parsedFromNumber.getTime()) ? null : parsedFromNumber.toISOString();
+  }
+
+  if (typeof rawValue !== 'string') {
+    const parsed = new Date(rawValue);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  const trimmed = rawValue.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (ISO_UTC_OR_OFFSET_RE.test(trimmed)) {
+    const withOffset = new Date(trimmed);
+    return Number.isNaN(withOffset.getTime()) ? null : withOffset.toISOString();
+  }
+
+  if (timezone && LOCAL_DATETIME_RE.test(trimmed)) {
+    return convertLocalDateTimeToUtcIso(trimmed, timezone);
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
 function getRequestData(ctx: any): Record<string, any> {
@@ -679,6 +849,102 @@ async function hasPublishedContentVersion(
   return !!publishedItem;
 }
 
+function formatDashboardUser(user: any) {
+  if (!user?.id) {
+    return null;
+  }
+
+  const email = typeof user.email === 'string' ? user.email.trim() : '';
+  const emailLocalPart = email.includes('@') ? email.split('@')[0] : '';
+
+  return {
+    id: user.id,
+    username: user.username || null,
+    email: user.email || null,
+    displayName: user.displayName || user.username || emailLocalPart || null,
+    confirmed: typeof user.confirmed === 'boolean' ? user.confirmed : null,
+  };
+}
+
+async function buildStoreMembersPayload(strapi: any, store: any) {
+  const membershipDocuments = (strapi.documents as any)('api::store-membership.store-membership');
+  const membershipRows = await membershipDocuments.findMany({
+    filters: {
+      store: { documentId: store.documentId },
+      status: 'active',
+    } as any,
+    populate: ['user', 'invited_by'],
+    sort: [{ joined_at: 'asc' }, { createdAt: 'asc' }],
+    limit: 200,
+  }) as any[];
+
+  const membersByUserId = new Map<number, any>();
+  for (const row of membershipRows || []) {
+    const memberUser = formatDashboardUser(row?.user);
+    if (!memberUser?.id) {
+      continue;
+    }
+
+    membersByUserId.set(Number(memberUser.id), {
+      user: memberUser,
+      role: row?.role || 'editor',
+      status: row?.status || 'active',
+      joinedAt: row?.joined_at || row?.createdAt || null,
+      invitedBy: formatDashboardUser(row?.invited_by),
+      source: 'membership',
+    });
+  }
+
+  const ownerId = Number(store?.owner?.id) || null;
+  const legacyUsers = Array.isArray(store?.users) ? store.users : [];
+  for (const legacyUser of legacyUsers) {
+    const memberUser = formatDashboardUser(legacyUser);
+    if (!memberUser?.id || membersByUserId.has(Number(memberUser.id))) {
+      continue;
+    }
+
+    membersByUserId.set(Number(memberUser.id), {
+      user: memberUser,
+      role: ownerId && Number(memberUser.id) === ownerId ? 'owner' : 'editor',
+      status: 'active',
+      joinedAt: null,
+      invitedBy: null,
+      source: 'legacy_users',
+    });
+  }
+
+  if (ownerId && !membersByUserId.has(ownerId) && store?.owner) {
+    const ownerUser = formatDashboardUser(store.owner);
+    if (ownerUser) {
+      membersByUserId.set(ownerId, {
+        user: ownerUser,
+        role: 'owner',
+        status: 'active',
+        joinedAt: null,
+        invitedBy: null,
+        source: 'owner_relation',
+      });
+    }
+  }
+
+  const members = Array.from(membersByUserId.values()).sort((left: any, right: any) => {
+    if (left.role === 'owner' && right.role !== 'owner') return -1;
+    if (right.role === 'owner' && left.role !== 'owner') return 1;
+    const leftTime = new Date(left.joinedAt || 0).getTime();
+    const rightTime = new Date(right.joinedAt || 0).getTime();
+    return leftTime - rightTime;
+  });
+
+  const owner = members.find((member: any) => member.role === 'owner') || null;
+  return {
+    owner,
+    members,
+    total: members.length,
+    membershipCount: membershipRows?.length || 0,
+    legacyUserCount: legacyUsers.length,
+  };
+}
+
 export default {
   async me(ctx: any) {
     const user = requireUser(ctx);
@@ -686,12 +952,156 @@ export default {
       return;
     }
 
-    return ctx.send({
+    const includeCombinedContent = ['1', 'true', 'yes'].includes(String(ctx.query?.includeContent || '').toLowerCase());
+
+    const payload: any = {
       ok: true,
       actor: {
         id: user.id,
         username: user.username,
         email: user.email,
+      },
+    };
+
+    if (includeCombinedContent) {
+      const page = Math.max(1, Number.parseInt(String(ctx.query?.page || '1'), 10) || 1);
+      const pageSize = Math.min(100, Math.max(1, Number.parseInt(String(ctx.query?.pageSize || '25'), 10) || 25));
+      const searchTerm = String(ctx.query?.search || '').trim();
+      const requestedTypes = String(ctx.query?.types || '')
+        .split(',')
+        .map((value: string) => normalizeContentTypeKey(value))
+        .filter(Boolean);
+      const contentTypes = requestedTypes.length > 0
+        ? Array.from(new Set(requestedTypes))
+        : ['article', 'page', 'product', 'event'];
+
+      const storesFromUsers = await strapi.documents('api::store.store').findMany({
+        filters: { users: { id: user.id } },
+        fields: ['documentId', 'title', 'slug'],
+      }) as any[];
+
+      const storesFromAdmins = await strapi.documents('api::store.store').findMany({
+        filters: { admin_users: { id: user.id } },
+        fields: ['documentId', 'title', 'slug'],
+      }) as any[];
+
+      const uniqueStores = new Map<string, any>();
+      for (const store of [...(storesFromUsers || []), ...(storesFromAdmins || [])]) {
+        if (store?.documentId) {
+          uniqueStores.set(store.documentId, store);
+        }
+      }
+
+      const perTypeResults = await Promise.all(contentTypes.map(async (contentType: string) => {
+        try {
+          const config = resolveContentType(contentType);
+          const documentsApi = (strapi.documents as any)(config.uid);
+          const storeIds = Array.from(uniqueStores.keys());
+          if (storeIds.length === 0) {
+            return [];
+          }
+
+          const filters: any[] = [
+            {
+              [config.storeField]: {
+                documentId: { $in: storeIds },
+              },
+            },
+          ];
+
+          if (searchTerm) {
+            const searchFields: any[] = [
+              { [config.titleField]: { $containsi: searchTerm } },
+              { keywords: { $containsi: searchTerm } },
+              { description: { $containsi: searchTerm } },
+              { Description: { $containsi: searchTerm } },
+            ];
+            if (config.contentField) {
+              searchFields.push({ [config.contentField]: { $containsi: searchTerm } });
+            }
+            filters.push({ $or: searchFields });
+          }
+
+          const items = await documentsApi.findMany({
+            filters: filters.length === 1 ? filters[0] : { $and: filters },
+            populate: config.defaultPopulate,
+            sort: { updatedAt: 'desc' },
+            limit: 100,
+          });
+
+          return (items || []).map((item: any) => {
+            const normalized = sanitizeContentItem(item, config);
+            const relatedStores = Array.isArray(normalized?.stores)
+              ? normalized.stores
+              : (normalized?.store ? [normalized.store] : []);
+            const primaryStore = relatedStores?.[0] || null;
+
+            return {
+              contentType,
+              documentId: normalized.documentId,
+              title: normalized?.[config.titleField] || null,
+              updatedAt: normalized.updatedAt || normalized.createdAt || null,
+              store: primaryStore
+                ? {
+                  documentId: primaryStore.documentId,
+                  title: primaryStore.title || null,
+                  slug: primaryStore.slug || null,
+                }
+                : null,
+              item: normalized,
+            };
+          });
+        } catch {
+          return [];
+        }
+      }));
+
+      const combinedItems = perTypeResults
+        .flat()
+        .sort((left: any, right: any) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
+
+      const start = (page - 1) * pageSize;
+      payload.combinedContent = {
+        data: combinedItems.slice(start, start + pageSize),
+        pagination: {
+          page,
+          pageSize,
+          total: combinedItems.length,
+          pages: Math.ceil(combinedItems.length / pageSize),
+        },
+      };
+    }
+
+    return ctx.send(payload);
+  },
+
+  async listMembers(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) return;
+
+    const ref = String(ctx.params?.ref || '').trim();
+    if (!ref) return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+
+    const access = await checkStoreAccess(strapi, user.id, ref);
+    if (!access?.store || !access?.hasAccess) {
+      return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
+    }
+
+    const payload = await buildStoreMembersPayload(strapi, access.store);
+
+    return ctx.send({
+      ok: true,
+      store: {
+        documentId: access.store.documentId,
+        slug: access.store.slug,
+        title: access.store.title || null,
+      },
+      owner: payload.owner,
+      members: payload.members,
+      total: payload.total,
+      counts: {
+        memberships: payload.membershipCount,
+        legacyUsers: payload.legacyUserCount,
       },
     });
   },
@@ -705,12 +1115,12 @@ export default {
     try {
       const storesFromUsers = await strapi.documents('api::store.store').findMany({
         filters: { users: { id: user.id } },
-        populate: ['settings', 'users', 'admin_users'],
+        populate: ['settings', 'users', 'admin_users', 'owner'] as any,
       }) as any[];
 
       const storesFromAdmins = await strapi.documents('api::store.store').findMany({
         filters: { admin_users: { id: user.id } },
-        populate: ['settings', 'users', 'admin_users'],
+        populate: ['settings', 'users', 'admin_users', 'owner'] as any,
       }) as any[];
 
       const uniqueByDocumentId = new Map<string, any>();
@@ -752,24 +1162,65 @@ export default {
     try {
       await beforeActivities(ctx, 'store.create', data);
 
+      const storeDocuments = (strapi.documents as any)('api::store.store');
+      const membershipDocuments = (strapi.documents as any)('api::store-membership.store-membership');
+
+      const existingUserStores = await strapi.documents('api::store.store').findMany({
+        filters: { users: { id: user.id } },
+        fields: ['documentId'],
+      });
+      const existingAdminStores = await strapi.documents('api::store.store').findMany({
+        filters: { admin_users: { id: user.id } },
+        fields: ['documentId'],
+      });
+      const existingStoreIds = new Set<string>([
+        ...((existingUserStores || []).map((entry: any) => String(entry.documentId)).filter(Boolean)),
+        ...((existingAdminStores || []).map((entry: any) => String(entry.documentId)).filter(Boolean)),
+      ]);
+      const associatedStoreCountBeforeCreate = existingStoreIds.size;
+
       const defaultLocale = await resolveDefaultLocaleCode(strapi);
 
-      const created = await strapi.documents('api::store.store').create({
+      const created = await storeDocuments.create({
         locale: defaultLocale,
-        data: data as any,
-        populate: ['settings', 'users', 'admin_users'],
+        data: {
+          ...(data as any),
+          owner: user.id,
+        },
+        populate: ['settings', 'users', 'admin_users', 'owner'],
       }) as any;
 
-      const updated = await strapi.documents('api::store.store').update({
+      const updated = await storeDocuments.update({
         documentId: created.documentId,
         locale: defaultLocale,
         data: {
+          owner: user.id,
           users: {
             connect: [user.id],
           },
         },
-        populate: ['settings', 'users', 'admin_users'],
+        populate: ['settings', 'users', 'admin_users', 'owner'],
       }) as any;
+
+      const existingOwnerMembership = await membershipDocuments.findMany({
+        filters: {
+          store: { documentId: created.documentId },
+          user: { id: user.id },
+        } as any,
+        limit: 1,
+      }) as any[];
+
+      if (!existingOwnerMembership?.length) {
+        await membershipDocuments.create({
+          data: {
+            store: created.documentId,
+            user: user.id,
+            role: 'owner',
+            status: 'active',
+            joined_at: new Date().toISOString(),
+          } as any,
+        });
+      }
 
       await strapi.documents('api::store.store').publish({
         documentId: created.documentId,
@@ -785,6 +1236,35 @@ export default {
           lastName: user.lastname || undefined,
         }).catch((err: any) => {
           console.warn('[TIENDA_STORE_CREATE] Owner enrollment skipped:', err?.message);
+        });
+
+        const isFirstAssociatedStore = associatedStoreCountBeforeCreate === 0;
+        const introLine = isFirstAssociatedStore
+          ? 'This is your first store on Markketplace. Start by updating your homepage, adding one product, and setting your brand details.'
+          : 'Your new store is ready. Add content, products, and event details to make it discoverable quickly.';
+        const adviceLine = 'Platform advice: keep your About page clear, use plain titles, and publish one update every week for momentum.';
+        const html = buildStoreOwnerCongratsEmailHtml({
+          ownerName: user.firstname || user.username || undefined,
+          storeName: String(data.title || ''),
+          storeSlug: String(data.slug || ''),
+          isFirstStore: isFirstAssociatedStore,
+          introLine,
+          adviceLine,
+        });
+
+        sendWelcomeEmail({
+          credentials: { use_default: true, api_key: '' },
+          toEmail: user.email,
+          subject: isFirstAssociatedStore
+            ? `Welcome to Markketplace, ${user.firstname || user.username || 'store owner'}!`
+            : `Congrats on your new store: ${data.title}`,
+          htmlContent: html,
+        }).then(result => {
+          if (!result.success) {
+            console.warn('[TIENDA_STORE_CREATE] Congrats email skipped:', result.error || result.message);
+          }
+        }).catch((err: any) => {
+          console.warn('[TIENDA_STORE_CREATE] Congrats email pipeline skipped:', err?.message);
         });
       }
 
@@ -811,6 +1291,11 @@ export default {
           stack: seedError?.stack,
         });
       }
+
+      // Warm dashboard stats cache so owner UI is fast on first load.
+      warmStoreStatsCache(created.documentId).catch((cacheError: any) => {
+        console.warn('[TIENDA_STORE_CREATE] Dashboard stats warm-up skipped:', cacheError?.message);
+      });
 
       await afterActivities(ctx, 'store.create', { store: updated || created });
 
@@ -865,7 +1350,7 @@ export default {
       const updated = await strapi.documents('api::store.store').update({
         documentId: access.store.documentId,
         data,
-        populate: ['settings', 'users', 'admin_users'],
+        populate: ['settings', 'users', 'admin_users', 'owner'] as any,
       }) as any;
 
       await strapi.documents('api::store.store').publish({
@@ -913,7 +1398,7 @@ export default {
 
       const refreshed = await strapi.documents('api::store.store').findOne({
         documentId: access.store.documentId,
-        populate: ['settings', 'users', 'admin_users'],
+        populate: ['settings', 'users', 'admin_users', 'owner'] as any,
         ...(requestedLocale ? { locale: requestedLocale, status: 'published' as const } : { status: 'published' as const }),
       }) as any;
 
@@ -955,7 +1440,7 @@ export default {
 
       const refreshed = await strapi.documents('api::store.store').findOne({
         documentId: access.store.documentId,
-        populate: ['settings', 'users', 'admin_users'],
+        populate: ['settings', 'users', 'admin_users', 'owner'] as any,
         ...(requestedLocale ? { locale: requestedLocale } : {}),
       }) as any;
 
@@ -1174,12 +1659,19 @@ export default {
         const searchTerm = String(ctx.query.search).trim();
         if (searchTerm.length > 0) {
           const titleField = config.titleField;
+          const searchFields: any[] = [
+            { [titleField]: { $containsi: searchTerm } },
+            { keywords: { $containsi: searchTerm } },
+            { description: { $containsi: searchTerm } },
+            { Description: { $containsi: searchTerm } },
+          ];
+
+          if (config.contentField) {
+            searchFields.push({ [config.contentField]: { $containsi: searchTerm } });
+          }
+
           filterClauses.push({
-            $or: [
-              { [titleField]: { $containsi: searchTerm } },
-              { keywords: { $containsi: searchTerm } }, // Search tags/keywords too
-              { description: { $containsi: searchTerm } },
-            ],
+            $or: searchFields,
           });
 
           query.filters = filterClauses.length === 1 ? filterClauses[0] : { $and: filterClauses };
@@ -1228,7 +1720,8 @@ export default {
 
     try {
       const config = resolveContentType(contentType);
-      const inputData = normalizeInputForContentType(rawInputData, config);
+      const normalizedInputData = normalizeInputForContentType(rawInputData, config);
+      const inputData = normalizeEventDatesToUTC(normalizedInputData, config);
       const access = await checkStoreAccess(strapi, user.id, ref);
 
       if (!access.hasAccess) {
@@ -1302,6 +1795,9 @@ export default {
       });
     } catch (error: any) {
       console.error(`[TIENDA_CREATE_CONTENT] Unexpected error for ${contentType}:`, error.message);
+      if (error.message?.startsWith('Invalid event timezone') || error.message?.startsWith('Invalid event startDate') || error.message?.startsWith('Invalid event endDate')) {
+        return ctx.badRequest(error.message);
+      }
       if (error.message?.includes('Unknown content type')) {
         return ctx.badRequest('Invalid content type');
       }
@@ -1377,7 +1873,8 @@ export default {
 
     try {
       const config = resolveContentType(contentType);
-      const inputData = normalizeInputForContentType(rawInputData, config);
+      const normalizedInputData = normalizeInputForContentType(rawInputData, config);
+      const inputData = normalizeEventDatesToUTC(normalizedInputData, config);
       const access = await checkStoreAccess(strapi, user.id, ref);
 
       if (!access.hasAccess) {
@@ -1527,6 +2024,9 @@ export default {
       });
     } catch (error: any) {
       console.error(`[TIENDA_UPDATE_CONTENT] Unexpected error for ${contentType}/${itemId}:`, error.message);
+      if (error.message?.startsWith('Invalid event timezone') || error.message?.startsWith('Invalid event startDate') || error.message?.startsWith('Invalid event endDate')) {
+        return ctx.badRequest(error.message);
+      }
       if (error.message?.includes('Unknown content type')) {
         return ctx.badRequest('Invalid content type');
       }
@@ -1809,18 +2309,26 @@ export default {
       ];
 
       const sgExtension = allExtensions.find(
-        (ext: any) => ext?.active && typeof ext?.credentials?.api_key === 'string'
+        (ext: any) => ext?.active !== false && String(ext?.key || '').includes('sendgrid')
       );
 
-      const credentials = sgExtension?.credentials || { use_default: true };
+      const credentials = resolveSendGridCredentialsForTienda(sgExtension);
+      if (!credentials) {
+        return ctx.serviceUnavailable(
+          'SendGrid credentials unavailable for this store/event. Configure extension credentials or SENDGRID_API_KEY.'
+        );
+      }
       const sgConfig = sgExtension?.config || {};
+      const credentialSource = resolveSendGridCredentialSource(credentials);
+      const existingListId = sgConfig.sendgrid_list_id || sgConfig.default_list_id || undefined;
+      const listSource = existingListId ? 'configured' : 'auto';
 
       // Use the store's canonical all-subscribers list for RSVPs.
       // Event segmentation is handled via tags (newsletter-phase-2).
       const listResult = await ensureStoreDefaultSendGridList({
         credentials,
         storeDocumentId: access.store.documentId,
-        existingListId: sgConfig.sendgrid_list_id || undefined,
+        existingListId,
       });
 
       if (!listResult.success || !listResult.listId) {
@@ -1888,6 +2396,8 @@ export default {
         eventId,
         listId,
         listCreated: listResult.created,
+        listSource,
+        credentialSource,
         ...results,
       });
 
@@ -1898,6 +2408,8 @@ export default {
           eventName: event.Name,
           sendgridListId: listId,
           sendgridListCreated: listResult.created,
+          sendgridCredentialSource: credentialSource,
+          sendgridListSource: listSource,
           ...results,
           total: rsvps.length,
         },
@@ -2195,6 +2707,258 @@ export default {
       }
 
       return ctx.internalServerError(`Upload failed. requestId=${requestId}`);
+    }
+  },
+
+  /**
+   * GET /api/tienda/stores/:ref/invites
+   * List store invites sent via magic link.
+   * Returns pending, accepted, and expired invites for the store.
+   * The magic `code` value is never returned.
+   */
+  async listInvites(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) return;
+
+    const ref = String(ctx.params?.ref || '').trim();
+    if (!ref) return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+
+    const access = await checkStoreAccess(strapi, user.id, ref);
+    if (!access?.store || !access?.hasAccess) {
+      return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
+    }
+
+    const store = access.store;
+
+    const results = await strapi.documents('api::auth-magic.magic-code').findMany({
+      filters: {
+        store: { documentId: store.documentId },
+        purpose: 'store_invite',
+      } as any,
+      fields: ['email', 'used', 'usedAt', 'expiresAt', 'createdAt', 'updatedAt', 'meta'],
+      sort: { updatedAt: 'desc' },
+      pagination: { pageSize: 50, page: 1 },
+    } as any);
+
+    const now = new Date();
+    const latestInviteByEmail = new Map<string, any>();
+
+    for (const row of results || []) {
+      const emailKey = String(row?.email || '').trim().toLowerCase();
+      if (!emailKey || latestInviteByEmail.has(emailKey)) {
+        continue;
+      }
+
+      latestInviteByEmail.set(emailKey, row);
+    }
+
+    // Collect unique inviter user IDs from meta so we can resolve display names
+    const inviterIds = new Set<number>();
+    for (const row of latestInviteByEmail.values()) {
+      const id = Number(row?.meta?.invitedByUserId);
+      if (id) inviterIds.add(id);
+    }
+
+    const inviterMap = new Map<number, string>();
+    if (inviterIds.size > 0) {
+      const inviters = await strapi.query('plugin::users-permissions.user').findMany({
+        where: { id: { $in: Array.from(inviterIds) } },
+        select: ['id', 'username', 'email'],
+      });
+      for (const u of inviters || []) {
+        inviterMap.set(Number(u.id), u.username || u.email || String(u.id));
+      }
+    }
+
+    const invites = Array.from(latestInviteByEmail.values()).map((row: any) => {
+      const inviterUserId = Number(row?.meta?.invitedByUserId) || null;
+      return {
+        email: row.email,
+        status: row.used
+          ? 'accepted'
+          : new Date(row.expiresAt) < now
+            ? 'expired'
+            : 'pending',
+        sentAt: row.updatedAt || row.createdAt,
+        acceptedAt: row.usedAt || null,
+        expiresAt: row.expiresAt,
+        invitedBy: inviterUserId ? (inviterMap.get(inviterUserId) || String(inviterUserId)) : null,
+      };
+    });
+
+    return ctx.send({
+      store: { documentId: store.documentId, slug: store.slug },
+      invites,
+      total: invites.length,
+    });
+  },
+
+  /**
+   * POST /api/tienda/stores/:ref/invite
+   * Send a store invite magic link to an email address.
+   * Only store owners/members can invite. The recipient clicks the link,
+   * verifies the code, gets a JWT, and is connected to the store automatically.
+   */
+  async inviteUser(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) return;
+
+    const ref = String(ctx.params?.ref || '').trim();
+    if (!ref) return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+
+    const access = await checkStoreAccess(strapi, user.id, ref);
+    if (!access?.store || !access?.hasAccess) {
+      return ctx.forbidden(ERRORS.STORE_NOT_FOUND);
+    }
+
+    const { email } = ctx.request.body || {};
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return ctx.badRequest('A valid email address is required.');
+    }
+
+    const safeEmail = email.trim().toLowerCase();
+    const store = access.store;
+    const membershipDocuments = (strapi.documents as any)('api::store-membership.store-membership');
+
+    const invitedUser = await strapi.query('plugin::users-permissions.user').findOne({
+      where: { email: safeEmail },
+    });
+
+    const existingActiveMembership = invitedUser?.id
+      ? await membershipDocuments.findMany({
+        filters: {
+          store: { documentId: store.documentId },
+          user: { id: invitedUser.id },
+          status: 'active',
+        } as any,
+        limit: 1,
+      }) as any[]
+      : [];
+
+    if (
+      invitedUser?.id
+      && (
+        existingActiveMembership.length > 0
+        || (
+          Array.isArray(store.users)
+          && store.users.some((storeUser: any) => Number(storeUser?.id) === Number(invitedUser.id))
+        )
+      )
+    ) {
+      return ctx.conflict('That user is already a member of this store.');
+    }
+
+    const existingInvites = await strapi.documents('api::auth-magic.magic-code').findMany({
+      filters: {
+        store: { documentId: store.documentId },
+        purpose: 'store_invite',
+        email: safeEmail,
+      } as any,
+      sort: { updatedAt: 'desc' },
+      pagination: { pageSize: 100, page: 1 },
+    } as any);
+
+    const existingInvite = existingInvites?.[0] || null;
+    const duplicateInvites = (existingInvites || []).slice(1);
+
+    try {
+      if (duplicateInvites.length > 0) {
+        await Promise.all(
+          duplicateInvites.map((row: any) => strapi.documents('api::auth-magic.magic-code').update({
+            documentId: row.documentId,
+            data: {
+              used: true,
+              usedAt: new Date().toISOString(),
+              expiresAt: new Date().toISOString(),
+            },
+          }))
+        );
+      }
+
+      const codeData = await strapi.service('api::auth-magic.auth-magic').generateCode(
+        safeEmail,
+        store.documentId,
+        'email',
+        ctx.request.ip,
+        ctx.request.header['user-agent'],
+        {
+          purpose: 'store_invite',
+          meta: {
+            storeDocumentId: store.documentId,
+            storeTitle: store.title || store.slug,
+            invitedByUserId: user.id,
+          },
+          expiresInMinutes: 60 * 24, // 24-hour invite window
+          existingDocumentId: existingInvite?.documentId,
+        }
+      );
+
+      const storeDomain = typeof store?.settings?.domain === 'string' && store.settings.domain.trim()
+        ? store.settings.domain.trim()
+        : 'https://de.markket.place';
+      const normalizedStoreDomain = /^https?:\/\//i.test(storeDomain)
+        ? storeDomain
+        : `https://${storeDomain}`;
+      const inviteUrl = new URL(`/auth/magic?code=${codeData.code}`, normalizedStoreDomain).toString();
+      const inviterName = String(user?.username || user?.email || '').trim() || undefined;
+      const isResend = Boolean(existingInvite);
+
+      const inviteHtml = buildInviteEmailHtml({
+        storeName: store.title || store.slug || 'Markketplace',
+        storeSlug: store.slug,
+        invitedByName: inviterName,
+        magicLinkUrl: inviteUrl,
+        isResend,
+      });
+
+      await strapi.plugin('email').service('email').send({
+        to: safeEmail,
+        subject: isResend
+          ? `${store.title || 'Markketplace'}: your refreshed invite link`
+          : `${store.title || 'Markketplace'} invited you to be an editor`,
+        text: isResend
+          ? `A new invite link is ready: ${inviteUrl}`
+          : `You were invited to edit ${store.title || store.slug || 'a store'}: ${inviteUrl}`,
+        html: inviteHtml,
+      });
+
+      strapi.documents('api::markket.markket').create({
+        data: {
+          Key: isResend ? 'invite.resent' : 'invite.sent',
+          EventType: 'invite',
+          EventSubType: isResend ? 'resent' : 'sent',
+          Source: 'tienda.inviteUser',
+          ReceivedAt: new Date().toISOString(),
+          user_key_or_id: String(user.id),
+          Content: {
+            storeDocumentId: store.documentId,
+            storeSlug: store.slug,
+            inviteeEmail: safeEmail,
+            inviterUserId: user.id,
+            isResend,
+          },
+        },
+      } as any).catch((err: any) => {
+        console.warn('[TIENDA] invite audit log failed (non-fatal):', err?.message);
+      });
+
+      return ctx.send({
+        ok: true,
+        isResend,
+        message: isResend
+          ? `Invite re-sent to ${safeEmail} with a new link.`
+          : `Invite sent to ${safeEmail}.`,
+        store: {
+          documentId: store.documentId,
+          slug: store.slug,
+        },
+      });
+    } catch (error: any) {
+      console.error('[TIENDA] inviteUser failed:', { storeId: store.documentId, error: error?.message });
+      if (error?.message?.includes('Rate limit')) {
+        return ctx.tooManyRequests('Too many invites sent recently. Please wait before sending another.');
+      }
+      return ctx.internalServerError('Failed to send invite.');
     }
   },
 };

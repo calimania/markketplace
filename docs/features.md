@@ -1,24 +1,16 @@
-## Features Board
+# Features
 
-This file is the execution board for Markketplace.
 
-Use it for active work only:
-- keep the current sprint tight and testable
-- describe each active item with scope, dependencies, risk, compatibility impact, done criteria, and verification
-- keep historical completed work in the archive section at the bottom
+## Upcoming
 
-Do not add raw ideas directly here. Promote ideas into this board only when they are concrete enough to execute.
 
-## Current Sprint
-
-- [ ] Tienda protected store lifecycle
-- [x] Rewrite features board
-- [ ] Fetch images from pexels collection
-- [ ] Fetch images from Getty collection
-- [ ] Fetch data from posthog api, query by [domain, slug]
+## May 2026
 
 ### 1. Tienda protected store lifecycle
-Status: in progress
+
+- [x] Tienda protected store lifecycle
+- [x] Rewrite features board
+- [ ] Fetch data from posthog api, query by [domain, slug]
 
 Scope:
 - keep all new protected store routes under `/api/tienda/*`
@@ -30,49 +22,43 @@ Dependencies:
 - store ownership checks against `store.users` and `store.admin_users`
 - authenticated role permissions enabled in Strapi admin
 
-Risk:
-- low to medium because these are additive routes, but role configuration can block testing
 
-Compatibility impact:
-- backward compatible because existing public and legacy routes are unchanged
-
-Done criteria:
-- authenticated user can read own actor profile
-- authenticated user can list only owned stores
-- authenticated user can create a store and becomes owner by default
-- authenticated user can read and update owned store
-- authenticated user can read and update owned store settings
-- wrong-owner and unknown-resource private reads stay opaque
-
-Verification:
+Routes:
 - `GET /api/tienda/me` returns actor payload with JWT
 - `GET /api/tienda/stores` returns only owned stores
 - `POST /api/tienda/stores` creates a store and links current user
 - `GET /api/tienda/stores/:ref` returns 404 for wrong owner and unknown ref with the same body
 - `PUT /api/tienda/stores/:ref/settings` creates or updates settings
 
-### 2. Rewrite features board
-Status: in progress
 
-Scope:
-- convert this file from chronology into execution board
-- preserve completed history in archive form
+- starter store seeding no longer auto-creates product/event placeholders
+- events accept client timezone and persist UTC safely
+- event schema includes `locations` and default timezone `America/New_York`
+- SEO autofill strips markdown/rich-text and generates keywords
+- `/api/tienda/me?includeContent=true` supports combined cross-store content feed
+- dashboard stats cache is persisted and warmed after store create
+- store create sends owner congrats email with first-store guidance
+- visibility response includes client summary JSON for fast UI decisions
 
-Dependencies:
-- none
 
-Risk:
-- low
-
-Compatibility impact:
-- documentation only
-
-Done criteria:
-- top priorities are visible in under 60 seconds
-- active work is separated from archive
-
-Verification:
-- file reads clearly top to bottom with active work first and archive last
+Routes:
+- `GET /api/tienda/me?includeContent=true`:
+	- returns `combinedContent` with cross-store items
+	- supports `page`, `pageSize`, `search`, `types`
+- `GET /api/stores/:id/visibility`:
+	- now includes `summary` object
+	- includes `enabled_sections`, `disabled_sections`, `explicit_overrides`, `content_signals`, `source`
+- Event create/update via Tienda content endpoints:
+	- send `timezone` as IANA id (example: `America/New_York`)
+	- `startDate` and `endDate` accept ISO datetime or datetime-local strings
+- RSVP sync endpoint:
+	- response now includes `sendgridCredentialSource` and `sendgridListSource`
+- Store settings and visibility toggles:
+	- visibility booleans are stored in `settings.navigation` (`show_blog`, `show_shop`, `show_events`, `show_about`, `show_newsletter`, `show_home`)
+	- fallback logic still applies when explicit booleans are not set
+- Email templates:
+	- subscriber welcome and store-owner congrats layouts were refreshed
+	- dynamic values are HTML-escaped for safety
 
 ### 3. Subscriber Public Endpoints handoff notes
 Status: ready for frontend
@@ -139,175 +125,16 @@ Operational notes for frontend:
 
 ## V0 Now: Security + Tienda Foundation
 
-- [ ] Tienda resolver and ownership model
-- [ ] Private endpoint error opacity
+- [x] Tienda resolver and ownership model
+- [x] Private endpoint error opacity
 - [ ] Internal security alert rail
 - [ ] Security and compliance schemas
 
-### Tienda resolver and ownership model
-Status: in progress
 
-Scope:
-- protect actor-scoped store reads with JWT + ownership checks
-- keep one shared auth helper for store access
+- [x] Store owner default model
+- [x] Fewer canonical endpoints
+- [x] Workflow status model
 
-Dependencies:
-- users-permissions JWT
-- shared `api-auth` helper
-
-Risk:
-- medium if error handling leaks resource existence
-
-Compatibility impact:
-- additive only
-
-Done criteria:
-- store can be resolved by `documentId` or `slug`
-- only store-linked actors can read private store payloads
-
-Verification:
-- missing JWT returns 401
-- wrong owner and unknown store return the same opaque 404 response
-
-### Private endpoint error opacity
-Status: planned
-
-Scope:
-- generic messages for private endpoint failures
-- internal logs keep the real cause
-
-Dependencies:
-- protected route handlers
-- request correlation ids
-
-Risk:
-- low
-
-Compatibility impact:
-- may change private error bodies for new endpoints only
-
-Done criteria:
-- client never learns whether resource was absent or forbidden
-
-Verification:
-- compare wrong-owner and unknown-ref responses and confirm same status/body
-
-### Internal security alert rail
-Status: planned
-
-Scope:
-- send operational alert emails for probe spikes, private 5xx, and auth bursts
-- use Strapi email plugin and SendGrid integration already present
-
-Dependencies:
-- `SECURITY_ALERT_EMAIL`
-- dedupe window storage, ideally Valkey
-
-Risk:
-- medium if alerts spam
-
-Compatibility impact:
-- additive only
-
-Done criteria:
-- one real anomaly triggers one actionable email and suppresses duplicates for a short window
-
-Verification:
-- simulate repeated probing and confirm single alert with dedupe
-
-### Security and compliance schemas
-Status: planned
-
-Scope:
-- add `security-alert`, `content-report`, and optionally `compliance-action` content types
-- schema only first, no APIs yet
-
-Dependencies:
-- Strapi content-type generation
-
-Risk:
-- low
-
-Compatibility impact:
-- additive only
-
-Done criteria:
-- admin can create and inspect records manually
-
-Verification:
-- Strapi boots and new content types appear in Content Manager
-
-## V1 Launch Now
-
-- [ ] Store owner default model
-- [ ] Fewer canonical endpoints
-- [ ] Workflow status model
-
-### Store owner default model
-Status: in progress
-
-Scope:
-- creator of a store is linked automatically to `store.users`
-- role system remains the top-level route gate, ownership remains object-level gate
-
-Dependencies:
-- Tienda store create route
-
-Risk:
-- low
-
-Compatibility impact:
-- additive only
-
-Done criteria:
-- new stores are always owned by creator without manual repair
-
-Verification:
-- create store and confirm current user appears in relation
-
-### Fewer canonical endpoints
-Status: planned
-
-Scope:
-- keep one canonical private lifecycle for store and settings
-- leave temporary aliases only where migration requires them
-
-Dependencies:
-- Next.js proxy wiring
-
-Risk:
-- medium if aliases linger too long and confuse clients
-
-Compatibility impact:
-- improves maintainability while keeping migration-safe aliases
-
-Done criteria:
-- clients can do the full store lifecycle through the Tienda namespace alone
-
-Verification:
-- Next.js proxy can wire all store admin flows without legacy write endpoints
-
-### Workflow status model
-Status: planned
-
-Scope:
-- add `workflow_status` to store and page separately from Strapi publish state
-
-Dependencies:
-- schema updates
-- any dashboard/editor UI that reads business state
-
-Risk:
-- medium if mixed with existing `active` fields semantically
-
-Compatibility impact:
-- additive only, legacy `active` and `Active` stay untouched
-
-Done criteria:
-- business workflow and moderation workflow are distinct
-
-Verification:
-- schemas updated and existing clients unaffected
 
 ## V1.1 Revenue And Engagement
 
@@ -315,165 +142,12 @@ Verification:
 - [ ] Recurring subscriptions
 - [ ] Newsletter campaign sending
 
-### Paid RSVP
-Status: planned
-
-Scope:
-- add payment-aware RSVP lifecycle
-
-Dependencies:
-- Stripe checkout and order flow consistency
-
-Risk:
-- high because payments + event inventory are coupled
-
-Compatibility impact:
-- additive if isolated correctly
-
-Done criteria:
-- RSVP purchase flow works without weakening payment safety
-
-Verification:
-- checkout, success, webhook, and RSVP record reconcile cleanly
-
-### Recurring subscriptions
-Status: planned
-
-Scope:
-- recurring payments and billing lifecycle
-
-Dependencies:
-- Stripe subscription model and dashboard state
-
-Risk:
-- high
-
-Compatibility impact:
-- additive with new billing states
-
-Done criteria:
-- subscription signup, renewal, and failure states are modeled correctly
-
-Verification:
-- test subscription lifecycle end to end in Stripe test mode
-
-### Newsletter campaign sending
-Status: planned
-
-Scope:
-- move from subscriber sync to real campaign delivery orchestration
-
-Dependencies:
-- SendGrid config, newsletter content types, event webhooks
-
-Risk:
-- medium to high because deliverability and unsubscribe behavior matter
-
-Compatibility impact:
-- additive
-
-Done criteria:
-- campaign send lifecycle and reporting work without exposing sensitive config
-
-Verification:
-- draft, send, webhook ingest, and analytics update all succeed
-
 ## Ops And Reliability
 
 - [ ] Public endpoint cache
 - [ ] Valkey control plane
 - [ ] 1k user burst readiness
 - [ ] Secretless integration roadmap
-
-### Public endpoint cache
-Status: planned
-
-Scope:
-- cache only anonymous public GET endpoints
-- bypass cache when JWT/auth context exists
-- start with 10-30 second TTL
-
-Dependencies:
-- Next.js proxy cache layer
-- optional Valkey backend
-
-Risk:
-- medium due to invalidation mistakes
-
-Compatibility impact:
-- no API contract change
-
-Done criteria:
-- hot public endpoints survive bursty refresh traffic without serving private data
-
-Verification:
-- cache hit/miss metrics exist and auth requests always bypass cache
-
-### Valkey control plane
-Status: planned
-
-Scope:
-- use Valkey first for rate counters, alert dedupe, and idempotency
-
-Dependencies:
-- Valkey connection config
-
-Risk:
-- low if used only as control plane initially
-
-Compatibility impact:
-- additive only
-
-Done criteria:
-- security and webhook workflows can rely on short-lived shared state
-
-Verification:
-- dedupe and idempotency scenarios behave correctly under repeated requests
-
-### 1k user burst readiness
-Status: planned
-
-Scope:
-- make burst traffic survivable rather than perfect
-
-Dependencies:
-- public cache
-- rate limiting
-- alerting
-
-Risk:
-- medium if tested too late
-
-Compatibility impact:
-- operational only
-
-Done criteria:
-- burst traffic does not take down API and graceful degradation works
-
-Verification:
-- load test public and private hot paths and inspect p95 latency, DB pressure, and alerting
-
-### Secretless integration roadmap
-Status: planned
-
-Scope:
-- move from raw env/provider keys toward `secret_ref` based integration config
-
-Dependencies:
-- meta schema evolution
-- secret manager selection
-
-Risk:
-- medium because migration must preserve old stores
-
-Compatibility impact:
-- old encrypted credentials remain supported during migration
-
-Done criteria:
-- new integrations can resolve secrets by reference instead of raw env keys
-
-Verification:
-- resolver tries `secret_ref` first, then existing encrypted credentials, without leaking secrets
 
 ## Future
 

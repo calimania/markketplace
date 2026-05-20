@@ -74,6 +74,18 @@
       "target": "api::store.store",
       "mappedBy": "users"
     },
+    "owned_stores": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::store.store",
+      "mappedBy": "owner"
+    },
+    "store_memberships": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::store-membership.store-membership",
+      "mappedBy": "user"
+    },
     "rsvps": {
       "type": "relation",
       "relation": "oneToMany",

@@ -171,6 +171,18 @@
       "target": "plugin::users-permissions.user",
       "inversedBy": "stores"
     },
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "owned_stores"
+    },
+    "memberships": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::store-membership.store-membership",
+      "mappedBy": "store"
+    },
     "settings": {
       "type": "relation",
       "relation": "oneToOne",
@@ -204,6 +216,13 @@
         }
       },
       "component": "common.extension"
+    }
+    ,
+    "meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store-meta.store-meta",
+      "mappedBy": "store"
     }
   }
 }

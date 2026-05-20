@@ -1,7 +1,7 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.9.6",
+  "version": "0.9.8",
   "description": "Markket.place api, powered by strapi:postgres",
   "scripts": {
     "dev": "strapi develop",
@@ -12,7 +12,8 @@
     "strapi": "strapi",
     "deploy": "strapi deploy",
     "api:docs": "node scripts/api-docs.js",
-    "api:test": "node scripts/api-test.js"
+    "api:test": "node scripts/api-test.js",
+    "events:verify-tz": "node scripts/verify-event-timezones.js"
   },
   "dependencies": {
     "@strapi-community/plugin-healthcheck": "^1.1.1",

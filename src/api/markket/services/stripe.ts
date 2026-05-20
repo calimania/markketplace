@@ -34,6 +34,7 @@ import {
   buildConnectPaymentLink,
   type StoreConnectData
 } from './stripe-connect';
+import { STRIPE_API_VERSION } from "../../../services/stripe";
 
 type StripeAccount = Awaited<ReturnType<StripeClient['accounts']['retrieve']>>;
 type StripePaymentLink = Awaited<ReturnType<StripeClient['paymentLinks']['create']>>;
@@ -112,7 +113,7 @@ const STRIPE_PROCESSING_FIXED_CENTS = Math.round(parseFloat(process.env.STRIPE_P
 function createStripeClient(secret: string): StripeClient | null {
   if (!secret) return null;
   return new Stripe(secret, {
-    apiVersion: '2026-03-25.dahlia',
+    apiVersion: STRIPE_API_VERSION,
     typescript: true,
     telemetry: false,
   });

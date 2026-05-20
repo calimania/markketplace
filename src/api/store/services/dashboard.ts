@@ -34,6 +34,91 @@ interface RecentOrder {
   customer_email?: string;
 }
 
+interface StoreStatsCachePayload {
+  generated_at: string;
+  content: ContentCounts;
+  sales_30d: SalesSummary;
+}
+
+const STORE_STATS_CACHE_KEY = 'dashboard_stats_cache';
+const STORE_STATS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function getStoreSettings(storeId: string): Promise<any | null> {
+  const stores = await strapi.documents('api::store.store').findMany({
+    filters: { documentId: storeId },
+    populate: ['settings'],
+    limit: 1,
+  });
+
+  return stores?.[0]?.settings || null;
+}
+
+async function persistStoreStatsCache(storeId: string, payload: StoreStatsCachePayload): Promise<void> {
+  try {
+    const settings = await getStoreSettings(storeId);
+    const nextMeta = {
+      ...(settings?.meta || {}),
+      [STORE_STATS_CACHE_KEY]: payload,
+    };
+
+    if (settings?.documentId) {
+      await strapi.documents('api::store.store-setting').update({
+        documentId: settings.documentId,
+        data: { meta: nextMeta },
+      });
+      return;
+    }
+
+    await strapi.documents('api::store.store-setting').create({
+      data: {
+        store: storeId,
+        meta: nextMeta,
+      },
+    });
+  } catch (error: any) {
+    console.warn('[DASHBOARD] Failed to persist stats cache', { storeId, message: error?.message });
+  }
+}
+
+async function getCachedOrFreshStoreStats(storeId: string): Promise<StoreStatsCachePayload> {
+  const settings = await getStoreSettings(storeId);
+  const cached = settings?.meta?.[STORE_STATS_CACHE_KEY] as StoreStatsCachePayload | undefined;
+
+  if (cached?.generated_at) {
+    const ageMs = Date.now() - new Date(cached.generated_at).getTime();
+    if (ageMs >= 0 && ageMs <= STORE_STATS_CACHE_TTL_MS) {
+      return cached;
+    }
+  }
+
+  const [content, sales_30d] = await Promise.all([
+    getContentCounts(storeId),
+    getSalesSummary(storeId, 30),
+  ]);
+
+  const fresh: StoreStatsCachePayload = {
+    generated_at: new Date().toISOString(),
+    content,
+    sales_30d,
+  };
+
+  void persistStoreStatsCache(storeId, fresh);
+
+  return fresh;
+}
+
+/**
+ * Warm dashboard cache proactively (e.g., right after store creation)
+ * so first dashboard load does not pay aggregation cost.
+ */
+export async function warmStoreStatsCache(storeId: string): Promise<void> {
+  if (!storeId) {
+    return;
+  }
+
+  await getCachedOrFreshStoreStats(storeId);
+}
+
 /**
  * Get content counts for a store
  */
@@ -259,9 +344,8 @@ export function calculateOnboardingProgress(store: any, counts: ContentCounts, s
  * Get complete dashboard data in a single call
  */
 export async function getDashboardData(storeId: string) {
-  const [contentCounts, salesSummary, recentOrders, store] = await Promise.all([
-    getContentCounts(storeId),
-    getSalesSummary(storeId, 30),
+  const [statsCache, recentOrders, store] = await Promise.all([
+    getCachedOrFreshStoreStats(storeId),
     getRecentOrders(storeId, 5),
     strapi.documents('api::store.store').findOne({
       documentId: storeId,
@@ -279,6 +363,9 @@ export async function getDashboardData(storeId: string) {
       },
     }),
   ]);
+
+  const contentCounts = statsCache.content;
+  const salesSummary = statsCache.sales_30d;
 
   console.log('[DASHBOARD]store', {
     hasStore: !!store,
@@ -312,6 +399,7 @@ export async function getDashboardData(storeId: string) {
       user_sophistication: onboarding.user_sophistication,
       media_usage: onboarding.media_usage,
       seo_completeness: onboarding.seo_completeness,
+      stats_cached_at: statsCache.generated_at,
     },
 
     store_metadata: {
@@ -409,7 +497,8 @@ export async function getRecentActivity(storeId: string, limit: number = 10) {
  * or a page with the correct slug has been created
  */
 export async function getQuickStats(storeId: string) {
-  const counts = await getContentCounts(storeId);
+  const statsCache = await getCachedOrFreshStoreStats(storeId);
+  const counts = statsCache.content;
 
   return {
     total_content: counts.articles + counts.pages + counts.events,
@@ -433,18 +522,93 @@ const MAGIC_SLUGS = {
   home: ['home', 'inicio', 'portada'],
 };
 
+const VISIBILITY_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Persist computed visibility flags to store_metas (fire-and-forget).
+ */
+async function persistStoreMeta(storeId: string, flags: Record<string, any>): Promise<void> {
+  try {
+    const storeMeta = strapi.documents('api::store-meta.store-meta' as any);
+    const existing = await storeMeta.findMany({
+      filters: { store: { documentId: storeId } } as any,
+      limit: 1,
+    });
+
+    const data = {
+      show_blog: flags.show_blog,
+      show_events: flags.show_events,
+      show_shop: flags.show_shop,
+      show_about: flags.show_about,
+      show_newsletter: flags.show_newsletter,
+      show_home: flags.show_home,
+      has_upcoming_events: flags.has_upcoming_events,
+      has_events: flags.has_events,
+      content_summary: flags.content_summary,
+      magic_pages_detected: flags.magic_pages_detected,
+      settings_overrides: flags.settings_overrides,
+      summary: flags.summary,
+      _debug: flags._debug,
+    };
+
+    if (existing?.length > 0) {
+      await storeMeta.update({
+        documentId: existing[0].documentId,
+        data: data as any,
+      });
+    } else {
+      await storeMeta.create({
+        data: { ...data, store: storeId } as any,
+      });
+    }
+  } catch (err: any) {
+    console.warn('[DASHBOARD] Failed to persist store_meta', { storeId, message: err?.message });
+  }
+}
+
 /**
  * Get UI visibility flags for conditional rendering
  *
  * Priority system:
- * 1. Store settings override (settings.meta.navigation.show_*)
- * 2. Magic page slugs (page exists = show button)
- * 3. Content existence (has articles = show blog)
+ * 1. Cached store_metas row (if < 30 min old) — fast path, no DB fan-out
+ * 2. Recompute from content + settings, then persist back to store_metas
  *
- * Smart homepage navigation for de.markket.place/store/:slug
+ * Settings overrides (show_* booleans on store-settings.navigation) still take
+ * priority over content-signal fallback during recompute.
  */
 export async function getVisibilityFlags(storeId: string) {
   console.log('[DASHBOARD] visibility flags', { storeId: storeId.substring(0, 10) + '...' });
+
+  // --- Fast path: read from store_metas if fresh ---
+  try {
+    const cached = await (strapi.documents('api::store-meta.store-meta' as any) as any).findMany({
+      filters: { store: { documentId: storeId } },
+      limit: 1,
+    });
+    const row = cached?.[0] as any;
+    if (row?.summary?.generated_at) {
+      const ageMs = Date.now() - new Date(row.summary.generated_at).getTime();
+      if (ageMs >= 0 && ageMs <= VISIBILITY_CACHE_TTL_MS) {
+        return {
+          show_blog: row.show_blog,
+          show_events: row.show_events,
+          show_shop: row.show_shop,
+          show_about: row.show_about,
+          show_newsletter: row.show_newsletter,
+          show_home: row.show_home,
+          has_upcoming_events: row.has_upcoming_events,
+          has_events: row.has_events,
+          content_summary: row.content_summary,
+          magic_pages_detected: row.magic_pages_detected,
+          settings_overrides: row.settings_overrides,
+          summary: row.summary,
+          _debug: row._debug,
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn('[DASHBOARD] store_meta cache read failed, recomputing', { message: err?.message });
+  }
 
   const now = new Date();
   const twoDaysAgo = new Date(now.getTime() - (2 * 24 * 60 * 60 * 1000));
@@ -569,6 +733,33 @@ export async function getVisibilityFlags(storeId: string) {
     counts.pages > 0  // Show if has any pages
   );
 
+  const visibilityBySection = {
+    blog: show_blog,
+    events: show_events,
+    shop: show_shop,
+    about: show_about,
+    newsletter: show_newsletter,
+    home: show_home,
+  };
+
+  const explicitOverrides: Record<string, boolean> = {};
+  for (const key of Object.keys(visibilityBySection)) {
+    const settingKey = `show_${key}`;
+    if (typeof navigationSettings[settingKey] === 'boolean') {
+      explicitOverrides[key] = navigationSettings[settingKey];
+    }
+  }
+
+  const enabledSections = Object.entries(visibilityBySection)
+    .filter(([, enabled]) => enabled)
+    .map(([section]) => section);
+
+  const disabledSections = Object.entries(visibilityBySection)
+    .filter(([, enabled]) => !enabled)
+    .map(([section]) => section);
+
+  const source = Object.keys(explicitOverrides).length > 0 ? 'settings+fallback' : 'fallback';
+
   console.log('[DASHBOARD] Final visibility flags', {
     show_blog,
     show_events,
@@ -578,7 +769,7 @@ export async function getVisibilityFlags(storeId: string) {
     show_home,
   });
 
-  return {
+  const flags = {
     show_blog,
     show_events,
     show_shop,
@@ -600,6 +791,21 @@ export async function getVisibilityFlags(storeId: string) {
     magic_pages_detected: Array.from(foundSlugs),
     settings_overrides: Object.keys(navigationSettings).filter(k => k.startsWith('show_')),
 
+    summary: {
+      source,
+      enabled_sections: enabledSections,
+      disabled_sections: disabledSections,
+      explicit_overrides: explicitOverrides,
+      content_signals: {
+        articles: counts.articles,
+        pages: counts.pages,
+        products: counts.products,
+        events: counts.events,
+        upcoming_events: upcomingEvents,
+      },
+      generated_at: new Date().toISOString(),
+    },
+
     // Debug information for troubleshooting
     _debug: {
       store_has_settings: !!store?.settings,
@@ -620,4 +826,9 @@ export async function getVisibilityFlags(storeId: string) {
       },
     },
   };
+
+  // Persist computed flags to store_metas (fire-and-forget)
+  void persistStoreMeta(storeId, flags);
+
+  return flags;
 }
