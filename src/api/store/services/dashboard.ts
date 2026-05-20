@@ -522,18 +522,93 @@ const MAGIC_SLUGS = {
   home: ['home', 'inicio', 'portada'],
 };
 
+const VISIBILITY_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Persist computed visibility flags to store_metas (fire-and-forget).
+ */
+async function persistStoreMeta(storeId: string, flags: Record<string, any>): Promise<void> {
+  try {
+    const storeMeta = strapi.documents('api::store-meta.store-meta' as any);
+    const existing = await storeMeta.findMany({
+      filters: { store: { documentId: storeId } } as any,
+      limit: 1,
+    });
+
+    const data = {
+      show_blog: flags.show_blog,
+      show_events: flags.show_events,
+      show_shop: flags.show_shop,
+      show_about: flags.show_about,
+      show_newsletter: flags.show_newsletter,
+      show_home: flags.show_home,
+      has_upcoming_events: flags.has_upcoming_events,
+      has_events: flags.has_events,
+      content_summary: flags.content_summary,
+      magic_pages_detected: flags.magic_pages_detected,
+      settings_overrides: flags.settings_overrides,
+      summary: flags.summary,
+      _debug: flags._debug,
+    };
+
+    if (existing?.length > 0) {
+      await storeMeta.update({
+        documentId: existing[0].documentId,
+        data: data as any,
+      });
+    } else {
+      await storeMeta.create({
+        data: { ...data, store: storeId } as any,
+      });
+    }
+  } catch (err: any) {
+    console.warn('[DASHBOARD] Failed to persist store_meta', { storeId, message: err?.message });
+  }
+}
+
 /**
  * Get UI visibility flags for conditional rendering
  *
  * Priority system:
- * 1. Store settings override (settings.meta.navigation.show_*)
- * 2. Magic page slugs (page exists = show button)
- * 3. Content existence (has articles = show blog)
+ * 1. Cached store_metas row (if < 30 min old) — fast path, no DB fan-out
+ * 2. Recompute from content + settings, then persist back to store_metas
  *
- * Smart homepage navigation for de.markket.place/store/:slug
+ * Settings overrides (show_* booleans on store-settings.navigation) still take
+ * priority over content-signal fallback during recompute.
  */
 export async function getVisibilityFlags(storeId: string) {
   console.log('[DASHBOARD] visibility flags', { storeId: storeId.substring(0, 10) + '...' });
+
+  // --- Fast path: read from store_metas if fresh ---
+  try {
+    const cached = await (strapi.documents('api::store-meta.store-meta' as any) as any).findMany({
+      filters: { store: { documentId: storeId } },
+      limit: 1,
+    });
+    const row = cached?.[0] as any;
+    if (row?.summary?.generated_at) {
+      const ageMs = Date.now() - new Date(row.summary.generated_at).getTime();
+      if (ageMs >= 0 && ageMs <= VISIBILITY_CACHE_TTL_MS) {
+        return {
+          show_blog: row.show_blog,
+          show_events: row.show_events,
+          show_shop: row.show_shop,
+          show_about: row.show_about,
+          show_newsletter: row.show_newsletter,
+          show_home: row.show_home,
+          has_upcoming_events: row.has_upcoming_events,
+          has_events: row.has_events,
+          content_summary: row.content_summary,
+          magic_pages_detected: row.magic_pages_detected,
+          settings_overrides: row.settings_overrides,
+          summary: row.summary,
+          _debug: row._debug,
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn('[DASHBOARD] store_meta cache read failed, recomputing', { message: err?.message });
+  }
 
   const now = new Date();
   const twoDaysAgo = new Date(now.getTime() - (2 * 24 * 60 * 60 * 1000));
@@ -694,7 +769,7 @@ export async function getVisibilityFlags(storeId: string) {
     show_home,
   });
 
-  return {
+  const flags = {
     show_blog,
     show_events,
     show_shop,
@@ -751,4 +826,9 @@ export async function getVisibilityFlags(storeId: string) {
       },
     },
   };
+
+  // Persist computed flags to store_metas (fire-and-forget)
+  void persistStoreMeta(storeId, flags);
+
+  return flags;
 }

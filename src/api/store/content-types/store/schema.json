@@ -217,5 +217,12 @@
       },
       "component": "common.extension"
     }
+    ,
+    "meta": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::store-meta.store-meta",
+      "mappedBy": "store"
+    }
   }
 }

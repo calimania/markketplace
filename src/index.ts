@@ -1,6 +1,7 @@
 import { registerMiddleware } from './middlewares/encrypt-extensions';
 import { registerMiddleware as registerPriceInventoryChanges } from './middlewares/price-inventory-changes';
 import { registerEventReminderMiddleware, sendDueEventReminders } from './middlewares/event-reminders';
+import { registerStoreVisibilityMiddleware } from './middlewares/store-visibility';
 
 export default {
   register(/*{ strapi }*/) {
@@ -12,6 +13,7 @@ export default {
     registerMiddleware({ strapi });
     registerPriceInventoryChanges({ strapi });
     registerEventReminderMiddleware({ strapi });
+    registerStoreVisibilityMiddleware({ strapi });
 
     // Run every 15 minutes: send any pending event reminders that are now due.
     strapi.cron.add({

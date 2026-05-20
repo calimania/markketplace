@@ -85,62 +85,64 @@ module.exports = {
     const stores = await knex('stores').select([storeIdColumn, ownerColumn]);
     const links = await knex(storeUserLinkTable).select([linkStoreColumn, linkUserColumn]);
 
+    // Build a map of storeId → Set of linked userIds
     const usersByStoreId = new Map();
     for (const link of links) {
       const storeId = Number(link?.[linkStoreColumn]);
       const userId = Number(link?.[linkUserColumn]);
       if (!Number.isFinite(storeId) || !Number.isFinite(userId)) continue;
 
-      const existing = usersByStoreId.get(storeId) || [];
-      if (!existing.includes(userId)) {
-        existing.push(userId);
-        existing.sort((left, right) => left - right);
-      }
+      const existing = usersByStoreId.get(storeId) || new Set();
+      existing.add(userId);
       usersByStoreId.set(storeId, existing);
     }
 
-    let ownerUpdates = 0;
+    // Pre-fetch all existing memberships to avoid N+1 checks
+    const existingMemberships = await knex('store_memberships')
+      .select([membershipStoreColumn, membershipUserColumn]);
+    const membershipKey = (storeId, userId) => `${storeId}:${userId}`;
+    const existingKeys = new Set(
+      existingMemberships.map(m => membershipKey(m[membershipStoreColumn], m[membershipUserColumn]))
+    );
+
     let membershipCreates = 0;
+    let ownerSkipped = 0;
 
     for (const store of stores) {
       const storeId = Number(store?.[storeIdColumn]);
       if (!Number.isFinite(storeId)) continue;
 
-      const linkedUsers = usersByStoreId.get(storeId) || [];
+      const linkedUsers = Array.from(usersByStoreId.get(storeId) || []);
       if (!linkedUsers.length) continue;
 
-      const ownerId = Number(store?.[ownerColumn]) || linkedUsers[0];
+      const existingOwnerId = Number(store?.[ownerColumn]) || null;
 
-      if (!Number(store?.[ownerColumn])) {
-        // eslint-disable-next-line no-await-in-loop
-        await knex('stores').where({ [storeIdColumn]: storeId }).update({ [ownerColumn]: ownerId });
-        ownerUpdates += 1;
+      // Only set owner_id if it's already known — never guess from linked users
+      // (the lowest-ID user is not reliably the owner)
+      if (!existingOwnerId) {
+        ownerSkipped += 1;
       }
 
-      for (const userId of linkedUsers) {
-        // eslint-disable-next-line no-await-in-loop
-        const existingMembership = await knex('store_memberships')
-          .where({ [membershipStoreColumn]: storeId, [membershipUserColumn]: userId })
-          .first();
+      const ownerId = existingOwnerId;
 
-        if (existingMembership) {
-          continue;
-        }
+      for (const userId of linkedUsers) {
+        if (existingKeys.has(membershipKey(storeId, userId))) continue;
 
         // eslint-disable-next-line no-await-in-loop
         await knex('store_memberships').insert({
           [membershipStoreColumn]: storeId,
           [membershipUserColumn]: userId,
-          role: userId === ownerId ? 'owner' : 'editor',
+          role: ownerId && userId === ownerId ? 'owner' : 'editor',
           status: 'active',
           joined_at: new Date().toISOString(),
           created_at: new Date(),
           updated_at: new Date(),
         });
+        existingKeys.add(membershipKey(storeId, userId));
         membershipCreates += 1;
       }
     }
 
-    console.log(`[migration:backfill-store-owners-and-memberships] updated ${ownerUpdates} owners and created ${membershipCreates} memberships`);
+    console.log(`[migration:backfill-store-owners-and-memberships] created ${membershipCreates} memberships, ${ownerUpdates} owner updates, ${ownerSkipped} stores skipped (no owner set — requires manual review)`);
   },
 };

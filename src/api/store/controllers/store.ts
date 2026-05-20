@@ -556,7 +556,9 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
     try {
       const flags = await getVisibilityFlags(storeId);
-      return ctx.send({ data: flags });
+      // Strip internal debug data from public response
+      const { _debug, ...publicFlags } = flags as any;
+      return ctx.send({ data: publicFlags });
     } catch (error) {
       console.error('[STORE_CONTROLLER] Visibility flags failed:', error.message);
       return ctx.internalServerError('Failed to fetch visibility flags');
