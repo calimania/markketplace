@@ -1,7 +1,7 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.9.9",
+  "version": "0.9.10",
   "description": "Markket.place api, powered by strapi:postgres",
   "scripts": {
     "dev": "strapi develop",
