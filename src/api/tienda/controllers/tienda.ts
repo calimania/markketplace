@@ -1936,6 +1936,34 @@ export default {
       if (hasContentChanges) {
         const sanitizedData = sanitizePayloadForUpdate(updateData, config);
 
+        // If the client didn't send SEO but the existing item has SEO data, pre-seed it so
+        // that autoFillSEO only fills empty fields and doesn't wipe stored values like
+        // socialImage. Strapi v5 replaces the whole component on write, so any field
+        // absent from the payload is cleared — pre-seeding prevents accidental loss.
+        const clientSentSEO = Object.prototype.hasOwnProperty.call(updateData, 'SEO');
+        if (!clientSentSEO && item.SEO && typeof item.SEO === 'object') {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { id: _cid, ...existingSEOFields } = item.SEO as any;
+          const seoToMerge: any = { ...existingSEOFields };
+          // Reduce socialImage to { id } reference — full object would be rejected by Strapi v5
+          if (seoToMerge.socialImage && typeof seoToMerge.socialImage === 'object') {
+            const imgId = seoToMerge.socialImage.id ?? seoToMerge.socialImage.documentId;
+            seoToMerge.socialImage = imgId ? { id: imgId } : null;
+          }
+          sanitizedData.SEO = seoToMerge;
+        } else if (clientSentSEO && item.SEO && typeof item.SEO === 'object') {
+          // Client sent SEO but may have omitted socialImage — preserve existing image
+          // unless the client explicitly sent null (intentional clear).
+          const clientSEO = sanitizedData.SEO as any;
+          if (clientSEO && typeof clientSEO === 'object' && !Object.prototype.hasOwnProperty.call(clientSEO, 'socialImage')) {
+            const existingImg = (item.SEO as any).socialImage;
+            if (existingImg) {
+              const imgId = existingImg.id ?? existingImg.documentId;
+              clientSEO.socialImage = imgId ? { id: imgId } : null;
+            }
+          }
+        }
+
         // Auto-fill SEO if title/content fields are present
         const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedData, config), config, item);
 

@@ -230,18 +230,18 @@ export default {
         filters: { store: { documentId: scope.store.documentId } },
         populate: ['buyer'],
         sort: ['createdAt:desc'],
-        limit: 500,
+        limit: 200,
       }) as Promise<any[]>,
       strapi.documents('api::subscriber.subscriber').findMany({
         filters: { stores: { documentId: scope.store.documentId } },
         sort: ['createdAt:desc'],
-        limit: 500,
+        limit: 200,
       }) as Promise<any[]>,
       (strapi.documents as any)('api::rsvp.rsvp').findMany({
         filters: { store: { documentId: scope.store.documentId } },
         populate: ['event'],
         sort: ['createdAt:desc'],
-        limit: 500,
+        limit: 200,
       }) as Promise<any[]>,
     ]);
 

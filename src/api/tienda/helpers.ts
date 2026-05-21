@@ -325,6 +325,27 @@ export function sanitizePayloadForUpdate(data: any, config: ContentTypeConfig): 
     }
   }
 
+  // Nested media fields (dot-path, e.g. 'SEO.socialImage') — strip to { id } only.
+  // Without this, a GET-then-PUT cycle sends back the full populated media object inside
+  // the component, which Strapi v5 cannot interpret and silently clears the media.
+  for (const dotPath of config.nestedMediaFields || []) {
+    const dotIndex = dotPath.indexOf('.');
+    if (dotIndex === -1) continue;
+    const parent = dotPath.slice(0, dotIndex);
+    const child = dotPath.slice(dotIndex + 1);
+    if (!Object.prototype.hasOwnProperty.call(out, parent)) continue;
+    const parentVal = out[parent];
+    if (!parentVal || typeof parentVal !== 'object' || Array.isArray(parentVal)) continue;
+    if (!Object.prototype.hasOwnProperty.call(parentVal, child)) continue;
+    const val = parentVal[child];
+    if (val === null || val === undefined) {
+      parentVal[child] = null;
+    } else if (typeof val === 'object' && (val.id || val.documentId)) {
+      parentVal[child] = { id: val.id ?? val.documentId };
+    }
+    // Already a plain id or { id } — leave it
+  }
+
   return out;
 }
 
