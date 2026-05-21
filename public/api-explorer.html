@@ -274,6 +274,94 @@
     .result.loading {
       color: #4a5568;
     }
+    .custom-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .custom-grid .full {
+      grid-column: 1 / -1;
+    }
+    .custom-grid select,
+    .custom-grid input,
+    .custom-grid textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      background: #fff;
+    }
+    .custom-grid textarea {
+      min-height: 100px;
+      font-family: Monaco, 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      resize: vertical;
+    }
+    .custom-grid select:focus,
+    .custom-grid input:focus,
+    .custom-grid textarea:focus {
+      outline: none;
+      border-color: #003893;
+      box-shadow: 0 0 0 3px rgba(0,56,147,0.1);
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .button-secondary {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .button-secondary:hover {
+      background: #e2e8f0;
+      box-shadow: 0 2px 4px rgba(30,41,59,0.12);
+    }
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .preset-option {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 10px;
+    }
+    .preset-option button {
+      margin-top: 0;
+      width: 100%;
+      text-align: left;
+      background: #0f172a;
+      color: #fff;
+      padding: 9px 12px;
+    }
+    .preset-option button:hover {
+      background: #1e293b;
+    }
+    .preset-option p {
+      margin: 8px 2px 0;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #475569;
+    }
+    .custom-help {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-size: 13px;
+    }
+    @media (max-width: 800px) {
+      .custom-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -284,6 +372,61 @@
 
   <div class="dev-tools-hint">
     <strong>💡 Developer Tip:</strong> Open your browser's Network tab (F12 → Network) for full request/response details including headers, timing, and raw JSON.
+  </div>
+
+  <div class="section">
+    <h2>Custom Request Tester</h2>
+    <p class="description">Type any path, pick method, and run it instantly. Use preset shortcuts below to prefill common routes.</p>
+  
+    <div class="custom-grid">
+      <div>
+        <label for="custom-method">HTTP Method</label>
+        <select id="custom-method">
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+      </div>
+      <div>
+        <label for="custom-token">JWT Token (optional)</label>
+        <input type="password" id="custom-token" placeholder="Bearer token for protected endpoints">
+      </div>
+      <div class="full">
+        <label for="custom-path">Path</label>
+        <input type="text" id="custom-path" placeholder="/api/tienda/stores/:ref or /api/stores/:id/dashboard">
+      </div>
+      <div class="full">
+        <label for="custom-body">JSON Body (optional, for POST/PUT/PATCH)</label>
+        <textarea id="custom-body" placeholder="{&quot;Title&quot;:&quot;New title&quot;}"></textarea>
+      </div>
+      <div class="full button-row">
+        <button data-action="testCustomRequest">Run Request</button>
+        <button class="button-secondary" data-action="clearCustomRequest">Clear</button>
+      </div>
+    </div>
+  
+    <div id="custom-explainer" class="custom-help">Choose a preset below or type your own path. Supports query params like ?populate=SEO,SEO.socialImage.</div>
+  
+    <div class="preset-grid">
+      <div class="preset-option">
+        <button data-action="applyCustomPreset" data-method="GET" data-path="/api/tienda/stores/:ref" data-note="Fetch one store by slug or documentId. Replaces fetching all stores then filtering on client.">GET /api/tienda/stores/:ref</button>
+        <p>Single store by slug or documentId. Good for dashboard bootstrapping.</p>
+      </div>
+      <div class="preset-option">
+        <button data-action="applyCustomPreset" data-method="GET" data-path="/api/tienda/stores/:ref/content/article?populate=SEO,SEO.socialImage" data-note="Lists article content with explicit populate request merged with server defaults.">GET content list with populate</button>
+        <p>Content listing with SEO image fields populated for edit forms.</p>
+      </div>
+      <div class="preset-option">
+        <button data-action="applyCustomPreset" data-method="PUT" data-path="/api/tienda/stores/:ref/content/article/:itemId" data-note="Update content item. Server now preserves SEO.socialImage unless client explicitly clears it.">PUT content item</button>
+        <p>Use with JSON body. Send <code>SEO.socialImage: { id }</code> or omit SEO entirely.</p>
+      </div>
+      <div class="preset-option">
+        <button data-action="applyCustomPreset" data-method="GET" data-path="/api/stores/:id/dashboard" data-note="Owner-only dashboard endpoint. Requires JWT token.">GET owner dashboard</button>
+        <p>Protected route. Paste JWT in token field before running.</p>
+      </div>
+    </div>
   </div>
 
   <div class="section">

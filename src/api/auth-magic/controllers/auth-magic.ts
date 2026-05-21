@@ -331,20 +331,18 @@ export default ({ strapi }) => ({
               console.warn('[AUTH_MAGIC] invite.accepted audit log failed (non-fatal):', err?.message);
             });
 
-            // Send congrats/welcome email to the new member
+            // Send welcome email to the new member (invite accepted flow)
             if (magic.email) {
-              const { buildStoreOwnerCongratsEmailHtml } = await import('../../../services/sendgrid-email-templates');
-              const html = buildStoreOwnerCongratsEmailHtml({
-                ownerName: user.username || user.email,
+              const { buildInviteAcceptedEmailHtml } = await import('../../../services/sendgrid-email-templates');
+              const html = buildInviteAcceptedEmailHtml({
+                memberName: user.username || user.email,
                 storeName: store.title || store.slug || storeDocumentId,
                 storeSlug: store.slug,
-                isFirstStore: false,
-                introLine: `You have been added to ${store.title || 'the store'} on Markketplace.`,
-                adviceLine: 'Explore the dashboard and start publishing content.',
+                invitedByName: magic.meta?.invitedByName as string | undefined,
               });
               await strapi.plugin('email').service('email').send({
                 to: magic.email,
-                subject: `You joined ${store.title || 'a store'} on Markketplace`,
+                subject: `You've joined ${store.title || 'a store'} on Markketplace`,
                 html,
               });
             }
