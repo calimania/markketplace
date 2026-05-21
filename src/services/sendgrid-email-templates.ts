@@ -504,3 +504,101 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
     }
   });
 }
+
+interface BuildInviteAcceptedEmailHtmlInput {
+  memberName?: string;
+  storeName: string;
+  storeSlug?: string;
+  invitedByName?: string;
+}
+
+export function buildInviteAcceptedEmailHtml(input: BuildInviteAcceptedEmailHtmlInput): string {
+  const { memberName, storeName, storeSlug, invitedByName } = input;
+
+  const safeMemberName = escapeHtml(memberName);
+  const safeStoreName = escapeHtml(storeName);
+  const safeStoreSlug = escapeHtml(storeSlug);
+  const safeInvitedBy = escapeHtml(invitedByName);
+
+  const MEMBER_CHIPS: Chip[] = [
+    { label: 'Access granted', style: CHIP_STYLES.INDIGO },
+    { label: 'Ready to publish', style: CHIP_STYLES.TEAL },
+    { label: 'Welcome aboard', style: CHIP_STYLES.SKY },
+  ];
+
+  const content = `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px 0;">
+      <tr>
+        <td style="padding:0;border-radius:16px;border:1px solid #bfdbfe;background:#ffffff;overflow:hidden;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+            <tr>
+              <td style="height:6px;font-size:0;line-height:0;background:linear-gradient(90deg,#6366f1 0%,#0ea5e9 55%,#22d3ee 100%);">&nbsp;</td>
+            </tr>
+            <tr>
+              <td style="padding:20px 22px;color:#0f172a;">
+                <p style="margin:0 0 10px 0;font-size:11px;color:#4338ca;letter-spacing:.1em;text-transform:uppercase;font-weight:700;">Team access</p>
+                <h2 style="margin:0 0 8px 0;font-size:22px;line-height:1.3;color:#0f172a;">You're in${safeMemberName ? `, ${safeMemberName}` : ''} ✦</h2>
+                <p style="margin:0 0 10px 0;font-size:15px;line-height:1.7;color:#1e293b;">
+                  ${safeInvitedBy ? `<strong>${safeInvitedBy}</strong> added you as an editor on ` : 'You have been added as an editor on '}<strong>${safeStoreName}</strong>.
+                </p>
+                ${renderChipRow(MEMBER_CHIPS)}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px 0;">
+      <tr>
+        <td style="padding:14px 16px;border:1px solid #e0e7ff;border-radius:12px;background:#eef2ff;">
+          <p style="margin:0 0 8px 0;font-size:14px;color:#3730a3;font-weight:700;">What you can do now</p>
+          <p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:#1f2937;">✦ Create and publish articles, pages, and products</p>
+          <p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:#1f2937;">✦ Manage events and respond to RSVPs</p>
+          <p style="margin:0;font-size:13px;line-height:1.6;color:#1f2937;">✦ Upload media and update store content</p>
+        </td>
+      </tr>
+    </table>
+
+    ${renderDualButtonRow(
+    {
+      href: EMAIL_DEFAULTS.APP_URL,
+      label: 'Open dashboard',
+      background: '#6366f1',
+      textColor: EMAIL_COLORS.WHITE,
+      padding: '13px 26px',
+      fontSize: '15px',
+      fontWeight: 'bold',
+    },
+    {
+      href: `mailto:${EMAIL_DEFAULTS.SUPPORT_EMAIL}`,
+      label: 'Get help',
+      background: EMAIL_COLORS.SLATE_100,
+      border: EMAIL_COLORS.SLATE_200,
+      textColor: EMAIL_COLORS.SLATE_700,
+      padding: '12px 22px',
+      fontSize: '13px',
+      fontWeight: '700',
+    }
+  )}
+    <p style="margin:0;font-size:13px;color:#475569;">If you weren't expecting this access, reply and we'll sort it out.</p>
+  `;
+
+  return emailLayout({
+    title: `You've joined ${safeStoreName} on Markketplace`,
+    content,
+    store: {
+      title: safeStoreName,
+      slug: safeStoreSlug || 'store',
+      documentId: 'store-invite-accepted',
+      Favicon: { url: '' },
+      settings: {
+        email_header_message: `Welcome to the team`,
+        store_name_override: safeStoreName,
+        welcome_email_text: '',
+        dashboard_url: '',
+        domain: EMAIL_DEFAULTS.APP_URL,
+      },
+    },
+  });
+}

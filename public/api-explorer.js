@@ -8,7 +8,10 @@ function loadStoreId() {
   return localStorage.getItem('last_store_id') || '';
 }
 
-async function apiCall(path, token) {
+async function apiCall(path, token, options) {
+  const requestOptions = options || {};
+  const method = (requestOptions.method || 'GET').toUpperCase();
+  const body = requestOptions.body;
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = 'Bearer ' + token;
 
@@ -22,13 +25,18 @@ async function apiCall(path, token) {
   document.getElementById('response-toggle').textContent = 'Minimize';
 
   responseBody.innerHTML = '<p style="color: #64748b;">Loading...</p>';
-  responseTitle.textContent = 'Response';
+  responseTitle.textContent = method + ' ' + path;
   responseStatus.innerHTML = '';
 
-  console.log('API Request:', path);
+  console.log('API Request:', method, path);
 
   try {
-    const res = await fetch(path, { headers });
+    const fetchOptions = { method, headers };
+    if (body !== undefined && method !== 'GET' && method !== 'HEAD') {
+      fetchOptions.body = JSON.stringify(body);
+    }
+
+    const res = await fetch(path, fetchOptions);
     const data = await res.json();
 
     const statusClass = res.ok ? 'status-success' : 'status-error';
@@ -41,6 +49,61 @@ async function apiCall(path, token) {
     responseStatus.innerHTML = '<span class="status-badge status-error">Error</span>';
     responseBody.innerHTML = '<pre style="background: #fee2e2; color: #991b1b; border-color: #fca5a5;">' + err.message + '</pre>';
     console.error('API Error:', err);
+  }
+}
+
+function testCustomRequest() {
+  const method = (document.getElementById('custom-method').value || 'GET').toUpperCase();
+  const token = document.getElementById('custom-token').value.trim();
+  const pathInput = document.getElementById('custom-path').value.trim();
+  const bodyInput = document.getElementById('custom-body').value.trim();
+
+  if (!pathInput) {
+    return alert('Path required');
+  }
+
+  const path = pathInput.startsWith('/') ? pathInput : '/' + pathInput;
+  let parsedBody;
+  if (bodyInput) {
+    try {
+      parsedBody = JSON.parse(bodyInput);
+    } catch {
+      return alert('Body must be valid JSON');
+    }
+  }
+
+  if ((method === 'POST' || method === 'PUT' || method === 'PATCH') && parsedBody === undefined) {
+    return alert(method + ' requests usually need a JSON body');
+  }
+
+  apiCall(path, token, { method, body: parsedBody });
+}
+
+function clearCustomRequest() {
+  document.getElementById('custom-method').value = 'GET';
+  document.getElementById('custom-token').value = '';
+  document.getElementById('custom-path').value = '';
+  document.getElementById('custom-body').value = '';
+  const explainer = document.getElementById('custom-explainer');
+  if (explainer) {
+    explainer.textContent = 'Choose a preset below or type your own path. Supports query params like ?populate=SEO,SEO.socialImage.';
+  }
+}
+
+function applyCustomPreset(button) {
+  const method = button.dataset.method || 'GET';
+  const path = button.dataset.path || '';
+  const note = button.dataset.note || 'Preset applied. Edit placeholders and run request.';
+
+  document.getElementById('custom-method').value = method;
+  document.getElementById('custom-path').value = path;
+  if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
+    document.getElementById('custom-body').value = '{\n  "Title": "Updated title"\n}';
+  }
+
+  const explainer = document.getElementById('custom-explainer');
+  if (explainer) {
+    explainer.textContent = note;
   }
 }
 
@@ -220,6 +283,9 @@ document.addEventListener('DOMContentLoaded', function() {
       case 'testStoreInfo': testStoreInfo(); break;
       case 'testExtensionsDebug': testExtensionsDebug(); break;
       case 'testExtension': testExtension(); break;
+      case 'testCustomRequest': testCustomRequest(); break;
+      case 'clearCustomRequest': clearCustomRequest(); break;
+      case 'applyCustomPreset': applyCustomPreset(button); break;
     }
   });
 });
