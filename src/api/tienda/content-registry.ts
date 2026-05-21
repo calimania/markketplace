@@ -16,9 +16,10 @@ export interface ContentTypeConfig {
   defaultPopulate: string[];
   autoSetCreator?: 'user' | 'Creator' | 'creator' | 'owner'; // Field name to auto-populate
   // Field type metadata for sanitization before update
-  mediaFields?: string[];     // Single/multi media — strip to id only
-  relationFields?: string[];  // Relation fields — convert populated objects to connect format
-  componentFields?: string[]; // Repeatable components — strip id to avoid stale entry conflicts
+  mediaFields?: string[];           // Single/multi media — strip to id only
+  relationFields?: string[];        // Relation fields — convert populated objects to connect format
+  componentFields?: string[];       // Repeatable components — strip id to avoid stale entry conflicts
+  nestedMediaFields?: string[];     // Dot-path media inside components, e.g. 'SEO.socialImage' — strip to id only
 }
 
 export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
@@ -36,6 +37,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     mediaFields: ['cover'],
     relationFields: ['category'],
     componentFields: ['Tags'],
+    nestedMediaFields: ['SEO.socialImage'],
   },
   page: {
     uid: 'api::page.page',
@@ -48,6 +50,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     autoSetCreator: 'owner',
     defaultPopulate: ['SEO', 'SEO.socialImage', 'albums', 'creator', 'owner', 'store'],
     relationFields: ['albums'],
+    nestedMediaFields: ['SEO.socialImage'],
   },
   album: {
     uid: 'api::album.album',
@@ -59,6 +62,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     mutableFields: ['title', 'slug', 'description', 'content', 'SEO', 'cover', 'tracks', 'keywords'],
     autoSetCreator: 'owner',
     defaultPopulate: ['cover', 'SEO', 'SEO.socialImage', 'tracks', 'owner', 'store'],
+    nestedMediaFields: ['SEO.socialImage'],
   },
   track: {
     uid: 'api::album.track',
@@ -70,6 +74,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     mutableFields: ['title', 'slug', 'description', 'content', 'SEO', 'media', 'urls', 'keywords'],
     autoSetCreator: 'owner',
     defaultPopulate: ['media', 'SEO', 'SEO.socialImage', 'urls', 'owner', 'store'],
+    nestedMediaFields: ['SEO.socialImage'],
   },
   category: {
     uid: 'api::category.category',
@@ -81,6 +86,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     mutableFields: ['Name', 'slug', 'Description', 'SEO', 'Active', 'keywords'],
     autoSetCreator: 'owner',
     defaultPopulate: ['SEO', 'SEO.socialImage', 'articles', 'owner', 'store'],
+    nestedMediaFields: ['SEO.socialImage'],
   },
   product: {
     uid: 'api::product.product',
@@ -98,6 +104,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'SEO.socialImage', 'Tag', 'PRICES', 'stores', 'creator'],
     mediaFields: ['Thumbnail', 'Slides'],
     componentFields: ['Tag', 'PRICES'],
+    nestedMediaFields: ['SEO.socialImage'],
   },
   event: {
     uid: 'api::event.event',
@@ -115,6 +122,7 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     defaultPopulate: ['Thumbnail', 'Slides', 'SEO', 'SEO.socialImage', 'Tag', 'PRICES', 'stores', 'creator', 'locations'],
     mediaFields: ['Thumbnail', 'Slides'],
     componentFields: ['Tag', 'PRICES', 'locations'],
+    nestedMediaFields: ['SEO.socialImage'],
   },
   shortner: {
     uid: 'api::shortner.shortner',
