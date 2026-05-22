@@ -165,7 +165,7 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
   const safeStoreDomain = normalizeUrl(storeDomain || EMAIL_DEFAULTS.APP_URL) || EMAIL_DEFAULTS.APP_URL;
   const supportMailto = `mailto:${safeSupportEmail}`;
 
-  const defaultWelcomeMessage = safeWelcomeMessage || `Good things are coming your way — new products, stories, and updates handpicked just for you. Glad you're here.`;
+  const defaultWelcomeMessage = safeWelcomeMessage || `Good things are on the way: new drops, stories, and updates picked just for you. Glad you're here (^-^).`;
 
   const content = `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px 0;">
@@ -178,7 +178,7 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
             <tr>
               <td style="padding:20px 22px;color:#0f172a;">
                 <p style="margin:0 0 10px 0;font-size:11px;color:#0f766e;letter-spacing:.1em;text-transform:uppercase;font-weight:700;">Newsletter</p>
-                <h2 style="margin:0 0 10px 0;font-size:22px;line-height:1.3;color:#0f172a;">Welcome to ${safeStoreName} ✦</h2>
+                <h2 style="margin:0 0 10px 0;font-size:22px;line-height:1.3;color:#0f172a;">Welcome aboard ✦</h2>
                 <p style="margin:0;font-size:15px;line-height:1.7;color:#1e293b;">${defaultWelcomeMessage}</p>
                 ${renderChipRow(WELCOME_CHIPS)}
               </td>
@@ -193,9 +193,9 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
         <td style="padding:16px 18px;border:1px solid #e5e7eb;border-radius:14px;background:#f8fafc;">
           <p style="margin:0 0 8px 0;font-size:14px;color:#111827;"><strong>What to expect</strong></p>
           <ul style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:1.7;">
-            <li>New products and curated picks you'll love</li>
-            <li>Events, announcements, and what's coming up</li>
-            <li>The good stuff — no noise, just signal</li>
+            <li>Fresh products and curated picks you'll probably love</li>
+            <li>Events, launches, and key updates from the store</li>
+            <li>Useful stuff only: no spam, no filler</li>
           </ul>
         </td>
       </tr>
@@ -210,19 +210,19 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
               <td width="33.3%" style="padding:0 8px 0 0;vertical-align:top;">
                 <div style="padding:10px 10px;border-radius:10px;background:#ffffff;border:1px solid #bfdbfe;font-size:13px;line-height:1.5;color:#1e293b;">
                   <strong style="display:block;color:#0f172a;margin-bottom:4px;">Browse</strong>
-                  Visit the store and save your favorites.
+                  Visit the store and bookmark your favorites.
                 </div>
               </td>
               <td width="33.3%" style="padding:0 8px;vertical-align:top;">
                 <div style="padding:10px 10px;border-radius:10px;background:#ffffff;border:1px solid #bfdbfe;font-size:13px;line-height:1.5;color:#1e293b;">
                   <strong style="display:block;color:#0f172a;margin-bottom:4px;">Watch</strong>
-                  Keep an eye out for drops and events.
+                  Watch for drops, restocks, and new events.
                 </div>
               </td>
               <td width="33.3%" style="padding:0 0 0 8px;vertical-align:top;">
                 <div style="padding:10px 10px;border-radius:10px;background:#ffffff;border:1px solid #bfdbfe;font-size:13px;line-height:1.5;color:#1e293b;">
                   <strong style="display:block;color:#0f172a;margin-bottom:4px;">Ask</strong>
-                  Reply anytime — we're here.
+                  Reply any time if you need help.
                 </div>
               </td>
             </tr>
@@ -253,10 +253,10 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
       }
     )}
 
-    <p style="margin:0 0 14px 0;padding:10px 14px;border-left:3px solid #0ea5e9;background:#f8fafc;border-radius:0 8px 8px 0;font-size:13px;line-height:1.7;color:#475569;">Tip — star this email to keep your subscription settings easy to find.</p>
+    <p style="margin:0 0 14px 0;padding:10px 14px;border-left:3px solid #0ea5e9;background:#f8fafc;border-radius:0 8px 8px 0;font-size:13px;line-height:1.7;color:#475569;">Quick tip: star this email so your subscription settings stay handy.</p>
 
     ${!storeName ? `<p style="margin:0 0 14px 0;font-size:14px;color:${EMAIL_COLORS.SLATE_700};">Discover independent stores, unique products, and the people behind them.</p>` : ''}
-    <p style="margin:0 0 14px 0;font-size:14px;color:${EMAIL_COLORS.SLATE_700};">Questions? Reach us at <a href="${supportMailto}" style="color:#0369a1;text-decoration:none;font-weight:600;">${safeSupportEmail}</a>.</p>
+    <p style="margin:0 0 14px 0;font-size:14px;color:${EMAIL_COLORS.SLATE_700};">Need a hand? Reach us at <a href="${supportMailto}" style="color:#0369a1;text-decoration:none;font-weight:600;">${safeSupportEmail}</a>.</p>
     ${safeUnsubscribeUrl ? `
       <p style="margin:0 0 10px 0;font-size:13px;line-height:1.7;color:#475569;">If you ever want to unsubscribe, use the link below.</p>
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 8px 0;">
@@ -317,8 +317,8 @@ export function buildInviteEmailHtml(input: BuildInviteEmailHtmlInput): string {
     ? 'Your refreshed editor invite link is ready'
     : 'You are invited to join as an editor';
   const inviteIntro = isResend
-    ? `${safeInvitedBy ? `<strong>${safeInvitedBy}</strong> generated a fresh invite link for you.` : 'A fresh invite link is ready for you.'}`
-    : `${safeInvitedBy ? `<strong>${safeInvitedBy}</strong> invited you to help manage content for this store on Markketplace.` : 'You have been invited to help manage content for this store on Markketplace.'}`;
+    ? `${safeInvitedBy ? `<strong>${safeInvitedBy}</strong> sent you a fresh invite link.` : 'A fresh invite link is ready for you.'}`
+    : `${safeInvitedBy ? `<strong>${safeInvitedBy}</strong> invited you to help manage this store on Markketplace.` : 'You are invited to help manage this store on Markketplace.'}`;
 
   const content = `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px 0;">
@@ -349,8 +349,8 @@ export function buildInviteEmailHtml(input: BuildInviteEmailHtmlInput): string {
           <p style="margin:0 0 8px 0;font-size:14px;color:#3730a3;font-weight:700;">What happens when you accept</p>
           <ul style="margin:0;padding-left:18px;color:#374151;font-size:14px;line-height:1.7;">
             <li>Your account is created or linked automatically</li>
-            <li>You are added as an editor right away</li>
-            <li>You can start publishing content right away</li>
+            <li>You get editor access as soon as you verify</li>
+            <li>You can start publishing content immediately</li>
           </ul>
         </td>
       </tr>
@@ -370,7 +370,7 @@ export function buildInviteEmailHtml(input: BuildInviteEmailHtmlInput): string {
       </tr>
     </table>` : ''}
 
-    ${isResend ? '' : '<p style="margin:0 0 12px 0;font-size:13px;color:#475569;">This button verifies your invite and signs you in.</p>'}
+    ${isResend ? '' : '<p style="margin:0 0 12px 0;font-size:13px;color:#475569;">This button verifies your invite and signs you in in one step (•‿•).</p>'}
     <p style="margin:0 0 14px 0;padding:10px 14px;border-left:3px solid #6366f1;background:#f8fafc;border-radius:0 8px 8px 0;font-size:13px;line-height:1.7;color:#475569;">${isResend ? 'This refreshed invite link replaces any older invite links and expires in 24 hours.' : 'This invite link expires in 24 hours and can only be used once.'}</p>
     ${safeMagicLink ? `<p style="margin:0 0 14px 0;font-size:12px;color:#94a3b8;">Invite verification link: <a href="${safeMagicLink}" style="color:#6366f1;word-break:break-all;">${safeMagicLink}</a></p>` : ''}
     <p style="margin:0;font-size:13px;color:#475569;">If you weren't expecting this, you can safely ignore it.</p>
@@ -410,7 +410,7 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
   const defaultIntro = isFirstStore
     ? 'Your store is live and the doors are open. Time to share what you love with the world.'
     : 'Your new store is live and ready for its first visitors.';
-  const defaultAdvice = 'A good start: write a short About page so people know your story, add your first product, and upload a logo that feels like you.';
+  const defaultAdvice = 'Easy first moves: add a short About page, publish your first product or event, and upload a logo that feels like you.';
   const safeOwnerName = escapeHtml(ownerName);
   const safeStoreName = escapeHtml(storeName);
   const safeStoreSlug = escapeHtml(storeSlug);
@@ -481,7 +481,7 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
       fontWeight: '700',
     }
   )}
-    <p style="margin:0;font-size:13px;color:#475569;">Need help? Just reply — we'll guide you.</p>
+    <p style="margin:0;font-size:13px;color:#475569;">Need help? Reply anytime and we'll guide you (^-^)/.</p>
   `;
 
   return emailLayout({

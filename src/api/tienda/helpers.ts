@@ -68,7 +68,12 @@ function stripMarkdownAndRichText(value: any): string {
     .trim();
 }
 
-function generateKeywordsFromText(title: string, content: string, maxKeywords = 8): string {
+function generateKeywordsFromText(
+  title: string,
+  content: string,
+  maxKeywords = 8,
+  maxLength = 255,
+): string {
   const source = `${title || ''} ${content || ''}`.toLowerCase();
   const tokens = source
     .replace(/[^a-z0-9\s-]/g, ' ')
@@ -88,11 +93,23 @@ function generateKeywordsFromText(title: string, content: string, maxKeywords = 
     counts.set(token, (counts.get(token) || 0) + 1);
   }
 
-  return Array.from(counts.entries())
+  const sortedKeywords = Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, maxKeywords)
-    .map(([word]) => word)
-    .join(', ');
+    .map(([word]) => word);
+
+  const accepted: string[] = [];
+  for (const keyword of sortedKeywords) {
+    const candidate = accepted.length > 0
+      ? `${accepted.join(', ')}, ${keyword}`
+      : keyword;
+    if (candidate.length > maxLength) {
+      break;
+    }
+    accepted.push(keyword);
+  }
+
+  return accepted.join(', ');
 }
 
 function slugifyValue(value: string): string {
@@ -218,6 +235,36 @@ export function autoFillSEO(data: any, config: ContentTypeConfig): any {
   }
 
   return data;
+}
+
+const SEO_STRING_MAX_LENGTH = 255;
+const SEO_LENGTH_FIELDS = [
+  'metaTitle',
+  'metaDescription',
+  'metaKeywords',
+  'metaUrl',
+  'metaAuthor',
+] as const;
+
+/**
+ * Validate SEO string field lengths against Strapi string/varchar constraints.
+ * Returns null when valid, otherwise a user-facing message.
+ */
+export function validateSeoFieldLengths(data: any): string | null {
+  if (!data || typeof data !== 'object' || !data.SEO || typeof data.SEO !== 'object') {
+    return null;
+  }
+
+  for (const field of SEO_LENGTH_FIELDS) {
+    const raw = data.SEO[field];
+    if (raw == null) continue;
+    const value = String(raw);
+    if (value.length > SEO_STRING_MAX_LENGTH) {
+      return `SEO.${field} is too long (${value.length}). Maximum length is ${SEO_STRING_MAX_LENGTH} characters.`;
+    }
+  }
+
+  return null;
 }
 
 export function ensureGeneratedSlug(data: any, config: ContentTypeConfig, existingItem?: any): any {
