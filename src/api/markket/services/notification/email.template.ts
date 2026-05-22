@@ -123,10 +123,14 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
-      <meta name="color-scheme" content="light dark">
-      <meta name="supported-color-schemes" content="light dark">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
       <title>${title} - ${storeName}</title>
       <style>
+        :root {
+          color-scheme: light;
+          supported-color-schemes: light;
+        }
         body {
           -webkit-text-size-adjust: 100%;
           text-size-adjust: 100%;
@@ -165,13 +169,58 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
           body,
           .mk-bg {
             background-color: ${theme.shellBackground} !important;
+            color: ${theme.textColor} !important;
           }
+          .mk-card {
+            background-color: ${theme.cardBackground} !important;
+            border-color: ${theme.borderColor} !important;
+          }
+          .mk-title,
+          .mk-content,
+          .mk-content p,
+          .mk-content li,
+          .mk-content span,
+          .mk-content div,
+          .mk-content strong,
+          .mk-content b {
+            color: ${theme.textColor} !important;
+          }
+          .mk-footer-text {
+            color: ${theme.mutedTextColor} !important;
+          }
+          .mk-force-white,
+          .mk-force-white td,
+          .mk-force-white div,
+          .mk-force-white p,
+          .mk-force-white li,
+          .mk-force-white span {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+          }
+        }
+
+        [data-ogsc] .mk-bg,
+        [data-ogsb] .mk-bg {
+          background-color: ${theme.shellBackground} !important;
+        }
+        [data-ogsc] .mk-card,
+        [data-ogsb] .mk-card {
+          background-color: ${theme.cardBackground} !important;
+          border-color: ${theme.borderColor} !important;
+        }
+        [data-ogsc] .mk-title,
+        [data-ogsb] .mk-title,
+        [data-ogsc] .mk-content,
+        [data-ogsb] .mk-content,
+        [data-ogsc] .mk-footer-text,
+        [data-ogsb] .mk-footer-text {
+          color: ${theme.textColor} !important;
         }
       </style>
     </head>
     <body style="margin:0;padding:0;background:${theme.shellBackground};color:${theme.textColor};font-family:Arial,Helvetica,sans-serif;">
       <span style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}</span>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="mk-bg" style="background:${theme.shellBackground};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.shellBackground}" class="mk-bg" style="background:${theme.shellBackground};">
         <tr>
           <td align="center" class="mk-shell" style="padding:28px 12px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;margin:0 auto;">
@@ -189,7 +238,7 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
               </tr>
               <tr>
                 <td>
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:26px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.cardBackground}" class="mk-card mk-force-white" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:26px;">
                     <tr>
                       <td bgcolor="${theme.inkBackground}" class="mk-header-pad" style="padding:26px 28px 18px 28px;border-radius:26px 26px 0 0;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -230,12 +279,12 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                       <td class="mk-footer-pad" style="padding:0 28px 26px 28px;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid ${theme.borderColor};">
                           <tr>
-                            <td style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${theme.mutedTextColor};">
+                            <td class="mk-footer-text" style="padding-top:18px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${theme.mutedTextColor};">
                               ${escapeHtml(footerText)}
                             </td>
                           </tr>
                           <tr>
-                            <td style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.mutedTextColor};letter-spacing:1.2px;text-transform:uppercase;">
+                            <td class="mk-footer-text" style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.mutedTextColor};letter-spacing:1.2px;text-transform:uppercase;">
                               <a href="${storeUrl}" style="color:${theme.secondaryColor};text-decoration:none;">${escapeHtml(storeUrl)}</a>
                             </td>
                           </tr>

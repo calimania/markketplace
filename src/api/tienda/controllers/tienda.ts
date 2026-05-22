@@ -14,6 +14,7 @@ import {
   validateAndNormalizeSlug,
   pickAllowedFields,
   sanitizePayloadForUpdate,
+  validateSeoFieldLengths,
   buildStoreRelation,
   applyPagination,
   checkRateLimit,
@@ -1744,6 +1745,10 @@ export default {
 
       // Auto-fill SEO if title/content fields are present
       const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedCreateData, config), config);
+      const seoLengthError = validateSeoFieldLengths(enrichedData);
+      if (seoLengthError) {
+        return ctx.badRequest(seoLengthError);
+      }
 
       const creatorData = config.autoSetCreator
         ? { [config.autoSetCreator]: user.id }
@@ -1765,6 +1770,9 @@ export default {
         });
       } catch (createError: any) {
         console.error(`[TIENDA_CREATE_CONTENT] Strapi create failed for ${contentType}:`, createError.message);
+        if (createError.message?.includes('value too long for type character varying(255)')) {
+          return ctx.badRequest('One or more SEO fields exceed 255 characters. Please shorten SEO.metaTitle, SEO.metaDescription, SEO.metaKeywords, or SEO.metaUrl.');
+        }
         if (createError.message?.includes('unique')) {
           return ctx.conflict(`A ${contentType} with that slug or identifier already exists. requestId=${requestId}`);
         }
@@ -1966,6 +1974,10 @@ export default {
 
         // Auto-fill SEO if title/content fields are present
         const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedData, config), config, item);
+        const seoLengthError = validateSeoFieldLengths(enrichedData);
+        if (seoLengthError) {
+          return ctx.badRequest(seoLengthError);
+        }
 
         try {
           updated = await (strapi.documents as any)(config.uid).update({
@@ -1977,6 +1989,9 @@ export default {
         } catch (updateError: any) {
           console.error(`[TIENDA_UPDATE_CONTENT] Strapi update failed for ${contentType}/${itemId}:`, updateError.message, updateError?.details || updateError?.cause || '');
           console.error(`[TIENDA_UPDATE_CONTENT] Failed payload keys:`, Object.keys(enrichedData));
+          if (updateError.message?.includes('value too long for type character varying(255)')) {
+            return ctx.badRequest('One or more SEO fields exceed 255 characters. Please shorten SEO.metaTitle, SEO.metaDescription, SEO.metaKeywords, or SEO.metaUrl.');
+          }
           return ctx.internalServerError(`Failed to save changes: ${updateError.message}. requestId=${requestId}`);
         }
       } else {
