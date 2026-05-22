@@ -318,13 +318,53 @@ export function pickAllowedFields(input: any, config: ContentTypeConfig): any {
  * When a client does GET → edit → PUT, populated relation/media objects are sent back
  * verbatim. Strapi v5 rejects full objects for relation fields and stale component ids.
  *
- * - mediaFields: reduce to { id } only (or null)
+ * - mediaFields: reduce to scalar id/documentId values (or null)
  * - relationFields: convert populated object to { connect: [{ documentId }] } (or null)
  * - componentFields (repeatable): strip `id` from each entry to avoid stale-entry conflicts
  */
 export function sanitizePayloadForUpdate(data: any, config: ContentTypeConfig): any {
   if (!data || typeof data !== 'object') return data;
   const out = { ...data };
+
+  const toScalarRef = (value: any): string | number | null => {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      return value;
+    }
+
+    if (typeof value !== 'object') {
+      return null;
+    }
+
+    if (value.id !== undefined && value.id !== null) {
+      return value.id;
+    }
+
+    if (value.documentId !== undefined && value.documentId !== null) {
+      return String(value.documentId);
+    }
+
+    return null;
+  };
+
+  const buildRef = (value: any): { id: any } | { documentId: string } | null => {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    if (value.id !== undefined && value.id !== null) {
+      return { id: value.id };
+    }
+
+    if (value.documentId !== undefined && value.documentId !== null) {
+      return { documentId: String(value.documentId) };
+    }
+
+    return null;
+  };
 
   // Media fields — keep only the id
   for (const field of config.mediaFields || []) {
@@ -335,12 +375,11 @@ export function sanitizePayloadForUpdate(data: any, config: ContentTypeConfig): 
     } else if (Array.isArray(val)) {
       // Multiple media
       out[field] = val
-        .filter((v: any) => v?.id || v?.documentId)
-        .map((v: any) => ({ id: v.id ?? v.documentId }));
-    } else if (typeof val === 'object' && (val.id || val.documentId)) {
-      out[field] = { id: val.id ?? val.documentId };
+        .map((v: any) => toScalarRef(v))
+        .filter(Boolean);
+    } else {
+      out[field] = toScalarRef(val);
     }
-    // If it's already a number/string id, leave it
   }
 
   // Relation fields — convert populated objects to connect syntax
@@ -352,12 +391,21 @@ export function sanitizePayloadForUpdate(data: any, config: ContentTypeConfig): 
     } else if (Array.isArray(val)) {
       // manyToMany — convert each to documentId
       const ids = val
-        .filter((v: any) => v?.documentId || v?.id)
-        .map((v: any) => ({ documentId: v.documentId ?? String(v.id) }));
+        .map((v: any) => buildRef(v))
+        .filter(Boolean);
       out[field] = { connect: ids };
-    } else if (typeof val === 'object' && (val.documentId || val.id)) {
+    } else if (typeof val === 'object') {
+      if (val.connect || val.set || val.disconnect) {
+        continue;
+      }
+      const ref = buildRef(val);
+      if (!ref) {
+        continue;
+      }
       // manyToOne — convert to connect
-      out[field] = { connect: [{ documentId: val.documentId ?? String(val.id) }] };
+      out[field] = { connect: [ref] };
+    } else if (typeof val === 'string' || typeof val === 'number') {
+      out[field] = { connect: [{ id: val }] };
     }
     // Already a connect/disconnect/set object or plain id — leave it
   }
@@ -372,7 +420,7 @@ export function sanitizePayloadForUpdate(data: any, config: ContentTypeConfig): 
     }
   }
 
-  // Nested media fields (dot-path, e.g. 'SEO.socialImage') — strip to { id } only.
+  // Nested media fields (dot-path, e.g. 'SEO.socialImage') — strip to scalar id/documentId.
   // Without this, a GET-then-PUT cycle sends back the full populated media object inside
   // the component, which Strapi v5 cannot interpret and silently clears the media.
   for (const dotPath of config.nestedMediaFields || []) {
@@ -387,10 +435,9 @@ export function sanitizePayloadForUpdate(data: any, config: ContentTypeConfig): 
     const val = parentVal[child];
     if (val === null || val === undefined) {
       parentVal[child] = null;
-    } else if (typeof val === 'object' && (val.id || val.documentId)) {
-      parentVal[child] = { id: val.id ?? val.documentId };
+    } else {
+      parentVal[child] = toScalarRef(val);
     }
-    // Already a plain id or { id } — leave it
   }
 
   return out;

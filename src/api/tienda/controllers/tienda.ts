@@ -680,6 +680,136 @@ function ensureRequestId(ctx: any): string {
   return requestId;
 }
 
+function toMediaRef(value: any): { id: any } | { documentId: string } | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  if (value.id !== undefined && value.id !== null) {
+    return { id: value.id };
+  }
+
+  if (value.documentId !== undefined && value.documentId !== null) {
+    return { documentId: String(value.documentId) };
+  }
+
+  return null;
+}
+
+async function resolveUploadMediaIds(data: Record<string, any>, config: any): Promise<Record<string, any>> {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  const next: Record<string, any> = { ...data };
+  const mediaFields = Array.isArray(config?.mediaFields) ? config.mediaFields : [];
+  const nestedMediaFields = Array.isArray(config?.nestedMediaFields) ? config.nestedMediaFields : [];
+  const documentIds = new Set<string>();
+
+  const collectDocumentId = (value: any) => {
+    if (typeof value !== 'string') {
+      return;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    // Upload IDs are numeric; non-numeric strings are likely upload documentIds.
+    if (!/^\d+$/.test(trimmed)) {
+      documentIds.add(trimmed);
+    }
+  };
+
+  const collectFromFieldValue = (value: any) => {
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        if (typeof entry === 'string') {
+          collectDocumentId(entry);
+        }
+      }
+      return;
+    }
+
+    collectDocumentId(value);
+  };
+
+  for (const field of mediaFields) {
+    if (!Object.prototype.hasOwnProperty.call(next, field)) continue;
+    collectFromFieldValue(next[field]);
+  }
+
+  for (const dotPath of nestedMediaFields) {
+    const dotIndex = dotPath.indexOf('.');
+    if (dotIndex === -1) continue;
+    const parent = dotPath.slice(0, dotIndex);
+    const child = dotPath.slice(dotIndex + 1);
+    const parentVal = next[parent];
+    if (!parentVal || typeof parentVal !== 'object' || Array.isArray(parentVal)) continue;
+    if (!Object.prototype.hasOwnProperty.call(parentVal, child)) continue;
+    collectFromFieldValue(parentVal[child]);
+  }
+
+  if (documentIds.size === 0) {
+    return next;
+  }
+
+  const files = await strapi.query('plugin::upload.file').findMany({
+    where: {
+      documentId: { $in: Array.from(documentIds) },
+    },
+    select: ['id', 'documentId'],
+  });
+
+  const idByDocumentId = new Map<string, number>();
+  for (const file of files || []) {
+    const docId = String(file?.documentId || '').trim();
+    const id = Number(file?.id || 0);
+    if (docId && id > 0) {
+      idByDocumentId.set(docId, id);
+    }
+  }
+
+  const toUploadId = (value: any): any => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const resolved = idByDocumentId.get(value.trim());
+    return resolved ?? value;
+  };
+
+  for (const field of mediaFields) {
+    if (!Object.prototype.hasOwnProperty.call(next, field)) continue;
+    const val = next[field];
+    if (Array.isArray(val)) {
+      next[field] = val.map(toUploadId);
+    } else {
+      next[field] = toUploadId(val);
+    }
+  }
+
+  for (const dotPath of nestedMediaFields) {
+    const dotIndex = dotPath.indexOf('.');
+    if (dotIndex === -1) continue;
+    const parent = dotPath.slice(0, dotIndex);
+    const child = dotPath.slice(dotIndex + 1);
+    const parentVal = next[parent];
+    if (!parentVal || typeof parentVal !== 'object' || Array.isArray(parentVal)) continue;
+    if (!Object.prototype.hasOwnProperty.call(parentVal, child)) continue;
+
+    const value = parentVal[child];
+    if (Array.isArray(value)) {
+      parentVal[child] = value.map(toUploadId);
+    } else {
+      parentVal[child] = toUploadId(value);
+    }
+  }
+
+  return next;
+}
+
 function resolveRequestedPublicationStatus(value: any): 'draft' | 'published' | null {
   const status = String(value || '').trim().toLowerCase();
   if (status === 'draft' || status === 'published') {
@@ -1742,9 +1872,10 @@ export default {
 
       // Sanitize media/relation/component fields
       const sanitizedCreateData = sanitizePayloadForUpdate(createData, config);
+      const createDataWithUploadIds = await resolveUploadMediaIds(sanitizedCreateData, config);
 
       // Auto-fill SEO if title/content fields are present
-      const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedCreateData, config), config);
+      const enrichedData = ensureGeneratedSlug(autoFillSEO(createDataWithUploadIds, config), config);
       const seoLengthError = validateSeoFieldLengths(enrichedData);
       if (seoLengthError) {
         return ctx.badRequest(seoLengthError);
@@ -1953,10 +2084,9 @@ export default {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id: _cid, ...existingSEOFields } = item.SEO as any;
           const seoToMerge: any = { ...existingSEOFields };
-          // Reduce socialImage to { id } reference — full object would be rejected by Strapi v5
+          // Reduce socialImage to a media reference — full object would be rejected by Strapi v5
           if (seoToMerge.socialImage && typeof seoToMerge.socialImage === 'object') {
-            const imgId = seoToMerge.socialImage.id ?? seoToMerge.socialImage.documentId;
-            seoToMerge.socialImage = imgId ? { id: imgId } : null;
+            seoToMerge.socialImage = toMediaRef(seoToMerge.socialImage) ?? null;
           }
           sanitizedData.SEO = seoToMerge;
         } else if (clientSentSEO && item.SEO && typeof item.SEO === 'object') {
@@ -1966,14 +2096,14 @@ export default {
           if (clientSEO && typeof clientSEO === 'object' && !Object.prototype.hasOwnProperty.call(clientSEO, 'socialImage')) {
             const existingImg = (item.SEO as any).socialImage;
             if (existingImg) {
-              const imgId = existingImg.id ?? existingImg.documentId;
-              clientSEO.socialImage = imgId ? { id: imgId } : null;
+              clientSEO.socialImage = toMediaRef(existingImg) ?? null;
             }
           }
         }
 
         // Auto-fill SEO if title/content fields are present
-        const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedData, config), config, item);
+        const sanitizedDataWithUploadIds = await resolveUploadMediaIds(sanitizedData, config);
+        const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedDataWithUploadIds, config), config, item);
         const seoLengthError = validateSeoFieldLengths(enrichedData);
         if (seoLengthError) {
           return ctx.badRequest(seoLengthError);
