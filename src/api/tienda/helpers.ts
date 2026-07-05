@@ -6,14 +6,11 @@
 import type { ContentTypeConfig } from './content-registry';
 
 /**
- * Truncate text to a max length, preferring a clean break at sentence-ending
- * punctuation (. ! ?) or a word boundary, then appending ellipsis when cut.
- * Targets Google's ~160-char metaDescription recommendation.
+ * Truncate text to a max length, preferring a clean break at paragraph/line breaks,
+ * sentence-ending punctuation (. ! ?), or a word boundary, then appending ellipsis
+ * when cut. Targets Google's ~160-char metaDescription recommendation.
  */
-export function smartTruncate(text: string, max: number = 160): string {
-  const str = String(text || '').replace(/\s+/g, ' ').trim();
-  if (str.length <= max) return str;
-
+function truncateAtBoundary(str: string, max: number): string {
   const window = str.slice(0, max);
 
   // Prefer last sentence-ending punctuation within the window
@@ -33,6 +30,28 @@ export function smartTruncate(text: string, max: number = 160): string {
   }
 
   return window.trim() + '…';
+}
+
+export function smartTruncate(text: string, max: number = 160): string {
+  const raw = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!raw) return '';
+
+  const segments = raw
+    .split(/\n+/)
+    .map((segment) => segment.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  if (segments.length > 1) {
+    const fit = segments.find((segment) => segment.length <= max);
+    if (fit) {
+      return fit;
+    }
+  }
+
+  const str = segments.join(' ');
+  if (str.length <= max) return str;
+
+  return truncateAtBoundary(str, max);
 }
 
 function stripMarkdownAndRichText(value: any): string {
