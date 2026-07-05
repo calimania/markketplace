@@ -218,6 +218,13 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
     },
   });
 
+  const shouldPublishInbound = Boolean(store?.id);
+  if (shouldPublishInbound && inboxRecord?.documentId) {
+    await strapi.documents('api::inbox.inbox').publish({
+      documentId: inboxRecord.documentId,
+    });
+  }
+
   return {
     status: 'success',
     data: {
@@ -225,6 +232,7 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
       threadKey,
       routingKey,
       store: store?.slug || null,
+      published: shouldPublishInbound,
     },
   };
 }
