@@ -43,6 +43,28 @@ export interface CommonExtension extends Struct.ComponentSchema {
   };
 }
 
+export interface CommonInboxMetadata extends Struct.ComponentSchema {
+  collectionName: 'components_common_inbox_metadata';
+  info: {
+    description: 'Structured metadata captured for inbox messages.';
+    displayName: 'Inbox Metadata';
+    icon: 'envelope';
+  };
+  attributes: {
+    envelopeFrom: Schema.Attribute.Email;
+    envelopeTo: Schema.Attribute.Email;
+    rawFrom: Schema.Attribute.Email;
+    rawTo: Schema.Attribute.Email;
+    receivedAt: Schema.Attribute.DateTime;
+    routingKey: Schema.Attribute.String;
+    sentAt: Schema.Attribute.DateTime;
+    source: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.DefaultTo<'sendgrid-inbound'>;
+    subject: Schema.Attribute.String;
+    threadKey: Schema.Attribute.String;
+    messageId: Schema.Attribute.String;
+  };
+}
+
 export interface CommonPaymentAttempts extends Struct.ComponentSchema {
   collectionName: 'components_common_payment_attempts';
   info: {
@@ -178,6 +200,7 @@ declare module '@strapi/strapi' {
     export interface ComponentSchemas {
       'common.address': CommonAddress;
       'common.extension': CommonExtension;
+      'common.inbox-metadata': CommonInboxMetadata;
       'common.payment-attempts': CommonPaymentAttempts;
       'common.prices': CommonPrices;
       'common.product-snapshop': CommonProductSnapshop;

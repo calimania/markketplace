@@ -6,9 +6,6 @@ export default ({ env }) => ({
   'get-strapi-schema': {
     enabled: true,
   },
-  documentation: {
-    enabled: true,
-  },
   upload: {
     config: {
       sizeLimit: 10 * 1024 * 1024, // 10mb in bytes

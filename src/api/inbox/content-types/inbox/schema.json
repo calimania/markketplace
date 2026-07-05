@@ -64,7 +64,9 @@
       "type": "text"
     },
     "Metadata": {
-      "type": "json"
+      "type": "component",
+      "repeatable": false,
+      "component": "common.inbox-metadata"
     },
     "Status": {
       "type": "string",

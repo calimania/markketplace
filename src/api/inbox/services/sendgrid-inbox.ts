@@ -45,6 +45,37 @@ function getBody(payload: any): { text?: string; html?: string } {
   };
 }
 
+function buildInboxMetadata(params: {
+  source: string;
+  threadKey: string;
+  routingKey: string | null;
+  messageId: string | null;
+  subject: string;
+  rawTo: string | null;
+  rawFrom: string | null;
+  receivedAt?: string;
+  sentAt?: string;
+  envelope: any;
+}) {
+  const envelopeFrom = typeof params.envelope?.from === 'string' ? normalizeEmailAddress(params.envelope.from) : null;
+  const envelopeToValue = Array.isArray(params.envelope?.to) ? params.envelope.to[0] : params.envelope?.to;
+  const envelopeTo = typeof envelopeToValue === 'string' ? normalizeEmailAddress(envelopeToValue) : null;
+
+  return {
+    source: params.source,
+    threadKey: params.threadKey,
+    routingKey: params.routingKey,
+    messageId: params.messageId,
+    subject: params.subject,
+    rawTo: params.rawTo,
+    rawFrom: params.rawFrom,
+    receivedAt: params.receivedAt || null,
+    sentAt: params.sentAt || null,
+    envelopeFrom,
+    envelopeTo,
+  };
+}
+
 function getMailDomain(): string {
   return process.env.MARKKET_EMAIL_DOMAIN
     || process.env.MAIL_DOMAIN
@@ -172,13 +203,17 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
       ToAddress: recipientEmail,
       MessageId: messageId,
       BodyHtml: body.html || null,
-      Metadata: {
-        envelope,
+      Metadata: buildInboxMetadata({
         source: 'sendgrid-inbound',
-        receivedAt: new Date().toISOString(),
+        threadKey,
+        routingKey,
+        messageId,
+        subject,
         rawTo: recipientEmail,
         rawFrom: senderEmail,
-      },
+        receivedAt: new Date().toISOString(),
+        envelope,
+      }),
       Status: 'new',
     },
   });
@@ -254,11 +289,17 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
       FromAddress: fromEmail,
       ToAddress: toAddress,
       BodyHtml: htmlBody || null,
-      Metadata: {
+      Metadata: buildInboxMetadata({
         source: 'sendgrid-outbound',
-        sentAt: new Date().toISOString(),
+        threadKey,
         routingKey,
-      },
+        messageId: null,
+        subject,
+        rawTo: toAddress,
+        rawFrom: fromEmail,
+        sentAt: new Date().toISOString(),
+        envelope: { from: fromEmail, to: toAddress },
+      }),
       Status: 'sent',
     },
   });

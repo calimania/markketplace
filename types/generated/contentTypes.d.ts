@@ -910,6 +910,7 @@ export interface ApiInboxInbox extends Struct.CollectionTypeSchema {
     Message: Schema.Attribute.Text;
     Name: Schema.Attribute.String & Schema.Attribute.Required;
     parentMessageId: Schema.Attribute.Relation<'oneToOne', 'api::inbox.inbox'>;
+    Metadata: Schema.Attribute.Component<'common.inbox-metadata', false>;
     publishedAt: Schema.Attribute.DateTime;
     store: Schema.Attribute.Relation<'oneToOne', 'api::store.store'>;
     updatedAt: Schema.Attribute.DateTime;
