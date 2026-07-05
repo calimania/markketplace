@@ -23,6 +23,11 @@ export default {
       method: 'POST',
       path: '/inbox/inbound',
       handler: 'inbox.processInbound',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
     },
   ],
 };

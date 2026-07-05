@@ -10,8 +10,14 @@ function normalizeEmailAddress(value?: string | null): string | null {
 
 function extractRoutingKey(recipientEmail?: string | null): string | null {
   if (!recipientEmail) return null;
-  const match = String(recipientEmail).trim().match(/^([^@]+)@/);
-  return match ? match[1] : null;
+  const normalized = String(recipientEmail).trim().toLowerCase();
+  const [localPart] = normalized.split('@');
+  if (!localPart) return null;
+
+  // Use only the part before @ and ignore any plus-tagging or domain.
+  // This keeps routing independent of deployment host and supports aliases like slug+test@domain.com.
+  const slug = localPart.split('+')[0].trim();
+  return slug || null;
 }
 
 function buildThreadKey(fromAddress?: string | null, toAddress?: string | null, routingKey?: string | null): string {
@@ -137,10 +143,12 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
     return { status: 'ignored', reason: 'Invalid routing address format' };
   }
 
-  const store = await strapi.documents('api::store.store').findFirst({
-    filters: { slug: routingKey },
-    populate: ['owner', 'users'],
-  });
+  const store = routingKey
+    ? await strapi.documents('api::store.store').findFirst({
+      filters: { slug: routingKey },
+      populate: ['owner', 'users'],
+    })
+    : null;
 
   const inboxUserId = await resolveInboxUser(strapi, store, ctx);
   const existingThread = await resolveExistingThread(strapi, payload, routingKey);
@@ -159,7 +167,7 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
       parentMessageId: existingThread?.documentId ? { connect: [{ documentId: existingThread.documentId }] } : undefined,
       Direction: 'incoming',
       ThreadKey: threadKey,
-      RoutingKey: routingKey,
+      RoutingKey: routingKey || null,
       FromAddress: senderEmail,
       ToAddress: recipientEmail,
       MessageId: messageId,
