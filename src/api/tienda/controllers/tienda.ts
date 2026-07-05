@@ -158,7 +158,8 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
       slug: 'home',
       Content: [
         {
-          type: 'paragraph',
+          type: 'heading',
+          level: 1,
           children: [
             {
               type: 'text',
@@ -171,22 +172,61 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: 'This starter homepage is here to help you launch quickly. Replace this copy with your own voice, offer, and links.',
+              text: `${storeName} is a curated storefront for thoughtful finds, fresh drops, and stories worth your attention.`,
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: 'Browse the latest highlights, discover what is new this week, and check back often for upcoming releases.',
             },
           ],
         },
       ],
       SEO: {
         metaTitle: `${storeName} Home`,
-        metaDescription: `Start shopping at ${storeName}. Fresh products, upcoming events, and more.`,
+        metaDescription: `Discover ${storeName}: curated products, new arrivals, and stories from the studio.`,
       },
     },
     {
       Title: `${storeName} Newsletter`,
       slug: 'newsletter',
+      Content: [
+        {
+          type: 'heading',
+          level: 1,
+          children: [
+            {
+              type: 'text',
+              text: 'Stay close to the story',
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: `Sign up for launch notes, restock alerts, and occasional highlights from ${storeName}.`,
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: 'No noise, just meaningful updates when there is something genuinely worth sharing.',
+            },
+          ],
+        },
+      ],
       SEO: {
         metaTitle: `${storeName} Newsletter`,
-        metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
+        metaDescription: `Subscribe to ${storeName} for launch notes, restocks, and occasional highlights.`,
       },
     },
     {
@@ -208,12 +248,7 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: 'Welcome to our storefront.',
-            },
-            {
-              type: 'text',
-              text: ' Visit our blog and subscribe for updates to learn more.',
-              bold: true,
+              text: `${storeName} curates independent products and small-batch releases for people who care about craft and detail.`,
             },
           ],
         },
@@ -222,14 +257,14 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: 'Use this section to explain who you are, where to find you, and what you are building for your community.',
+              text: 'From everyday staples to limited drops, every selection is chosen for quality, usefulness, and character.',
             },
           ],
         },
       ],
       SEO: {
         metaTitle: `About ${storeName}`,
-        metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
+        metaDescription: `Learn the story behind ${storeName} and the values that shape each release.`,
       },
     },
   ];
@@ -274,13 +309,43 @@ async function seedAndPublishStarterPages(params: {
 async function seedStarterArticle({ storeDocumentId, storeName, storeSlug }: StarterSeedContext) {
   const starterArticle = await strapi.documents('api::article.article').create({
     data: {
-      Title: `Welcome to ${storeName}`,
-      slug: `welcome-to-${storeSlug}`,
+      Title: `A first note from ${storeName}`,
+      slug: `first-note-${storeSlug}`,
       store: storeDocumentId,
-      description: 'Your store is live. This placeholder article helps you publish your first update quickly.',
+      description: `A short launch story to make ${storeName} feel alive on day one.`,
+      Content: [
+        {
+          type: 'heading',
+          level: 1,
+          children: [
+            {
+              type: 'text',
+              text: `Hello from ${storeName}`,
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: `${storeName} is now open, and this first note is our way of saying welcome.`,
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          children: [
+            {
+              type: 'text',
+              text: 'Expect a curated mix of products, occasional stories, and timely updates whenever something new arrives.',
+            },
+          ],
+        },
+      ],
       SEO: {
-        metaTitle: `Welcome to ${storeName}`,
-        metaDescription: `We are live and excited to share what is coming next at ${storeName}.`,
+        metaTitle: `A first note from ${storeName}`,
+        metaDescription: `Meet ${storeName} in this opening note and discover what is coming next.`,
       },
     } as any,
   });

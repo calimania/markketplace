@@ -88,9 +88,9 @@ function renderButton(label: string, href: string, theme: EmailTheme, fill: 'pri
 
 function renderInfoPanel(title: string, body: string, theme: EmailTheme): string {
   return `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:${theme.panelBackground};border:1px dashed ${theme.borderColor};border-radius:18px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:${theme.panelBackground};border:1px dashed ${theme.borderColor};border-radius:20px;box-shadow:0 10px 24px rgba(15,23,42,0.04);">
       <tr>
-        <td width="8" bgcolor="${theme.primaryColor}" style="font-size:0;line-height:0;border-radius:18px 0 0 18px;">&nbsp;</td>
+        <td width="8" bgcolor="${theme.primaryColor}" style="font-size:0;line-height:0;border-radius:20px 0 0 20px;">&nbsp;</td>
         <td style="padding:20px 22px;">
           <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.2;color:${theme.textColor};font-style:italic;margin:0 0 10px 0;">${escapeHtml(title)}</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${theme.textColor};">${body}</div>
@@ -229,6 +229,7 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                     <tr>
                       <td style="padding:0 2px 14px 2px;">
+                              <div style="width:112px;height:8px;border-radius:999px;background:linear-gradient(90deg,${theme.primaryColor} 0%,${theme.secondaryColor} 52%,${theme.tertiaryColor} 100%);margin:0 0 12px 0;"></div>
                         ${resolvedLabel !== null ? renderEyebrow(resolvedLabel, theme) : ''}
                         <div class="mk-brand" style="font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
                       </td>
@@ -238,9 +239,9 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
               </tr>
               <tr>
                 <td>
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.cardBackground}" class="mk-card mk-force-white" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:26px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.cardBackground}" class="mk-card mk-force-white" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:30px;box-shadow:0 18px 42px rgba(15,23,42,0.08);">
                     <tr>
-                      <td bgcolor="${theme.inkBackground}" class="mk-header-pad" style="padding:26px 28px 18px 28px;border-radius:26px 26px 0 0;">
+                      <td bgcolor="${theme.inkBackground}" class="mk-header-pad" style="padding:26px 28px 18px 28px;border-radius:30px 30px 0 0;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                           <tr>
                             <td valign="top" style="padding:0 12px 0 0;">

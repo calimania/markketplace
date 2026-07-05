@@ -33,7 +33,8 @@ function truncateAtBoundary(str: string, max: number): string {
 }
 
 export function smartTruncate(text: string, max: number = 160): string {
-  const raw = String(text || '').replace(/\r\n?/g, '\n').trim();
+  const plain = stripMarkdownAndRichText(text);
+  const raw = String(plain || '').replace(/\r\n?/g, '\n').trim();
   if (!raw) return '';
 
   const segments = raw

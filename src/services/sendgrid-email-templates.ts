@@ -58,15 +58,15 @@ const CHIP_STYLES = {
 };
 
 const WELCOME_CHIPS: Chip[] = [
-  { label: 'Fresh drops', style: CHIP_STYLES.SKY },
-  { label: 'Store signals', style: CHIP_STYLES.CYAN },
-  { label: 'No spam', style: CHIP_STYLES.BLUE },
+  { label: 'Curated picks', style: CHIP_STYLES.SKY },
+  { label: 'Launch notes', style: CHIP_STYLES.CYAN },
+  { label: 'No filler', style: CHIP_STYLES.BLUE },
 ];
 
 const LAUNCH_CHIPS: Chip[] = [
   { label: 'Launch ready', style: CHIP_STYLES.GREEN },
-  { label: 'Publish fast', style: CHIP_STYLES.TEAL },
-  { label: 'Grow daily', style: CHIP_STYLES.INDIGO },
+  { label: 'First story', style: CHIP_STYLES.TEAL },
+  { label: 'Made for today', style: CHIP_STYLES.INDIGO },
 ];
 
 function escapeHtml(value: string | undefined | null): string {
@@ -130,7 +130,7 @@ interface CtaButton {
 function renderButtonCell(button: CtaButton): string {
   const borderStyle = button.border ? `;border:1px solid ${button.border}` : '';
   return `
-    <td bgcolor="${button.background}" style="border-radius:999px${borderStyle};">
+    <td bgcolor="${button.background}" style="border-radius:999px${borderStyle};box-shadow:0 10px 20px rgba(15,23,42,0.08);">
       <a href="${button.href}" style="display:inline-block;padding:${button.padding};font-family:${EMAIL_DEFAULTS.FONT_STACK};font-size:${button.fontSize};font-weight:${button.fontWeight};color:${button.textColor};text-decoration:none;border-radius:999px;">${button.label}</a>
     </td>
   `;
@@ -408,9 +408,9 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
   } = input;
 
   const defaultIntro = isFirstStore
-    ? 'Your store is live and the doors are open. Time to share what you love with the world.'
-    : 'Your new store is live and ready for its first visitors.';
-  const defaultAdvice = 'Easy first moves: add a short About page, publish your first product or event, and upload a logo that feels like you.';
+    ? 'Your store is live, the layout is set, and the first chapter is ready to be written.'
+    : 'Your new store is live and ready for visitors. A few thoughtful updates will make it feel complete fast.';
+  const defaultAdvice = 'Start with one clear homepage message, one story or product, and one small update that feels unmistakably yours.';
   const safeOwnerName = escapeHtml(ownerName);
   const safeStoreName = escapeHtml(storeName);
   const safeStoreSlug = escapeHtml(storeSlug);
@@ -420,15 +420,15 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
   const content = `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px 0;">
       <tr>
-        <td style="padding:0;border-radius:16px;border:1px solid #bbf7d0;background:#ffffff;overflow:hidden;">
+        <td style="padding:0;border-radius:20px;border:1px solid #bbf7d0;background:#ffffff;overflow:hidden;box-shadow:0 14px 32px rgba(15,23,42,0.07);">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
             <tr>
-              <td style="height:6px;font-size:0;line-height:0;background:linear-gradient(90deg,#16a34a 0%,#22c55e 50%,#0ea5e9 100%);">&nbsp;</td>
+              <td style="height:8px;font-size:0;line-height:0;background:linear-gradient(90deg,#16a34a 0%,#22c55e 44%,#0ea5e9 100%);">&nbsp;</td>
             </tr>
             <tr>
-              <td style="padding:20px 22px;color:#0f172a;">
+              <td style="padding:22px 24px 20px 24px;color:#0f172a;">
                 <p style="margin:0 0 10px 0;font-size:11px;color:#166534;letter-spacing:.1em;text-transform:uppercase;font-weight:700;">Store launch</p>
-                <h2 style="margin:0 0 8px 0;font-size:22px;line-height:1.3;color:#0f172a;">Congrats${safeOwnerName ? `, ${safeOwnerName}` : ''} ✦</h2>
+                <h2 style="margin:0 0 8px 0;font-size:24px;line-height:1.25;color:#0f172a;">Congrats${safeOwnerName ? `, ${safeOwnerName}` : ''} ✦</h2>
                 <p style="margin:0;font-size:15px;line-height:1.7;color:#1e293b;">Your store has been ${isFirstStore ? 'created and linked to your account' : 'created'}.</p>
                 ${renderChipRow(LAUNCH_CHIPS)}
               </td>
@@ -442,15 +442,34 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px 0;">
       <tr>
-        <td style="padding:14px 16px;border:1px solid #bbf7d0;border-radius:12px;background:#f0fdf4;">
-          <p style="margin:0 0 8px 0;font-size:14px;color:#166534;font-weight:700;">Launch checklist</p>
-          <p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:#1f2937;">✅ Branding and store details</p>
-          <p style="margin:0 0 6px 0;font-size:13px;line-height:1.6;color:#1f2937;">⬜ First product or event published</p>
-          <p style="margin:0;font-size:13px;line-height:1.6;color:#1f2937;">⬜ Share your first update with subscribers</p>
+        <td style="padding:16px 16px 14px 16px;border:1px solid #bbf7d0;border-radius:16px;background:#f0fdf4;">
+          <p style="margin:0 0 8px 0;font-size:14px;color:#166534;font-weight:700;">Opening moves</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+            <tr>
+              <td width="33.3%" style="padding:0 6px 0 0;vertical-align:top;">
+                <div style="padding:12px 12px;border-radius:12px;background:#ffffff;border:1px solid #d1fae5;font-size:13px;line-height:1.55;color:#1f2937;">
+                  <strong style="display:block;color:#0f172a;margin-bottom:4px;">Tell the story</strong>
+                  Share what makes this store worth remembering.
+                </div>
+              </td>
+              <td width="33.3%" style="padding:0 6px;vertical-align:top;">
+                <div style="padding:12px 12px;border-radius:12px;background:#ffffff;border:1px solid #d1fae5;font-size:13px;line-height:1.55;color:#1f2937;">
+                  <strong style="display:block;color:#0f172a;margin-bottom:4px;">Publish one thing</strong>
+                  Add a product, event, or article that feels alive.
+                </div>
+              </td>
+              <td width="33.3%" style="padding:0 0 0 6px;vertical-align:top;">
+                <div style="padding:12px 12px;border-radius:12px;background:#ffffff;border:1px solid #d1fae5;font-size:13px;line-height:1.55;color:#1f2937;">
+                  <strong style="display:block;color:#0f172a;margin-bottom:4px;">Share the link</strong>
+                  Send the store to one person who should see it first.
+                </div>
+              </td>
+            </tr>
+          </table>
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:10px 0 0 0;">
             <tr>
               <td style="height:7px;background:#dcfce7;border-radius:999px;overflow:hidden;">
-                <div style="width:34%;height:7px;background:linear-gradient(90deg,#16a34a 0%,#0ea5e9 100%);"></div>
+                <div style="width:38%;height:7px;background:linear-gradient(90deg,#16a34a 0%,#0ea5e9 100%);"></div>
               </td>
             </tr>
           </table>
