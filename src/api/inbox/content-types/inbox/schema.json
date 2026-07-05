@@ -40,6 +40,35 @@
       "type": "relation",
       "relation": "oneToOne",
       "target": "plugin::users-permissions.user"
+    },
+    "Direction": {
+      "type": "string",
+      "default": "incoming"
+    },
+    "ThreadKey": {
+      "type": "string"
+    },
+    "RoutingKey": {
+      "type": "string"
+    },
+    "FromAddress": {
+      "type": "email"
+    },
+    "ToAddress": {
+      "type": "email"
+    },
+    "MessageId": {
+      "type": "string"
+    },
+    "BodyHtml": {
+      "type": "text"
+    },
+    "Metadata": {
+      "type": "json"
+    },
+    "Status": {
+      "type": "string",
+      "default": "new"
     }
   }
 }

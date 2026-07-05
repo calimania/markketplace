@@ -13,7 +13,7 @@ import {
   getQuickStats,
   getVisibilityFlags,
 } from '../services/dashboard';
-import { checkStoreAccess as checkStoreOwnerAccess } from '../../../services/api-auth';
+import { checkStoreAccess, checkStoreAccess as checkStoreOwnerAccess } from '../../../services/api-auth';
 import { decryptCredentials, sensitiveFields } from '../../../services/encryption';
 import { testSendGridConnection } from '../../../services/sendgrid-marketing';
 import { testOdooConnection } from '../../../services/odoo-partner';
@@ -555,7 +555,18 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
     }
 
     try {
-      const flags = await getVisibilityFlags(storeId);
+      const user = ctx.state?.user;
+      const access = user?.id
+        ? await checkStoreAccess(strapi, user.id, id)
+        : null;
+
+      const flags = await getVisibilityFlags(storeId, access ? {
+        hasAccess: access.hasAccess,
+        isAdmin: access.isAdmin,
+        isOwner: access.isOwner,
+        user,
+      } : undefined);
+
       // Strip internal debug data from public response
       const { _debug, ...publicFlags } = flags as any;
       return ctx.send({ data: publicFlags });
