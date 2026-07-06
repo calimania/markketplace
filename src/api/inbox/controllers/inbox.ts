@@ -6,8 +6,10 @@ import { factories } from '@strapi/strapi';
 import { checkStoreAccess, requireUser, ERRORS } from '../../../services/api-auth';
 import {
   createInboxThreadRecord,
+  getInboxThreadById,
   listInboxThreadsForUser,
   sendSendGridOutboundEmail,
+  sendSendGridOutboundReplyByThread,
   updateInboxThreadState,
 } from '../services/sendgrid-inbox';
 
@@ -40,6 +42,29 @@ export default factories.createCoreController('api::inbox.inbox', ({ strapi }) =
     } catch (error: any) {
       strapi.log.error('Inbox outbound failed', error);
       return ctx.badRequest(error.message || 'Failed to send outbound email');
+    }
+  },
+
+  async sendOutboundForThread(ctx: any) {
+    try {
+      const result = await sendSendGridOutboundReplyByThread({ strapi, ctx });
+      return ctx.send(result);
+    } catch (error: any) {
+      strapi.log.error('Inbox thread outbound failed', error);
+      return ctx.badRequest(error.message || 'Failed to send outbound thread reply');
+    }
+  },
+
+  async getThreadById(ctx: any) {
+    try {
+      const user = requireUser(ctx);
+      if (!user) return;
+
+      const result = await getInboxThreadById({ strapi, ctx });
+      return ctx.send(result);
+    } catch (error: any) {
+      strapi.log.error('Inbox get thread failed', error);
+      return ctx.badRequest(error.message || 'Failed to load inbox thread');
     }
   },
 

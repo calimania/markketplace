@@ -10,9 +10,19 @@ export default {
       handler: 'inbox.listThreads',
     },
     {
+      method: 'GET',
+      path: '/inbox/thread/:threadId',
+      handler: 'inbox.getThreadById',
+    },
+    {
       method: 'POST',
       path: '/inbox/thread/:threadKey/state',
       handler: 'inbox.updateThreadState',
+    },
+    {
+      method: 'POST',
+      path: '/inbox/thread/:threadId/outbound',
+      handler: 'inbox.sendOutboundForThread',
     },
     {
       method: 'POST',

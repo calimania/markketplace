@@ -26,6 +26,29 @@ function extractEmailAddress(value?: string | null): string | null {
   return null;
 }
 
+function extractDisplayName(value?: string | null): string | null {
+  if (!value) return null;
+
+  const input = String(value).trim();
+  if (!input) return null;
+
+  const angleMatch = input.match(/^(.*?)<\s*[^<>\s]+@[^<>\s]+\s*>/);
+  if (angleMatch?.[1]) {
+    const cleaned = angleMatch[1].replace(/^\s*"|"\s*$/g, '').trim();
+    if (cleaned && !cleaned.includes('@')) return cleaned;
+  }
+
+  if (input.includes('@')) return null;
+  const plain = input.replace(/^\s*"|"\s*$/g, '').trim();
+  return plain || null;
+}
+
+function normalizeMessageId(value?: string | null): string | null {
+  if (!value) return null;
+  const cleaned = String(value).replace(/^<|>$/g, '').trim();
+  return cleaned || null;
+}
+
 function normalizeEmailAddress(value?: string | null): string | null {
   return extractEmailAddress(value);
 }
@@ -42,10 +65,71 @@ function extractRoutingKey(recipientEmail?: string | null): string | null {
   return slug || null;
 }
 
-function buildThreadKey(fromAddress?: string | null, toAddress?: string | null, routingKey?: string | null): string {
+function normalizeSubjectForThreading(value?: string | null): string {
+  const input = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!input) return 'no-subject';
+
+  // Collapse common reply/forward prefixes so "Re: Re: Subject" stays in one thread.
+  const withoutPrefixes = input.replace(/^((re|fw|fwd|aw|sv)\s*:\s*)+/i, '').trim();
+  const normalized = (withoutPrefixes || input).toLowerCase();
+  return normalized.slice(0, 180);
+}
+
+function buildParticipantKey(fromAddress?: string | null, toAddress?: string | null): string {
   const from = normalizeEmailAddress(fromAddress) || 'unknown';
   const to = normalizeEmailAddress(toAddress) || 'unknown';
-  return [routingKey || 'general', from, to].join('::');
+  return [from, to].sort().join('|');
+}
+
+function buildThreadKey(params: {
+  fromAddress?: string | null;
+  toAddress?: string | null;
+  routingKey?: string | null;
+  subject?: string | null;
+  messageId?: string | null;
+}): string {
+  const routing = params.routingKey || 'general';
+  const messageId = String(normalizeMessageId(params.messageId) || '').toLowerCase();
+
+  // Prefer Message-ID when available so unrelated emails from the same sender don't collapse.
+  if (messageId) {
+    return [routing, 'msg', messageId].join('::');
+  }
+
+  const participants = buildParticipantKey(params.fromAddress, params.toAddress);
+  const subject = normalizeSubjectForThreading(params.subject);
+  return [routing, 'p', participants, 's', subject].join('::');
+}
+
+function parseReferencesHeader(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => normalizeMessageId(String(entry || '')))
+      .filter((entry): entry is string => Boolean(entry));
+  }
+
+  if (typeof value !== 'string') return [];
+  return value
+    .split(/\s+/)
+    .map((entry) => normalizeMessageId(entry))
+    .filter((entry): entry is string => Boolean(entry));
+}
+
+function formatMessageIdHeader(value: string): string {
+  return `<${value}>`;
+}
+
+function buildReplySubject(explicitSubject: unknown, fallbackSubject?: string | null): string {
+  const explicit = String(explicitSubject || '').trim();
+  if (explicit) return explicit;
+
+  const base = String(fallbackSubject || '').trim();
+  if (!base) return 'New message';
+  if (/^re\s*:/i.test(base)) return base;
+  return `Re: ${base}`;
 }
 
 function parseEnvelope(payload: any): any {
@@ -75,6 +159,10 @@ function buildInboxMetadata(params: {
   subject: string;
   rawTo: unknown;
   rawFrom: unknown;
+  fromName?: string | null;
+  toName?: string | null;
+  inReplyTo?: string | null;
+  references?: string[];
   receivedAt?: string;
   sentAt?: string;
   envelope: any;
@@ -91,6 +179,10 @@ function buildInboxMetadata(params: {
     subject: params.subject,
     rawTo: String(params.rawTo ?? ''),
     rawFrom: String(params.rawFrom ?? ''),
+    fromName: params.fromName || extractDisplayName(String(params.rawFrom ?? '')),
+    toName: params.toName || extractDisplayName(String(params.rawTo ?? '')),
+    inReplyTo: normalizeMessageId(params.inReplyTo) || null,
+    references: Array.isArray(params.references) ? params.references.map((entry) => normalizeMessageId(entry)).filter((entry): entry is string => Boolean(entry)) : [],
     receivedAt: params.receivedAt || null,
     sentAt: params.sentAt || null,
     envelopeFrom,
@@ -196,6 +288,21 @@ function parsePositiveInt(value: unknown, fallback: number): number {
   return parsed;
 }
 
+function parsePopulateTokens(value: unknown): Set<string> {
+  const rawValues = Array.isArray(value) ? value : [value];
+  const tokens: string[] = [];
+
+  for (const rawValue of rawValues) {
+    if (typeof rawValue !== 'string') continue;
+    for (const token of rawValue.split(',')) {
+      const normalized = token.trim().toLowerCase();
+      if (normalized) tokens.push(normalized);
+    }
+  }
+
+  return new Set(tokens);
+}
+
 function resolveOutboundIntent(payload: any): { isDraftRequest: boolean; requestedEstado: 'draft' | 'sent' | null } {
   const requestedEstadoRaw = String(payload?.estado || '').trim().toLowerCase();
   const requestedEstado = requestedEstadoRaw === 'draft' || requestedEstadoRaw === 'sent'
@@ -231,6 +338,8 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
   const payload = ctx.request?.body || {};
   const recipientEmail = normalizeEmailAddress(payload?.to);
   const senderEmail = normalizeEmailAddress(payload?.from);
+  const recipientName = extractDisplayName(payload?.to);
+  const senderName = extractDisplayName(payload?.from);
   const routingKey = extractRoutingKey(recipientEmail);
   const envelope = parseEnvelope(payload);
   const body = getBody(payload);
@@ -252,10 +361,19 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
 
   const inboxUserId = await resolveInboxUser(strapi, store, ctx);
   const existingThread = await resolveExistingThread(strapi, payload, routingKey);
-  const threadKey = existingThread?.ThreadKey || payload?.threadKey || payload?.thread_key || buildThreadKey(senderEmail, recipientEmail, routingKey);
+  const messageId = payload?.headers?.['message-id'] || payload?.['message-id'] || null;
+  const threadKey = existingThread?.ThreadKey
+    || payload?.threadKey
+    || payload?.thread_key
+    || buildThreadKey({
+      fromAddress: senderEmail,
+      toAddress: recipientEmail,
+      routingKey,
+      subject: payload?.subject || 'No subject',
+      messageId,
+    });
   const messageBody = body.text || body.html || 'No message body';
   const subject = payload?.subject || 'No subject';
-  const messageId = payload?.headers?.['message-id'] || payload?.['message-id'] || null;
 
   const inboxRecord = await strapi.documents('api::inbox.inbox').create({
     data: {
@@ -280,6 +398,8 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
         subject,
         rawTo: payload?.to ?? recipientEmail,
         rawFrom: payload?.from ?? senderEmail,
+        fromName: senderName,
+        toName: recipientName,
         receivedAt: new Date().toISOString(),
         envelope,
       }),
@@ -309,7 +429,7 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
 export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
   const payload = ctx.request?.body || {};
   const toAddress = normalizeEmailAddress(payload?.to);
-  const subject = payload?.subject || 'New message';
+  const toName = extractDisplayName(payload?.to);
   const plainText = payload?.text || payload?.body || 'No message body';
   const htmlBody = payload?.html || null;
   const { isDraftRequest } = resolveOutboundIntent(payload);
@@ -318,9 +438,25 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
     throw new Error('Missing recipient address');
   }
 
-  const routingKey = extractRoutingKey(toAddress);
+  const explicitThreadKey = String(payload?.threadKey || payload?.thread_key || '').trim();
+  const explicitFromAddress = normalizeEmailAddress(payload?.from);
+
+  // Resolve thread context first when provided, so replies to customers do not depend on `to` containing store slug.
+  const explicitThread = explicitThreadKey
+    ? await strapi.documents('api::inbox.inbox').findMany({
+      filters: { ThreadKey: explicitThreadKey },
+      sort: { createdAt: 'desc' },
+      limit: 1,
+    })
+    : [];
+  const threadRecord = explicitThread?.[0] || null;
+
+  // Priority: thread routing -> explicit from mailbox -> legacy fallback from recipient.
+  const routingKey = threadRecord?.RoutingKey
+    || extractRoutingKey(explicitFromAddress)
+    || extractRoutingKey(toAddress);
   if (!routingKey) {
-    throw new Error('Invalid routing address format');
+    throw new Error('Unable to resolve store routing key. Provide `threadKey` or a store `from` address like `slug@domain.com`.');
   }
 
   const store = await strapi.documents('api::store.store').findFirst({
@@ -341,9 +477,42 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
   }
 
   const inboxUserId = await resolveInboxUser(strapi, store, ctx);
-  const existingThread = await resolveExistingThread(strapi, payload, routingKey);
+  const existingThread = threadRecord || await resolveExistingThread(strapi, payload, routingKey);
   const fromEmail = payload?.from || `${routingKey}@${getMailDomain()}`;
-  const threadKey = existingThread?.ThreadKey || payload?.threadKey || payload?.thread_key || buildThreadKey(fromEmail, toAddress, routingKey);
+  const fromName = extractDisplayName(payload?.from);
+  const subject = buildReplySubject(
+    payload?.subject,
+    existingThread?.Name || existingThread?.Metadata?.subject || null,
+  );
+  const threadKey = existingThread?.ThreadKey
+    || payload?.threadKey
+    || payload?.thread_key
+    || buildThreadKey({
+      fromAddress: fromEmail,
+      toAddress,
+      routingKey,
+      subject,
+      messageId: null,
+    });
+
+  // Keep outbound threading deterministic and server-owned.
+  // We do not trust client-supplied in-reply-to/references headers.
+  const fallbackThreadMessageId = normalizeMessageId(existingThread?.MessageId);
+  const metadataReferences = parseReferencesHeader(existingThread?.Metadata?.references);
+
+  const inReplyTo = fallbackThreadMessageId || null;
+  const references = Array.from(new Set([
+    ...metadataReferences,
+    ...(inReplyTo ? [inReplyTo] : []),
+  ])).filter(Boolean);
+
+  const outboundHeaders: Record<string, string> = {};
+  if (inReplyTo) {
+    outboundHeaders['In-Reply-To'] = formatMessageIdHeader(inReplyTo);
+  }
+  if (references.length > 0) {
+    outboundHeaders.References = references.map((entry) => formatMessageIdHeader(entry)).join(' ');
+  }
 
   const emailData = {
     to: toAddress,
@@ -352,6 +521,7 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
     subject,
     text: plainText,
     html: htmlBody || `<p>${plainText}</p>`,
+    ...(Object.keys(outboundHeaders).length > 0 ? { headers: outboundHeaders } : {}),
   };
 
   if (!isDraftRequest) {
@@ -389,6 +559,10 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
         subject,
         rawTo: payload?.to ?? toAddress,
         rawFrom: payload?.from ?? fromEmail,
+        fromName,
+        toName,
+        inReplyTo,
+        references,
         sentAt: isDraftRequest ? undefined : new Date().toISOString(),
         envelope: { from: fromEmail, to: toAddress },
       }),
@@ -413,8 +587,145 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
       from: fromEmail,
       sent: !isDraftRequest,
       published: !isDraftRequest,
+      threading: {
+        inReplyTo,
+        references,
+      },
     },
   };
+}
+
+export async function sendSendGridOutboundReplyByThread({ strapi, ctx }: InboxContext) {
+  const userId = ctx.state?.user?.id;
+  const threadId = String(ctx.params?.threadId || ctx.params?.id || ctx.request?.body?.threadId || '').trim();
+
+  if (!userId) {
+    throw new Error('Missing user context');
+  }
+
+  if (!threadId) {
+    throw new Error('Missing thread id');
+  }
+
+  const anchorRows = await strapi.documents('api::inbox.inbox').findMany({
+    filters: {
+      user: { id: userId },
+      documentId: threadId,
+    },
+    sort: { createdAt: 'desc' },
+    limit: 1,
+  });
+
+  const anchor = anchorRows?.[0];
+  if (!anchor) {
+    throw new Error('Thread not found');
+  }
+
+  const threadKey = anchor.ThreadKey || anchor.documentId;
+  const threadRows = await strapi.documents('api::inbox.inbox').findMany({
+    filters: {
+      user: { id: userId },
+      ThreadKey: threadKey,
+    },
+    sort: { createdAt: 'desc' },
+    limit: 200,
+  });
+
+  if (!threadRows?.length) {
+    throw new Error('Thread not found');
+  }
+
+  const latest = threadRows[0];
+  const latestIncoming = threadRows.find((row: any) => row.Direction === 'incoming') || null;
+  const inferredToAddress = normalizeEmailAddress(
+    latestIncoming?.FromAddress
+    || latestIncoming?.email
+    || latest?.ToAddress
+    || latest?.email,
+  );
+
+  if (!inferredToAddress) {
+    throw new Error('Cannot infer customer email from thread');
+  }
+
+  ctx.request.body = {
+    ...(ctx.request?.body || {}),
+    to: inferredToAddress,
+    threadKey,
+    subject: buildReplySubject(
+      ctx.request?.body?.subject,
+      latestIncoming?.Name || latest?.Name || anchor?.Name || null,
+    ),
+  };
+
+  return sendSendGridOutboundEmail({ strapi, ctx });
+}
+
+export async function getInboxThreadById({ strapi, ctx }: InboxContext) {
+  const userId = ctx.state?.user?.id;
+  const threadId = String(ctx.params?.threadId || ctx.params?.id || '').trim();
+
+  if (!userId) {
+    return { status: 'unauthorized', data: null };
+  }
+
+  if (!threadId) {
+    throw new Error('Missing thread id');
+  }
+
+  const anchorRows = await strapi.documents('api::inbox.inbox').findMany({
+    filters: {
+      user: { id: userId },
+      documentId: threadId,
+    },
+    populate: ['store'],
+    sort: { createdAt: 'desc' },
+    limit: 1,
+  });
+
+  const anchor = anchorRows?.[0];
+  if (!anchor) {
+    throw new Error('Thread not found');
+  }
+
+  const threadKey = anchor.ThreadKey || anchor.documentId;
+  const originalQuery = ctx.request?.query || {};
+  const originalScopedStore = ctx.state?.inboxStore;
+
+  try {
+    ctx.request.query = {
+      ...originalQuery,
+      threadKey,
+      page: 1,
+      pageSize: 1,
+      includeMessages: originalQuery?.includeMessages ?? 'true',
+    };
+
+    if (anchor?.store?.documentId) {
+      ctx.state.inboxStore = anchor.store;
+    }
+
+    const threadResult = await listInboxThreadsForUser({ strapi, ctx });
+    const thread = Array.isArray(threadResult?.data) ? threadResult.data[0] : null;
+
+    if (!thread) {
+      throw new Error('Thread not found');
+    }
+
+    return {
+      status: 'success',
+      data: thread,
+      meta: {
+        threadId,
+        threadKey,
+        includeMessages: threadResult?.meta?.includeMessages,
+        populate: threadResult?.meta?.populate,
+      },
+    };
+  } finally {
+    ctx.request.query = originalQuery;
+    ctx.state.inboxStore = originalScopedStore;
+  }
 }
 
 export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
@@ -431,9 +742,17 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
   const estadoFilter = String(query.estado || '').trim().toLowerCase();
   const publicationFilter = String(query.publication || query.publicationState || '').trim().toLowerCase();
   const threadKeyFilter = String(query.threadKey || '').trim();
-  const archivedFilter = parseBooleanQuery(query.archived);
+  const archivedFilterInput = parseBooleanQuery(query.archived);
+  // Default UX: hide archived threads unless the client explicitly asks for archived=true.
+  const archivedFilter = typeof archivedFilterInput === 'boolean' ? archivedFilterInput : false;
   const readFilter = parseBooleanQuery(query.read);
   const includeMessages = parseBooleanQuery(query.includeMessages) !== false;
+  const populateTokens = parsePopulateTokens(query.populate);
+  const populateAll = ['*', 'all', 'true', '1', 'full'].some((token) => populateTokens.has(token));
+  const includeStoreDetails = populateAll || populateTokens.has('store');
+  const includeUserDetails = populateAll || populateTokens.has('user');
+  const includeMetadata = populateAll || populateTokens.has('metadata');
+  const includeMessageDetails = includeMessages && (populateAll || populateTokens.has('messages') || populateTokens.has('message'));
 
   const page = parsePositiveInt(query.page, 1);
   const pageSize = Math.min(parsePositiveInt(query.pageSize || query.limit, 20), 100);
@@ -470,7 +789,15 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
       return aDate - bDate;
     });
     const latest = sortedItems[sortedItems.length - 1] || sortedItems[0];
-    return {
+    const latestMetadata = latest?.Metadata || {};
+    const fromEmail = latest?.FromAddress || latest?.email || latestMetadata?.envelopeFrom || null;
+    const toEmail = latest?.ToAddress || latestMetadata?.envelopeTo || null;
+    const fromName = latestMetadata?.fromName || extractDisplayName(latestMetadata?.rawFrom) || null;
+    const toName = latestMetadata?.toName || extractDisplayName(latestMetadata?.rawTo) || null;
+    const contactEmail = latest?.Direction === 'incoming' ? fromEmail : toEmail;
+    const contactName = latest?.Direction === 'incoming' ? fromName : toName;
+
+    const thread: Record<string, any> = {
       id: latest?.documentId,
       threadKey: latest?.ThreadKey || latest?.documentId,
       subject: latest?.Name || 'Conversation',
@@ -480,18 +807,78 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
       estado: latest?.Estado || 'new',
       publicationState: latest?.publishedAt ? 'published' : 'draft',
       published: Boolean(latest?.publishedAt),
+      fromAddress: fromEmail,
+      fromName,
+      toAddress: toEmail,
+      toName,
+      contact: {
+        name: contactName,
+        email: contactEmail,
+      },
+      latestMessageId: normalizeMessageId(latest?.MessageId) || null,
+      replyHints: {
+        inReplyTo: normalizeMessageId(latest?.MessageId) || null,
+        references: parseReferencesHeader(latestMetadata?.references),
+      },
       isArchived: Boolean(latest?.Archived),
       isRead: latest?.Estado !== 'new',
       latestMessageAt: latest?.createdAt || null,
-      messages: includeMessages ? sortedItems.map((item) => ({
-        id: item.documentId,
-        subject: item.Name,
-        body: item.Message,
-        direction: item.Direction,
-        email: item.email,
-        createdAt: item.createdAt,
-      })) : [],
+      messages: includeMessages ? sortedItems.map((item) => {
+        const itemMetadata = item.Metadata || {};
+        const itemFromName = itemMetadata?.fromName || extractDisplayName(itemMetadata?.rawFrom) || null;
+        const itemToName = itemMetadata?.toName || extractDisplayName(itemMetadata?.rawTo) || null;
+        const message: Record<string, any> = {
+          id: item.documentId,
+          subject: item.Name,
+          body: item.Message,
+          direction: item.Direction,
+          email: item.email,
+          fromName: itemFromName,
+          toName: itemToName,
+          createdAt: item.createdAt,
+        };
+
+        if (includeMetadata) {
+          message.metadata = item.Metadata || null;
+        }
+
+        if (includeMessageDetails) {
+          message.estado = item.Estado || 'new';
+          message.publicationState = item.publishedAt ? 'published' : 'draft';
+          message.published = Boolean(item.publishedAt);
+          message.isArchived = Boolean(item.Archived);
+          message.fromAddress = item.FromAddress || null;
+          message.toAddress = item.ToAddress || null;
+          message.messageId = item.MessageId || null;
+          message.bodyHtml = item.BodyHtml || null;
+          message.routingKey = item.RoutingKey || null;
+        }
+
+        return message;
+      }) : [],
     };
+
+    if (includeMetadata) {
+      thread.metadata = latest?.Metadata || null;
+    }
+
+    if (includeStoreDetails && latest?.store) {
+      thread.storeDetails = {
+        documentId: latest.store.documentId || null,
+        slug: latest.store.slug || null,
+        title: latest.store.title || latest.store.Name || null,
+      };
+    }
+
+    if (includeUserDetails && latest?.user) {
+      thread.user = {
+        id: latest.user.id || null,
+        username: latest.user.username || null,
+        email: latest.user.email || null,
+      };
+    }
+
+    return thread;
   });
 
   let filtered = threads;
@@ -593,6 +980,13 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
         order: sortOrder,
       },
       includeMessages,
+      populate: {
+        requested: Array.from(populateTokens),
+        store: includeStoreDetails,
+        user: includeUserDetails,
+        metadata: includeMetadata,
+        messages: includeMessageDetails,
+      },
     },
   };
 }
