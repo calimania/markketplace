@@ -1,10 +1,20 @@
 # Features
 
-
 ## Upcoming
 
+- [ ] Order,Purchase sends an email to slug@markket.place
+- [ ] Changing slug affects links and emails, what do?
+- [ ] AI endpoints suggest content
 
-## May 2026
+## July 2026
+
+- [x] Receive inbox by mail (slug@markket.place)
+- [x] Read inbox in /tienda
+- [x] Improve email templates
+- [x] Improve standard content (example content, SEO backfill)
+- [ ] tienda dashboard: adding/editing Product prices works end-to-end (draft -> save -> list -> detail)
+- [ ] tienda dashboard: validate forms for price/date fields and show clear error states
+- [ ] stripe dashboard connection: reconnect and verify account status sync in tienda
 
 ### 1. Tienda protected store lifecycle
 
