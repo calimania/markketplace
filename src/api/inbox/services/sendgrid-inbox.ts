@@ -196,6 +196,37 @@ function parsePositiveInt(value: unknown, fallback: number): number {
   return parsed;
 }
 
+function resolveOutboundIntent(payload: any): { isDraftRequest: boolean; requestedEstado: 'draft' | 'sent' | null } {
+  const requestedEstadoRaw = String(payload?.estado || '').trim().toLowerCase();
+  const requestedEstado = requestedEstadoRaw === 'draft' || requestedEstadoRaw === 'sent'
+    ? requestedEstadoRaw
+    : null;
+
+  if (requestedEstadoRaw && !requestedEstado) {
+    throw new Error('Invalid `estado`. Allowed values: `draft` or `sent`.');
+  }
+
+  const hasDraftFlag = typeof payload?.draft === 'boolean';
+  const hasPublishedFlag = typeof payload?.published === 'boolean';
+  const draftFlag = payload?.draft === true;
+  const publishedFlag = payload?.published === true;
+
+  if (hasDraftFlag && hasPublishedFlag && draftFlag && publishedFlag) {
+    throw new Error('Conflicting payload: `draft=true` cannot be combined with `published=true`.');
+  }
+
+  if (requestedEstado === 'draft' && publishedFlag) {
+    throw new Error('Conflicting payload: `estado=draft` cannot be combined with `published=true`.');
+  }
+
+  if (requestedEstado === 'sent' && (payload?.draft === true || payload?.published === false)) {
+    throw new Error('Conflicting payload: `estado=sent` cannot be combined with draft inputs.');
+  }
+
+  const isDraftRequest = payload?.draft === true || payload?.published === false || requestedEstado === 'draft';
+  return { isDraftRequest, requestedEstado: requestedEstado as 'draft' | 'sent' | null };
+}
+
 export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
   const payload = ctx.request?.body || {};
   const recipientEmail = normalizeEmailAddress(payload?.to);
@@ -252,23 +283,15 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
         receivedAt: new Date().toISOString(),
         envelope,
       }),
-      Status: 'new',
+      Estado: 'new',
     },
   });
 
   const shouldPublishInbound = Boolean(store?.documentId);
   if (shouldPublishInbound && inboxRecord?.documentId) {
-    const publishedInbound = await strapi.documents('api::inbox.inbox').publish({
+    await strapi.documents('api::inbox.inbox').publish({
       documentId: inboxRecord.documentId,
     });
-
-    // Defensive fallback: ensure publishedAt is set even if publish result is unexpectedly empty.
-    if (!publishedInbound?.publishedAt) {
-      await strapi.documents('api::inbox.inbox').update({
-        documentId: inboxRecord.documentId,
-        data: { publishedAt: new Date().toISOString() },
-      });
-    }
   }
 
   return {
@@ -289,7 +312,7 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
   const subject = payload?.subject || 'New message';
   const plainText = payload?.text || payload?.body || 'No message body';
   const htmlBody = payload?.html || null;
-  const isDraftRequest = payload?.published === false || payload?.draft === true || payload?.status === 'draft';
+  const { isDraftRequest } = resolveOutboundIntent(payload);
 
   if (!toAddress) {
     throw new Error('Missing recipient address');
@@ -369,22 +392,14 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
         sentAt: isDraftRequest ? undefined : new Date().toISOString(),
         envelope: { from: fromEmail, to: toAddress },
       }),
-      Status: isDraftRequest ? 'draft' : 'sent',
+      Estado: isDraftRequest ? 'draft' : 'sent',
     },
   });
 
   if (!isDraftRequest && outboundRecord?.documentId) {
-    const publishedOutbound = await strapi.documents('api::inbox.inbox').publish({
+    await strapi.documents('api::inbox.inbox').publish({
       documentId: outboundRecord.documentId,
     });
-
-    // Defensive fallback: ensure publishedAt is set even if publish result is unexpectedly empty.
-    if (!publishedOutbound?.publishedAt) {
-      await strapi.documents('api::inbox.inbox').update({
-        documentId: outboundRecord.documentId,
-        data: { publishedAt: new Date().toISOString() },
-      });
-    }
   }
 
   return {
@@ -413,7 +428,8 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
   const storeFilter = String(query.store || query.storeSlug || '').trim().toLowerCase();
   const storeIdFilter = String(query.storeId || query.storeDocumentId || '').trim();
   const directionFilter = String(query.direction || '').trim().toLowerCase();
-  const statusFilter = String(query.status || '').trim().toLowerCase();
+  const estadoFilter = String(query.estado || '').trim().toLowerCase();
+  const publicationFilter = String(query.publication || query.publicationState || '').trim().toLowerCase();
   const threadKeyFilter = String(query.threadKey || '').trim();
   const archivedFilter = parseBooleanQuery(query.archived);
   const readFilter = parseBooleanQuery(query.read);
@@ -424,7 +440,7 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
   const sortByRaw = String(query.sortBy || query.sort || 'latestMessageAt').trim();
   const sortOrderRaw = String(query.sortOrder || query.order || 'desc').trim().toLowerCase();
   const sortOrder = sortOrderRaw === 'asc' ? 'asc' : 'desc';
-  const sortBy = ['latestMessageAt', 'subject', 'store', 'direction', 'status'].includes(sortByRaw)
+  const sortBy = ['latestMessageAt', 'subject', 'store', 'direction', 'estado', 'publicationState'].includes(sortByRaw)
     ? sortByRaw
     : 'latestMessageAt';
 
@@ -461,9 +477,11 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
       store: latest?.store?.slug || null,
       storeId: latest?.store?.documentId || null,
       direction: latest?.Direction || 'incoming',
-      status: latest?.Status || 'new',
+      estado: latest?.Estado || 'new',
+      publicationState: latest?.publishedAt ? 'published' : 'draft',
+      published: Boolean(latest?.publishedAt),
       isArchived: Boolean(latest?.Archived),
-      isRead: latest?.Status !== 'new',
+      isRead: latest?.Estado !== 'new',
       latestMessageAt: latest?.createdAt || null,
       messages: includeMessages ? sortedItems.map((item) => ({
         id: item.documentId,
@@ -494,8 +512,12 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
     filtered = filtered.filter((thread) => String(thread.direction || '').toLowerCase() === directionFilter);
   }
 
-  if (statusFilter) {
-    filtered = filtered.filter((thread) => String(thread.status || '').toLowerCase() === statusFilter);
+  if (estadoFilter) {
+    filtered = filtered.filter((thread) => String(thread.estado || '').toLowerCase() === estadoFilter);
+  }
+
+  if (publicationFilter) {
+    filtered = filtered.filter((thread) => String(thread.publicationState || '').toLowerCase() === publicationFilter);
   }
 
   if (typeof archivedFilter === 'boolean') {
@@ -560,7 +582,8 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
         store: storeFilter || null,
         storeId: storeIdFilter || null,
         direction: directionFilter || null,
-        status: statusFilter || null,
+        estado: estadoFilter || null,
+        publication: publicationFilter || null,
         archived: archivedFilter,
         read: readFilter,
         threadKey: threadKeyFilter || null,
@@ -588,27 +611,28 @@ export async function updateInboxThreadState({ strapi, ctx }: InboxContext) {
       user: { id: userId },
       ThreadKey: threadKey,
     },
-    fields: ['documentId', 'Archived', 'Status'],
+    fields: ['documentId', 'Archived', 'Estado', 'publishedAt'],
   });
 
   if (!inboxRecords?.length) {
     throw new Error('Thread not found');
   }
 
-  const nextArchived = action === 'archive';
-  const nextStatus = action === 'read' ? 'read' : action === 'unread' ? 'new' : undefined;
+  const nextArchived = action === 'archive' ? true : action === 'unarchive' ? false : undefined;
+  const nextEstado = action === 'read' ? 'read' : action === 'unread' ? 'new' : undefined;
 
   for (const record of inboxRecords) {
     const updateData: Record<string, any> = {};
     if (typeof nextArchived === 'boolean') {
       updateData.Archived = nextArchived;
     }
-    if (nextStatus) {
-      updateData.Status = nextStatus;
+    if (nextEstado) {
+      updateData.Estado = nextEstado;
     }
 
     await strapi.documents('api::inbox.inbox').update({
       documentId: record.documentId,
+      status: record?.publishedAt ? 'published' : 'draft',
       data: updateData,
     });
   }

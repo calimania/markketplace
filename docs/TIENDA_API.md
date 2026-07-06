@@ -137,18 +137,24 @@ Required store context (one of):
 
 - `q` or `search`: free-text search across thread subject/store/threadKey/message body/message email.
 - `direction`: `incoming` or `outgoing`.
-- `status`: filter by latest thread status (`new`, `read`, `draft`, `sent`, etc.).
+- `estado`: filter by latest thread state (`new`, `read`, `draft`, `sent`, etc.).
+- `publication` or `publicationState`: filter by publication state (`draft` or `published`).
 - `archived`: `true|false`.
 - `read`: `true|false`.
 - `threadKey`: exact thread key match.
 - `includeMessages`: `true|false` (default `true`).
 - `page`: default `1`.
 - `pageSize` or `limit`: default `20`, max `100`.
-- `sortBy`: `latestMessageAt | subject | store | direction | status`.
+- `sortBy`: `latestMessageAt | subject | store | direction | estado | publicationState`.
 - `sortOrder` or `order`: `asc | desc` (default `desc`).
 
 If both `store` and `storeId` are missing, the API returns `400 Bad Request`.
 If the authenticated user does not have access to that store, the API returns a resource-unavailable response.
+
+Case-sensitive keys:
+- Internal Strapi attribute key is `Estado` (capital `E`) in the content type schema.
+- Inbox API query/response key is `estado` (lowercase) for `GET /api/inbox`.
+- Inbox API publication key is `publicationState` (`draft` or `published`), separate from `estado`.
 
 **Example**
 
@@ -170,7 +176,9 @@ Authorization: Bearer {JWT}
       "store": "my-store",
       "storeId": "store_document_id",
       "direction": "incoming",
-      "status": "new",
+      "estado": "new",
+      "publicationState": "published",
+      "published": true,
       "isArchived": false,
       "isRead": false,
       "latestMessageAt": "2026-07-05T12:00:00.000Z",
@@ -185,6 +193,22 @@ Authorization: Bearer {JWT}
   }
 }
 ```
+
+### Outbound intent (no ambiguity)
+
+`POST /api/inbox/outbound`
+
+- `estado` accepts only `draft` or `sent`.
+- `draft` accepts boolean.
+- `published` accepts boolean.
+
+Rules:
+- Send + publish when none of the draft flags are set.
+- Save draft when any draft input is set (`draft=true`, `published=false`, or `estado=draft`).
+- Conflicting combinations are rejected with `400`:
+  - `draft=true` with `published=true`
+  - `estado=draft` with `published=true`
+  - `estado=sent` with draft inputs
 
 ---
 

@@ -68,7 +68,7 @@
       "repeatable": false,
       "component": "common.inbox-metadata"
     },
-    "Status": {
+    "Estado": {
       "type": "string",
       "default": "new"
     }
