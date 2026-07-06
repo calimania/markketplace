@@ -693,13 +693,20 @@ export async function getInboxThreadById({ strapi, ctx }: InboxContext) {
   const originalScopedStore = ctx.state?.inboxStore;
 
   try {
-    ctx.request.query = {
-      ...originalQuery,
+    // Force a deterministic single-thread lookup and avoid leaking list filters
+    // (archived/store/search/etc.) into this endpoint.
+    const scopedQuery: Record<string, any> = {
       threadKey,
       page: 1,
       pageSize: 1,
       includeMessages: originalQuery?.includeMessages ?? 'true',
     };
+
+    if (typeof originalQuery?.populate !== 'undefined') {
+      scopedQuery.populate = originalQuery.populate;
+    }
+
+    ctx.request.query = scopedQuery;
 
     if (anchor?.store?.documentId) {
       ctx.state.inboxStore = anchor.store;

@@ -2,9 +2,10 @@
 
 ## Upcoming
 
-- [ ] Order,Purchase sends an email to slug@markket.place
-- [ ] Changing slug affects links and emails, what do?
-- [ ] AI endpoints suggest content
+- [ ] storefront: Order,Purchase sends an email to slug@markket.place
+- [ ] tienda: changing slug affects links and emails, what do? (warn? backfill? redirect)
+- [ ] tienda: Digital Ocean - AI endpoints suggest content
+- [ ] config: clean up general config objects, urls, colors
 
 ## July 2026
 
@@ -12,9 +13,10 @@
 - [x] Read inbox in /tienda
 - [x] Improve email templates
 - [x] Improve standard content (example content, SEO backfill)
+- [x] tienda: Open Router AI for backfilling seed data
 - [ ] tienda dashboard: adding/editing Product prices works end-to-end (draft -> save -> list -> detail)
 - [ ] tienda dashboard: validate forms for price/date fields and show clear error states
-- [ ] stripe dashboard connection: reconnect and verify account status sync in tienda
+- [ ] tienda: payouts: stripe dashboard connection: reconnect and verify account status sync in tienda
 
 ### May 2026
 

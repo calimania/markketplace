@@ -68,6 +68,15 @@ export default {
       },
     },
     {
+      method: 'POST',
+      path: '/tienda/stores/:ref/starter-content/generate',
+      handler: 'tienda.generateStarterContent',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'GET',
       path: '/tienda/tendero/:ref',
       handler: 'tienda.tendero',

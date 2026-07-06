@@ -21,6 +21,9 @@ The `:ref` param accepts either a **documentId** or a **slug** on all store-scop
 | `PUT` | `/api/tienda/stores/:ref` | `{ title?, slug?, … }` | Update store fields |
 | `GET` | `/api/tienda/stores/:ref/settings` | — | Get store settings |
 | `PUT` | `/api/tienda/stores/:ref/settings` | `{ … }` | Update store settings |
+| `POST` | `/api/tienda/stores/:ref/starter-content/generate` | `{ seed?, voice?, regenerate? }` | Generate store-specific starter pages (`home`, `newsletter`, `about`, `story`) with SEO via one OpenRouter call (or fallback templates), plus short owner congrats email copy in `generation.ownerEmail` |
+
+When `OPEN_ROUTER_API_KEY` is not configured, this endpoint uses the default static starter seed templates (deterministic copy) and returns `generation.warning` to indicate the fallback path.
 | `GET` | `/api/tienda/tendero/:ref` | — | Lightweight ownership check — returns `{ ok, store: { documentId, slug } }` |
 
 ---
