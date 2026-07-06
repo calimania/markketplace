@@ -1,6 +1,4 @@
 export default ({ env }) => ({
-  // Development is currently done in this repo and can be abstracted into plugins for easier sharing
-  // Extensions allow to interoperate with other useful tools
   // 'markketplace': {
   //   enabled: true,
   //   resolve: './src/plugins/markketplace'

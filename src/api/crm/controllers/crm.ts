@@ -20,6 +20,50 @@ function getPagination(ctx: any): { skip: number; limit: number; page: number } 
   };
 }
 
+function getRelationStoreDocumentIds(resource: any, relationField: string): string[] {
+  const relationValue = resource?.[relationField];
+  const values = Array.isArray(relationValue) ? relationValue : relationValue ? [relationValue] : [];
+
+  return values
+    .map((entry: any) => String(entry?.documentId || entry?.id || '').trim())
+    .filter(Boolean);
+}
+
+async function requireStoreScopedResource(
+  ctx: any,
+  scope: any,
+  documentType: string,
+  documentId: string,
+  relationField: string,
+  resourceLabel: string,
+): Promise<any | null> {
+  const normalizedDocumentId = String(documentId || '').trim();
+  if (!normalizedDocumentId) {
+    ctx.badRequest(`${resourceLabel} documentId is required`);
+    return null;
+  }
+
+  const resource = await (strapi.documents as any)(documentType).findOne({
+    documentId: normalizedDocumentId,
+    populate: [relationField],
+  }) as any;
+
+  if (!resource) {
+    ctx.notFound(`${resourceLabel} not found`);
+    return null;
+  }
+
+  const storeIds = getRelationStoreDocumentIds(resource, relationField);
+  const allowed = storeIds.includes(String(scope.store.documentId));
+
+  if (!allowed) {
+    ctx.forbidden('Access denied');
+    return null;
+  }
+
+  return resource;
+}
+
 async function requireStoreScope(ctx: any): Promise<any | null> {
   const user = requireUser(ctx);
   if (!user) {
@@ -227,22 +271,44 @@ export default {
 
     const [orders, subscribers, rsvps] = await Promise.all([
       strapi.documents('api::order.order').findMany({
-        filters: { store: { documentId: scope.store.documentId } },
-        populate: ['buyer'],
+        filters: {
+          store: { documentId: scope.store.documentId },
+          ...(q ? {
+            $or: [
+              { uuid: { $containsi: q } },
+              { STRIPE_PAYMENT_ID: { $containsi: q } },
+            ],
+          } : {}),
+        },
         sort: ['createdAt:desc'],
-        limit: 200,
-      }) as Promise<any[]>,
+        limit: q ? 250 : 200,
+      } as any) as Promise<any[]>,
       strapi.documents('api::subscriber.subscriber').findMany({
-        filters: { stores: { documentId: scope.store.documentId } },
+        filters: {
+          stores: { documentId: scope.store.documentId },
+          ...(q ? {
+            $or: [
+              { Email: { $containsi: q } },
+              { sendgrid_contact_id: { $containsi: q } },
+            ],
+          } : {}),
+        },
         sort: ['createdAt:desc'],
-        limit: 200,
-      }) as Promise<any[]>,
+        limit: q ? 250 : 200,
+      } as any) as Promise<any[]>,
       (strapi.documents as any)('api::rsvp.rsvp').findMany({
-        filters: { store: { documentId: scope.store.documentId } },
-        populate: ['event'],
+        filters: {
+          store: { documentId: scope.store.documentId },
+          ...(q ? {
+            $or: [
+              { email: { $containsi: q } },
+              { name: { $containsi: q } },
+            ],
+          } : {}),
+        },
         sort: ['createdAt:desc'],
-        limit: 200,
-      }) as Promise<any[]>,
+        limit: q ? 250 : 200,
+      } as any) as Promise<any[]>,
     ]);
 
     const emptyRecord = (email: string) => ({
@@ -411,8 +477,17 @@ export default {
     }
 
     const subscriberDocumentId = String(ctx.params?.documentId || '').trim();
-    if (!subscriberDocumentId) {
-      return ctx.badRequest('documentId is required');
+    const subscriber = await requireStoreScopedResource(
+      ctx,
+      scope,
+      'api::subscriber.subscriber',
+      subscriberDocumentId,
+      'stores',
+      'subscriber',
+    );
+
+    if (!subscriber) {
+      return;
     }
 
     const result = await placeholderSyncSubscriber({
@@ -434,8 +509,17 @@ export default {
     }
 
     const newsletterDocumentId = String(ctx.params?.documentId || '').trim();
-    if (!newsletterDocumentId) {
-      return ctx.badRequest('documentId is required');
+    const newsletter = await requireStoreScopedResource(
+      ctx,
+      scope,
+      'api::subscriber.newsletter',
+      newsletterDocumentId,
+      'store',
+      'newsletter',
+    );
+
+    if (!newsletter) {
+      return;
     }
 
     const body = ctx.request?.body || {};

@@ -29,11 +29,13 @@ import {
 import { handleCheckoutSessionCompleted } from '../services/stripe-webhook-handler';
 import { retrieveAndStoreActualFees } from '../services/stripe-fees-retriever';
 import { emailLayout } from '../services/notification/email.template';
+import { forceOneSentence, openRouterChatCompletion } from '../../../services/openrouter';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const STRIPE_PUBLIC_KEY = process.env.STRIPE_PUBLIC_KEY || '';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
+const OPEN_ROUTER_MODEL_SMS = process.env.OPEN_ROUTER_MODEL_SMS || process.env.OPEN_ROUTER_MODEL || 'openai/gpt-4o-mini';
 const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
 const APPLE_APP_STORE_CONNECT_WEBHOOK_SECRET = process.env.APPLE_APP_STORE_CONNECT_WEBHOOK_SECRET || '';
 const APPLE_WEBHOOK_HEADER_ALLOWLIST = [
@@ -138,6 +140,50 @@ const hasValidBearerSecret = (authorizationHeader: string | undefined, expectedS
   return safeCompare(providedSecret, expectedSecret);
 };
 
+const escapeXml = (value: string) => {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+};
+
+const buildTwimlMessage = (message: string) => {
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Message>${escapeXml(message)}</Message>\n</Response>`;
+};
+
+const generateMarkketOneSentenceReply = async (incomingMessage: string) => {
+  const fallback = 'Love that. Keep it simple today: publish one clear update and one product, then share the link.';
+  const userMessage = String(incomingMessage || '').trim();
+
+  if (!userMessage) {
+    return fallback;
+  }
+
+  const completion = await openRouterChatCompletion({
+    model: OPEN_ROUTER_MODEL_SMS,
+    temperature: 0.8,
+    maxTokens: 90,
+    messages: [
+      {
+        role: 'system',
+        content: 'You are Markket, the nicest CMS for creators. Reply in exactly one short sentence, warm and useful, no emojis, no markdown, no links, and never mention buying/visiting.',
+      },
+      {
+        role: 'user',
+        content: userMessage,
+      },
+    ],
+  });
+
+  if (!completion.ok) {
+    return fallback;
+  }
+
+  return forceOneSentence(completion.content, fallback);
+};
+
 const summarizeWebhookBody = (body: any) => {
   if (!body || typeof body !== 'object') {
     return {
@@ -214,10 +260,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     console.info('🔔 Twilio SMS webhook received');
 
     // Default TwiML response - always sent regardless of verification
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Message>markkët! 💜 Learn more https://de.markket.place</Message>
-</Response>`;
+    const twiml = buildTwimlMessage('markket is here. Tell me what you are building and I will answer in one short sentence.');
 
     let isVerifiedWebhook = false;
 
@@ -329,6 +372,28 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           ctx.status = 200;
           return ctx.send(autoReplyTwiML);
         }
+
+        const assistantReply = await generateMarkketOneSentenceReply(body?.Body || '');
+        const assistantReplyTwiml = buildTwimlMessage(assistantReply);
+
+        await strapi.service(modelId).create({
+          locale: 'en',
+          data: {
+            Key: 'twilio.auto_reply.assistant',
+            Content: {
+              to: body?.From || null,
+              trigger_message: body?.Body || '',
+              assistant_reply: assistantReply,
+              model: OPEN_ROUTER_MODEL_SMS,
+              timestamp: new Date().toISOString(),
+            },
+            user_key_or_id: body?.From || '',
+          },
+        });
+
+        ctx.set('Content-Type', 'text/xml');
+        ctx.status = 200;
+        return ctx.send(assistantReplyTwiml);
       }
 
     } catch (error) {

@@ -24,6 +24,12 @@ import {
 import { resolveContentType, RATE_LIMIT_CONFIG } from '../content-registry';
 import { getMediaFieldConfig, getMediaTargetConfig, getMediaTargetsForClient } from '../media-targets';
 import { warmStoreStatsCache } from '../../store/services/dashboard';
+import { generateStarterPagesWithVoice } from '../../../services/starter-content';
+import {
+  seedStarterContent,
+  upsertDefaultStarterPagesForStore,
+  upsertStarterPagesForStore,
+} from '../services/starter-content-seeding';
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const ALLOWED_UPLOAD_MIME_PREFIXES = ['image/']; // 'video/', 'audio/'];
@@ -132,171 +138,6 @@ function resolveContentPopulate(defaultPopulate: string[], requestedPopulate: un
   ]);
 
   return Array.from(merged);
-}
-
-type StarterPageTemplate = {
-  Title: string;
-  slug: string;
-  SEO: {
-    metaTitle: string;
-    metaDescription: string;
-  };
-  Content?: any[];
-};
-
-type StarterSeedContext = {
-  defaultLocale: string;
-  storeDocumentId: string;
-  storeName: string;
-  storeSlug: string;
-};
-
-function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
-  return [
-    {
-      Title: 'Homepage',
-      slug: 'home',
-      Content: [
-        {
-          type: 'paragraph',
-          children: [
-            {
-              type: 'text',
-              text: `Welcome to ${storeName}`,
-            },
-          ],
-        },
-        {
-          type: 'paragraph',
-          children: [
-            {
-              type: 'text',
-              text: 'This starter homepage is here to help you launch quickly. Replace this copy with your own voice, offer, and links.',
-            },
-          ],
-        },
-      ],
-      SEO: {
-        metaTitle: `${storeName} Home`,
-        metaDescription: `Start shopping at ${storeName}. Fresh products, upcoming events, and more.`,
-      },
-    },
-    {
-      Title: `${storeName} Newsletter`,
-      slug: 'newsletter',
-      SEO: {
-        metaTitle: `${storeName} Newsletter`,
-        metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
-      },
-    },
-    {
-      Title: `About ${storeName}`,
-      slug: 'about',
-      Content: [
-        {
-          type: 'heading',
-          level: 1,
-          children: [
-            {
-              type: 'text',
-              text: 'About',
-            },
-          ],
-        },
-        {
-          type: 'paragraph',
-          children: [
-            {
-              type: 'text',
-              text: 'Welcome to our storefront.',
-            },
-            {
-              type: 'text',
-              text: ' Visit our blog and subscribe for updates to learn more.',
-              bold: true,
-            },
-          ],
-        },
-        {
-          type: 'paragraph',
-          children: [
-            {
-              type: 'text',
-              text: 'Use this section to explain who you are, where to find you, and what you are building for your community.',
-            },
-          ],
-        },
-      ],
-      SEO: {
-        metaTitle: `About ${storeName}`,
-        metaDescription: `Subscribe to ${storeName} updates for launches, offers, and event invites.`,
-      },
-    },
-  ];
-}
-
-async function seedAndPublishStarterPages(params: {
-  defaultLocale: string;
-  storeDocumentId: string;
-  ownerId: number | string;
-  storeName: string;
-}) {
-  const { defaultLocale, storeDocumentId, ownerId, storeName } = params;
-  const createdPages = [] as Array<{ documentId: string }>;
-
-  for (const template of buildStarterPageTemplates(storeName)) {
-    const page = await strapi.documents('api::page.page').create({
-      locale: defaultLocale,
-      data: {
-        Title: template.Title,
-        slug: template.slug,
-        Active: true,
-        store: storeDocumentId,
-        owner: ownerId,
-        SEO: template.SEO,
-        ...(template.Content ? { Content: template.Content } : {}),
-      } as any,
-    });
-
-    if (page?.documentId) {
-      createdPages.push({ documentId: page.documentId });
-    }
-  }
-
-  await Promise.all(
-    createdPages.map(page => strapi.documents('api::page.page').publish({
-      documentId: page.documentId,
-      locale: defaultLocale,
-    }))
-  );
-}
-
-async function seedStarterArticle({ storeDocumentId, storeName, storeSlug }: StarterSeedContext) {
-  const starterArticle = await strapi.documents('api::article.article').create({
-    data: {
-      Title: `Welcome to ${storeName}`,
-      slug: `welcome-to-${storeSlug}`,
-      store: storeDocumentId,
-      description: 'Your store is live. This placeholder article helps you publish your first update quickly.',
-      SEO: {
-        metaTitle: `Welcome to ${storeName}`,
-        metaDescription: `We are live and excited to share what is coming next at ${storeName}.`,
-      },
-    } as any,
-  });
-
-  await strapi.documents('api::article.article').publish({ documentId: starterArticle.documentId });
-}
-
-async function seedStarterContent(context: StarterSeedContext & { ownerId: number | string }) {
-  await seedAndPublishStarterPages({
-    defaultLocale: context.defaultLocale,
-    storeDocumentId: context.storeDocumentId,
-    ownerId: context.ownerId,
-    storeName: context.storeName,
-  });
-
-  await seedStarterArticle(context);
 }
 
 function normalizeEventDatesToUTC(input: Record<string, any>, config: any): Record<string, any> {
@@ -1358,11 +1199,28 @@ export default {
         locale: defaultLocale,
       });
 
+      const storeDocumentId = created.documentId;
+      const storeName = (updated || created).title || data.title || 'My Store';
+      const storeSlug = (updated || created).slug || data.slug || 'my-store';
+      const hasOpenRouterApiKey = Boolean(String(process.env.OPEN_ROUTER_API_KEY || '').trim());
+      let generatedStarter: Awaited<ReturnType<typeof generateStarterPagesWithVoice>> | null = null;
+
+      if (hasOpenRouterApiKey) {
+        generatedStarter = await generateStarterPagesWithVoice({
+          storeName,
+          storeSlug,
+        });
+
+        if (generatedStarter?.warning) {
+          console.warn('[TIENDA_STORE_CREATE] Starter generation warning:', generatedStarter.warning);
+        }
+      }
+
       // Enroll store owner in platform marketing list (non-fatal)
       if (user.email) {
         enrollStoreOwnerContact({
           email: user.email,
-          storeDocumentId: created.documentId,
+          storeDocumentId,
           firstName: user.firstname || undefined,
           lastName: user.lastname || undefined,
         }).catch((err: any) => {
@@ -1371,9 +1229,9 @@ export default {
 
         const isFirstAssociatedStore = associatedStoreCountBeforeCreate === 0;
         const introLine = isFirstAssociatedStore
-          ? 'This is your first store on Markketplace. Start by updating your homepage, adding one product, and setting your brand details.'
-          : 'Your new store is ready. Add content, products, and event details to make it discoverable quickly.';
-        const adviceLine = 'Platform advice: keep your About page clear, use plain titles, and publish one update every week for momentum.';
+          ? 'Your store is live. Start by publishing your homepage and one product this week.'
+          : 'Your new store is live. Keep momentum by publishing one meaningful update this week.';
+        const adviceLine = 'Keep copy short, clear, and useful. One steady update each week beats big sporadic drops.';
         const html = buildStoreOwnerCongratsEmailHtml({
           ownerName: user.firstname || user.username || undefined,
           storeName: String(data.title || ''),
@@ -1386,9 +1244,9 @@ export default {
         sendWelcomeEmail({
           credentials: { use_default: true, api_key: '' },
           toEmail: user.email,
-          subject: isFirstAssociatedStore
+          subject: (isFirstAssociatedStore
             ? `Welcome to Markketplace, ${user.firstname || user.username || 'store owner'}!`
-            : `Congrats on your new store: ${data.title}`,
+            : `Congrats on your new store: ${data.title}`),
           htmlContent: html,
         }).then(result => {
           if (!result.success) {
@@ -1402,17 +1260,23 @@ export default {
       // Seed starter content for new stores.
       // Failures here should not block store creation.
       try {
-        const storeDocumentId = created.documentId;
-        const storeName = (updated || created).title || data.title || 'My Store';
-        const storeSlug = (updated || created).slug || data.slug || 'my-store';
-
-        await seedStarterContent({
-          defaultLocale,
-          storeDocumentId,
-          ownerId: user.id,
-          storeName,
-          storeSlug,
-        });
+        if (generatedStarter) {
+          await upsertStarterPagesForStore(strapi, {
+            defaultLocale,
+            storeDocumentId,
+            ownerId: user.id,
+            templates: generatedStarter.pages as any,
+            regenerate: false,
+          });
+        } else {
+          await seedStarterContent(strapi, {
+            defaultLocale,
+            storeDocumentId,
+            ownerId: user.id,
+            storeName,
+            storeSlug,
+          });
+        }
       } catch (seedError: any) {
         const seedDetails = seedError?.details?.errors || seedError?.details || null;
         // Non-fatal — log with detail, but don't fail store creation
@@ -1440,6 +1304,114 @@ export default {
       }
       console.error('[TIENDA_STORE_CREATE] Failed:', error.message);
       return ctx.internalServerError('Request failed');
+    }
+  },
+
+  async generateStarterContent(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) {
+      return;
+    }
+
+    const ref = String(ctx.params?.ref || '').trim();
+    if (!ref) {
+      return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+    }
+
+    const access = await checkStoreAccess(strapi, user.id, ref);
+    if (!access?.store || !access?.hasAccess) {
+      return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+    }
+
+    const requestData = getRequestData(ctx);
+    const regenerate = [true, 'true', '1', 'yes'].includes(requestData?.regenerate);
+    const seed = String(requestData?.seed || '').trim().slice(0, 1000);
+    const voice = String(requestData?.voice || '').trim().slice(0, 600);
+
+    try {
+      const defaultLocale = await resolveDefaultLocaleCode(strapi);
+      const storeDocumentId = access.store.documentId;
+      const storeName = String(access.store.title || access.store.slug || 'My Store');
+      const storeSlug = String(access.store.slug || 'my-store');
+      const hasOpenRouterApiKey = Boolean(String(process.env.OPEN_ROUTER_API_KEY || '').trim());
+
+      if (!hasOpenRouterApiKey) {
+        const staticResult = await upsertDefaultStarterPagesForStore(strapi, {
+          defaultLocale,
+          storeDocumentId,
+          ownerId: user.id,
+          storeName,
+          regenerate,
+        });
+
+        return ctx.send({
+          ok: true,
+          store: {
+            documentId: storeDocumentId,
+            slug: storeSlug,
+            title: storeName,
+          },
+          generation: {
+            source: 'fallback',
+            model: null,
+            warning: 'OPEN_ROUTER_API_KEY is not configured; used default static starter seed.',
+            regenerate,
+            ownerEmail: {
+              subject: `Congrats on your new store: ${storeName}`,
+              introLine: 'Your store is live. Start by publishing your homepage and one product this week.',
+              adviceLine: 'Keep copy short and clear, and publish one small update regularly.',
+            },
+          },
+          result: {
+            created: staticResult.created,
+            updated: staticResult.updated,
+            skipped: staticResult.skipped,
+          },
+        });
+      }
+
+      const generated = await generateStarterPagesWithVoice({
+        storeName,
+        storeSlug,
+        seed,
+        voice,
+      });
+
+      const result = await upsertStarterPagesForStore(strapi, {
+        defaultLocale,
+        storeDocumentId,
+        ownerId: user.id,
+        templates: generated.pages as any,
+        regenerate,
+      });
+
+      return ctx.send({
+        ok: true,
+        store: {
+          documentId: storeDocumentId,
+          slug: storeSlug,
+          title: storeName,
+        },
+        generation: {
+          source: generated.source,
+          model: generated.model,
+          warning: generated.warning || null,
+          regenerate,
+          ownerEmail: {
+            subject: `Congrats on your new store: ${storeName}`,
+            introLine: 'Your store is live. Start by publishing your homepage and one product this week.',
+            adviceLine: 'Keep copy short and clear, and publish one small update regularly.',
+          },
+        },
+        result: {
+          created: result.created,
+          updated: result.updated,
+          skipped: result.skipped,
+        },
+      });
+    } catch (error: any) {
+      console.error('[TIENDA_GENERATE_STARTER_CONTENT] Failed:', error?.message || error);
+      return ctx.internalServerError('Failed to generate starter content');
     }
   },
 
@@ -1875,7 +1847,7 @@ export default {
       const createDataWithUploadIds = await resolveUploadMediaIds(sanitizedCreateData, config);
 
       // Auto-fill SEO if title/content fields are present
-      const enrichedData = ensureGeneratedSlug(autoFillSEO(createDataWithUploadIds, config), config);
+      const enrichedData = ensureGeneratedSlug(await autoFillSEO(createDataWithUploadIds, config), config);
       const seoLengthError = validateSeoFieldLengths(enrichedData);
       if (seoLengthError) {
         return ctx.badRequest(seoLengthError);
@@ -2103,7 +2075,7 @@ export default {
 
         // Auto-fill SEO if title/content fields are present
         const sanitizedDataWithUploadIds = await resolveUploadMediaIds(sanitizedData, config);
-        const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedDataWithUploadIds, config), config, item);
+        const enrichedData = ensureGeneratedSlug(await autoFillSEO(sanitizedDataWithUploadIds, config), config, item);
         const seoLengthError = validateSeoFieldLengths(enrichedData);
         if (seoLengthError) {
           return ctx.badRequest(seoLengthError);

@@ -1,0 +1,46 @@
+{
+  "collectionName": "components_common_inbox_metadata",
+  "info": {
+    "displayName": "Inbox Metadata",
+    "icon": "envelope",
+    "description": "Structured metadata captured for inbox messages."
+  },
+  "options": {},
+  "attributes": {
+    "source": {
+      "type": "string",
+      "required": true,
+      "default": "sendgrid-inbound"
+    },
+    "threadKey": {
+      "type": "string"
+    },
+    "routingKey": {
+      "type": "string"
+    },
+    "messageId": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "rawTo": {
+      "type": "string"
+    },
+    "rawFrom": {
+      "type": "string"
+    },
+    "receivedAt": {
+      "type": "datetime"
+    },
+    "sentAt": {
+      "type": "datetime"
+    },
+    "envelopeFrom": {
+      "type": "email"
+    },
+    "envelopeTo": {
+      "type": "email"
+    }
+  }
+}

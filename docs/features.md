@@ -1,44 +1,35 @@
 # Features
 
-
 ## Upcoming
 
+- [ ] storefront: Order,Purchase sends an email to slug@markket.place
+- [ ] tienda: changing slug affects links and emails, what do? (warn? backfill? redirect)
+- [ ] tienda: Digital Ocean - AI endpoints suggest content
+- [ ] config: clean up general config objects, urls, colors
 
-## May 2026
+## July 2026
 
-### 1. Tienda protected store lifecycle
+- [x] Receive inbox by mail (slug@markket.place)
+- [x] Read inbox in /tienda
+- [x] Improve email templates
+- [x] Improve standard content (example content, SEO backfill)
+- [x] tienda: Open Router AI for backfilling seed data
+- [ ] tienda dashboard: adding/editing Product prices works end-to-end (draft -> save -> list -> detail)
+- [ ] tienda dashboard: validate forms for price/date fields and show clear error states
+- [ ] tienda: payouts: stripe dashboard connection: reconnect and verify account status sync in tienda
+
+### May 2026
 
 - [x] Tienda protected store lifecycle
 - [x] Rewrite features board
-- [ ] Fetch data from posthog api, query by [domain, slug]
-
-Scope:
-- keep all new protected store routes under `/api/tienda/*`
-- canonical routes are `/api/tienda/me`, `/api/tienda/stores`, `/api/tienda/stores/:ref`, `/api/tienda/stores/:ref/settings`
-- keep `/api/tienda/tendero/:ref` as temporary compatibility alias
-
-Dependencies:
-- users-permissions JWT auth
-- store ownership checks against `store.users` and `store.admin_users`
-- authenticated role permissions enabled in Strapi admin
-
-
-Routes:
-- `GET /api/tienda/me` returns actor payload with JWT
-- `GET /api/tienda/stores` returns only owned stores
-- `POST /api/tienda/stores` creates a store and links current user
-- `GET /api/tienda/stores/:ref` returns 404 for wrong owner and unknown ref with the same body
-- `PUT /api/tienda/stores/:ref/settings` creates or updates settings
-
-
-- starter store seeding no longer auto-creates product/event placeholders
-- events accept client timezone and persist UTC safely
-- event schema includes `locations` and default timezone `America/New_York`
-- SEO autofill strips markdown/rich-text and generates keywords
-- `/api/tienda/me?includeContent=true` supports combined cross-store content feed
-- dashboard stats cache is persisted and warmed after store create
-- store create sends owner congrats email with first-store guidance
-- visibility response includes client summary JSON for fast UI decisions
+- [x] starter store seeding no longer auto-creates product/event placeholders
+- [x] events accept client timezone and persist UTC safely
+- [x] event schema includes `locations` and default timezone `America/New_York`
+- [x] SEO autofill strips markdown/rich-text and generates keywords
+- [x] `/api/tienda/me?includeContent=true` supports combined cross-store content feed
+- [x] dashboard stats cache is persisted and warmed after store create
+- [x] store create sends owner congrats email with first-store guidance
+- [x] visibility response includes client summary JSON for fast UI decisions
 
 
 Routes:

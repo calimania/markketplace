@@ -54,18 +54,18 @@ function resolveTheme(store?: Store): EmailTheme {
   const branding = store?.settings?.branding || {};
 
   return {
-    shellBackground: emailTheme.backgroundColor || branding.backgroundColor || '#fffef5',
-    cardBackground: emailTheme.cardBackgroundColor || branding.cardBackgroundColor || '#ffffff',
-    panelBackground: emailTheme.panelBackgroundColor || branding.panelBackgroundColor || '#fff7ed',
+    shellBackground: emailTheme.backgroundColor || branding.backgroundColor || '#fff6ea',
+    cardBackground: emailTheme.cardBackgroundColor || branding.cardBackgroundColor || '#fffdf8',
+    panelBackground: emailTheme.panelBackgroundColor || branding.panelBackgroundColor || '#fff1df',
     textColor: emailTheme.textColor || branding.textColor || '#1f2937',
     mutedTextColor: emailTheme.mutedTextColor || branding.mutedTextColor || '#475569',
-    primaryColor: emailTheme.primaryColor || branding.primaryColor || '#ef476f',
-    secondaryColor: emailTheme.secondaryColor || branding.secondaryColor || '#06d6a0',
-    tertiaryColor: emailTheme.tertiaryColor || branding.tertiaryColor || '#ffd166',
-    borderColor: emailTheme.borderColor || branding.borderColor || '#fed7aa',
-    inkBackground: emailTheme.inkBackground || branding.inkBackground || '#2b2d42',
-    softSecondaryBackground: emailTheme.softSecondaryBackground || branding.softSecondaryBackground || '#ecfeff',
-    softTertiaryBackground: emailTheme.softTertiaryBackground || branding.softTertiaryBackground || '#fff7cc',
+    primaryColor: emailTheme.primaryColor || branding.primaryColor || '#e11d48',
+    secondaryColor: emailTheme.secondaryColor || branding.secondaryColor || '#0f766e',
+    tertiaryColor: emailTheme.tertiaryColor || branding.tertiaryColor || '#f59e0b',
+    borderColor: emailTheme.borderColor || branding.borderColor || '#f6c796',
+    inkBackground: emailTheme.inkBackground || branding.inkBackground || '#1f2937',
+    softSecondaryBackground: emailTheme.softSecondaryBackground || branding.softSecondaryBackground || '#dbf4ee',
+    softTertiaryBackground: emailTheme.softTertiaryBackground || branding.softTertiaryBackground || '#ffe8c7',
   };
 }
 
@@ -78,7 +78,7 @@ function renderButton(label: string, href: string, theme: EmailTheme, fill: 'pri
   return `
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 8px 0;">
       <tr>
-        <td bgcolor="${background}" style="border-radius:999px;">
+        <td bgcolor="${background}" style="border-radius:999px;border:1px solid rgba(15,23,42,0.08);">
           <a class="mk-btn" href="${href}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">${escapeHtml(label)}</a>
         </td>
       </tr>
@@ -88,9 +88,9 @@ function renderButton(label: string, href: string, theme: EmailTheme, fill: 'pri
 
 function renderInfoPanel(title: string, body: string, theme: EmailTheme): string {
   return `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:${theme.panelBackground};border:1px dashed ${theme.borderColor};border-radius:18px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:${theme.panelBackground};border:1px dashed ${theme.borderColor};border-radius:20px;box-shadow:0 10px 24px rgba(15,23,42,0.04);">
       <tr>
-        <td width="8" bgcolor="${theme.primaryColor}" style="font-size:0;line-height:0;border-radius:18px 0 0 18px;">&nbsp;</td>
+        <td width="8" bgcolor="${theme.primaryColor}" style="font-size:0;line-height:0;border-radius:20px 0 0 20px;">&nbsp;</td>
         <td style="padding:20px 22px;">
           <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:1.2;color:${theme.textColor};font-style:italic;margin:0 0 10px 0;">${escapeHtml(title)}</div>
           <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:${theme.textColor};">${body}</div>
@@ -123,17 +123,20 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
-      <meta name="color-scheme" content="light">
-      <meta name="supported-color-schemes" content="light">
+      <meta name="color-scheme" content="light dark">
+      <meta name="supported-color-schemes" content="light dark">
       <title>${title} - ${storeName}</title>
       <style>
         :root {
-          color-scheme: light;
-          supported-color-schemes: light;
+          color-scheme: light dark;
+          supported-color-schemes: light dark;
         }
         body {
           -webkit-text-size-adjust: 100%;
           text-size-adjust: 100%;
+        }
+        .mk-btn {
+          color: #ffffff !important;
         }
         @media (max-width: 600px) {
           .mk-shell {
@@ -164,16 +167,34 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
             font-size: 15px !important;
             text-align: center !important;
           }
+          .mk-title {
+            font-size: 32px !important;
+          }
         }
         @media (prefers-color-scheme: dark) {
           body,
           .mk-bg {
-            background-color: ${theme.shellBackground} !important;
-            color: ${theme.textColor} !important;
+            background-color: #0b1020 !important;
+            color: #e5e7eb !important;
           }
           .mk-card {
-            background-color: ${theme.cardBackground} !important;
-            border-color: ${theme.borderColor} !important;
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+            box-shadow: none !important;
+          }
+          .mk-header-dark {
+            background-color: #111827 !important;
+          }
+          .mk-eyebrow,
+          .mk-brand {
+            color: #f8fafc !important;
+          }
+          .mk-badge {
+            background: #1d4ed8 !important;
+            color: #eff6ff !important;
+          }
+          .mk-subtle {
+            color: #cbd5e1 !important;
           }
           .mk-title,
           .mk-content,
@@ -183,10 +204,36 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
           .mk-content div,
           .mk-content strong,
           .mk-content b {
-            color: ${theme.textColor} !important;
+            color: #e2e8f0 !important;
+          }
+          .mk-content a,
+          .mk-site-link {
+            color: #93c5fd !important;
+          }
+          .mk-btn {
+            color: #ffffff !important;
           }
           .mk-footer-text {
-            color: ${theme.mutedTextColor} !important;
+            color: #94a3b8 !important;
+          }
+          .mk-auth-panel {
+            background: #111827 !important;
+            border-color: #334155 !important;
+          }
+          .mk-auth-kicker {
+            color: #67e8f9 !important;
+          }
+          .mk-auth-headline {
+            color: #f8fafc !important;
+          }
+          .mk-auth-body {
+            color: #e2e8f0 !important;
+          }
+          .mk-auth-rule {
+            background: #475569 !important;
+          }
+          .mk-auth-link {
+            color: #93c5fd !important;
           }
           .mk-force-white,
           .mk-force-white td,
@@ -201,12 +248,12 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
 
         [data-ogsc] .mk-bg,
         [data-ogsb] .mk-bg {
-          background-color: ${theme.shellBackground} !important;
+          background-color: #0b1020 !important;
         }
         [data-ogsc] .mk-card,
         [data-ogsb] .mk-card {
-          background-color: ${theme.cardBackground} !important;
-          border-color: ${theme.borderColor} !important;
+          background-color: #0f172a !important;
+          border-color: #334155 !important;
         }
         [data-ogsc] .mk-title,
         [data-ogsb] .mk-title,
@@ -214,13 +261,42 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
         [data-ogsb] .mk-content,
         [data-ogsc] .mk-footer-text,
         [data-ogsb] .mk-footer-text {
-          color: ${theme.textColor} !important;
+          color: #e2e8f0 !important;
+        }
+        [data-ogsc] .mk-btn,
+        [data-ogsb] .mk-btn {
+          color: #ffffff !important;
+        }
+        [data-ogsc] .mk-auth-panel,
+        [data-ogsb] .mk-auth-panel {
+          background: #111827 !important;
+          border-color: #334155 !important;
+        }
+        [data-ogsc] .mk-auth-kicker,
+        [data-ogsb] .mk-auth-kicker {
+          color: #67e8f9 !important;
+        }
+        [data-ogsc] .mk-auth-headline,
+        [data-ogsb] .mk-auth-headline {
+          color: #f8fafc !important;
+        }
+        [data-ogsc] .mk-auth-body,
+        [data-ogsb] .mk-auth-body {
+          color: #e2e8f0 !important;
+        }
+        [data-ogsc] .mk-auth-rule,
+        [data-ogsb] .mk-auth-rule {
+          background: #475569 !important;
+        }
+        [data-ogsc] .mk-auth-link,
+        [data-ogsb] .mk-auth-link {
+          color: #93c5fd !important;
         }
       </style>
     </head>
     <body style="margin:0;padding:0;background:${theme.shellBackground};color:${theme.textColor};font-family:Arial,Helvetica,sans-serif;">
       <span style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}</span>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.shellBackground}" class="mk-bg" style="background:${theme.shellBackground};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.shellBackground}" class="mk-bg" style="background-color:${theme.shellBackground};">
         <tr>
           <td align="center" class="mk-shell" style="padding:28px 12px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;margin:0 auto;">
@@ -229,8 +305,10 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                     <tr>
                       <td style="padding:0 2px 14px 2px;">
-                        ${resolvedLabel !== null ? renderEyebrow(resolvedLabel, theme) : ''}
-                        <div class="mk-brand" style="font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
+                              <div style="width:136px;height:9px;border-radius:999px;background:${theme.primaryColor};background-image:linear-gradient(90deg,${theme.primaryColor} 0%,${theme.secondaryColor} 50%,${theme.tertiaryColor} 100%);margin:0 0 12px 0;"></div>
+                        ${resolvedLabel !== null ? renderEyebrow(resolvedLabel, theme).replace('<div style=', '<div class="mk-eyebrow" style=') : ''}
+                        <div class="mk-brand" style="font-family:Georgia,'Times New Roman',serif;font-size:46px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1.1px;">${escapeHtml(storeName)}</div>
+                        <div class="mk-subtle" style="margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${theme.mutedTextColor};">A little joy in your inbox.</div>
                       </td>
                     </tr>
                   </table>
@@ -238,17 +316,17 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
               </tr>
               <tr>
                 <td>
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.cardBackground}" class="mk-card mk-force-white" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:26px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.cardBackground}" class="mk-card mk-force-white" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:32px;">
                     <tr>
-                      <td bgcolor="${theme.inkBackground}" class="mk-header-pad" style="padding:26px 28px 18px 28px;border-radius:26px 26px 0 0;">
+                      <td bgcolor="${theme.inkBackground}" class="mk-header-pad mk-header-dark" style="padding:26px 28px 18px 28px;border-radius:32px 32px 0 0;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                           <tr>
                             <td valign="top" style="padding:0 12px 0 0;">
                               ${logoUrl ? `<img src="${logoUrl}" alt="${escapeHtml(storeName)} logo" style="display:block;height:48px;max-width:160px;border:0;outline:none;text-decoration:none;">` : ''}
                             </td>
                             <td align="right" valign="top">
-                              ${resolvedLabel !== null ? `<div style="display:inline-block;padding:7px 14px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.2;color:#ffffff;letter-spacing:1.2px;text-transform:uppercase;font-weight:bold;">${escapeHtml(resolvedLabel)}</div>` : ''}
-                              <div style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.softTertiaryBackground};letter-spacing:1.2px;text-transform:uppercase;">
+                              ${resolvedLabel !== null ? `<div class="mk-badge" style="display:inline-block;padding:7px 14px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.2;color:#ffffff;letter-spacing:1.2px;text-transform:uppercase;font-weight:bold;">${escapeHtml(resolvedLabel)}</div>` : ''}
+                              <div class="mk-subtle" style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.softTertiaryBackground};letter-spacing:1.2px;text-transform:uppercase;">
                                 ${escapeHtml(title)}
                               </div>
                             </td>
@@ -285,7 +363,7 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                           </tr>
                           <tr>
                             <td class="mk-footer-text" style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.mutedTextColor};letter-spacing:1.2px;text-transform:uppercase;">
-                              <a href="${storeUrl}" style="color:${theme.secondaryColor};text-decoration:none;">${escapeHtml(storeUrl)}</a>
+                              <a href="${storeUrl}" class="mk-site-link" style="color:${theme.secondaryColor};text-decoration:none;">${escapeHtml(storeUrl)}</a>
                             </td>
                           </tr>
                         </table>

@@ -576,7 +576,10 @@ async function persistStoreMeta(storeId: string, flags: Record<string, any>): Pr
  * Settings overrides (show_* booleans on store-settings.navigation) still take
  * priority over content-signal fallback during recompute.
  */
-export async function getVisibilityFlags(storeId: string) {
+export async function getVisibilityFlags(
+  storeId: string,
+  accessContext?: { hasAccess?: boolean; isAdmin?: boolean; isOwner?: boolean; user?: any }
+) {
   console.log('[DASHBOARD] visibility flags', { storeId: storeId.substring(0, 10) + '...' });
 
   // --- Fast path: read from store_metas if fresh ---
@@ -769,6 +772,8 @@ export async function getVisibilityFlags(storeId: string) {
     show_home,
   });
 
+  const canEdit = Boolean(accessContext?.hasAccess || accessContext?.isAdmin || accessContext?.isOwner);
+
   const flags = {
     show_blog,
     show_events,
@@ -780,12 +785,21 @@ export async function getVisibilityFlags(storeId: string) {
     has_upcoming_events: upcomingEvents > 0,
     has_events: counts.events > 0,
 
+    permissions: {
+      can_edit: canEdit,
+      can_manage: canEdit,
+      has_access: Boolean(accessContext?.hasAccess),
+      is_admin: Boolean(accessContext?.isAdmin),
+      is_owner: Boolean(accessContext?.isOwner),
+    },
+
     content_summary: {
       articles_count: counts.articles,
       products_count: counts.products,
       events_count: counts.events,
       upcoming_events_count: upcomingEvents,
       pages_count: counts.pages,
+      total_content_items: counts.articles + counts.pages + counts.events + counts.products,
     },
 
     magic_pages_detected: Array.from(foundSlugs),

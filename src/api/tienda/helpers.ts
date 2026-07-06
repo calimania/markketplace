@@ -4,16 +4,14 @@
  */
 
 import type { ContentTypeConfig } from './content-registry';
+import { openRouterChatCompletion, parseJsonFromModelText } from '../../services/openrouter';
 
 /**
- * Truncate text to a max length, preferring a clean break at sentence-ending
- * punctuation (. ! ?) or a word boundary, then appending ellipsis when cut.
- * Targets Google's ~160-char metaDescription recommendation.
+ * Truncate text to a max length, preferring a clean break at paragraph/line breaks,
+ * sentence-ending punctuation (. ! ?), or a word boundary, then appending ellipsis
+ * when cut. Targets Google's ~160-char metaDescription recommendation.
  */
-export function smartTruncate(text: string, max: number = 160): string {
-  const str = String(text || '').replace(/\s+/g, ' ').trim();
-  if (str.length <= max) return str;
-
+function truncateAtBoundary(str: string, max: number): string {
   const window = str.slice(0, max);
 
   // Prefer last sentence-ending punctuation within the window
@@ -33,6 +31,29 @@ export function smartTruncate(text: string, max: number = 160): string {
   }
 
   return window.trim() + '…';
+}
+
+export function smartTruncate(text: string, max: number = 160): string {
+  const plain = stripMarkdownAndRichText(text);
+  const raw = String(plain || '').replace(/\r\n?/g, '\n').trim();
+  if (!raw) return '';
+
+  const segments = raw
+    .split(/\n+/)
+    .map((segment) => segment.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  if (segments.length > 1) {
+    const fit = segments.find((segment) => segment.length <= max);
+    if (fit) {
+      return fit;
+    }
+  }
+
+  const str = segments.join(' ');
+  if (str.length <= max) return str;
+
+  return truncateAtBoundary(str, max);
 }
 
 function stripMarkdownAndRichText(value: any): string {
@@ -181,7 +202,7 @@ export function verifyItemBelongsToStore(
  * Auto-fill SEO fields if they're empty
  * Non-destructive: only fills empty fields
  */
-export function autoFillSEO(data: any, config: ContentTypeConfig): any {
+export async function autoFillSEO(data: any, config: ContentTypeConfig): Promise<any> {
   const hasSEOInput = Object.prototype.hasOwnProperty.call(data, 'SEO');
   const hasTitleInput = Object.prototype.hasOwnProperty.call(data, config.titleField);
   const hasContentInput = Boolean(config.contentField)
@@ -202,16 +223,52 @@ export function autoFillSEO(data: any, config: ContentTypeConfig): any {
     config.contentField ? data[config.contentField] : (data.description || data.Description || '')
   );
 
-  // Auto-fill metaTitle from title field
-  if (!data.SEO.metaTitle && titleText) {
-    data.SEO.metaTitle = smartTruncate(titleText, 60).replace(/…$/, '');
-  }
+  // Auto-fill metaTitle/metaDescription, preferring OpenRouter generation with safe fallback.
+  const summarySource = contentText || titleText;
+  const needsMetaTitle = !data.SEO.metaTitle;
+  const needsMetaDescription = !data.SEO.metaDescription;
 
-  // Auto-fill metaDescription from content field (smart truncation ~160 chars)
-  if (!data.SEO.metaDescription) {
-    const summarySource = contentText || titleText;
-    if (summarySource) {
-      data.SEO.metaDescription = smartTruncate(summarySource, 158);
+  if ((needsMetaTitle || needsMetaDescription) && summarySource) {
+    const fallbackMetaTitle = smartTruncate(titleText || summarySource, 60).replace(/…$/, '');
+    const fallbackMetaDescription = smartTruncate(summarySource, 158);
+    const shortSource = smartTruncate(summarySource, 220);
+
+    let aiMetaTitle = '';
+    let aiMetaDescription = '';
+
+    const completion = await openRouterChatCompletion({
+      model: process.env.OPEN_ROUTER_MODEL_SEO || process.env.OPEN_ROUTER_MODEL || 'openai/gpt-4o-mini',
+      temperature: 0.4,
+      maxTokens: 140,
+      messages: [
+        {
+          role: 'system',
+          content: 'Return JSON only. Generate concise SEO metadata. metaTitle max 60 chars, metaDescription max 158 chars, plain text only.',
+        },
+        {
+          role: 'user',
+          content: [
+            'Generate SEO metaTitle and metaDescription for this content snippet.',
+            `Title hint: ${titleText || 'N/A'}`,
+            `Content snippet: ${shortSource}`,
+            'JSON schema: {"metaTitle":"","metaDescription":""}',
+          ].join('\n'),
+        },
+      ],
+    });
+
+    if (completion.ok) {
+      const parsed = parseJsonFromModelText(completion.content);
+      aiMetaTitle = smartTruncate(String(parsed?.metaTitle || '').trim(), 60).replace(/…$/, '');
+      aiMetaDescription = smartTruncate(String(parsed?.metaDescription || '').trim(), 158);
+    }
+
+    if (needsMetaTitle) {
+      data.SEO.metaTitle = aiMetaTitle || fallbackMetaTitle;
+    }
+
+    if (needsMetaDescription) {
+      data.SEO.metaDescription = aiMetaDescription || fallbackMetaDescription;
     }
   }
 

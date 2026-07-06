@@ -10,23 +10,23 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
   const tertiary = store?.settings?.email_theme?.tertiaryColor || store?.settings?.branding?.tertiaryColor || '#eab308';
   const content = `
     <p style="margin:0 0 14px 0;">Hi <strong>${email}</strong>, use the secure link below to continue.</p>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;background:#fff7fb;border:1px dashed ${accent};border-radius:18px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="mk-auth-panel" style="margin:20px 0;background:#f8fafc;border:1px solid #d1d5db;border-radius:18px;">
       <tr>
         <td style="padding:20px 22px;">
-          <div style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.4;color:${secondary};letter-spacing:1.6px;text-transform:uppercase;font-weight:bold;margin:0 0 10px 0;">Secure access sequence</div>
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;color:${accent};font-style:italic;margin:0 0 10px 0;">Magic login link</div>
-          <div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#1f2340;">
+          <div class="mk-auth-kicker" style="font-family:'Courier New',Courier,monospace;font-size:10px;line-height:1.4;color:#0369a1;letter-spacing:1.6px;text-transform:uppercase;font-weight:bold;margin:0 0 10px 0;">Secure access sequence</div>
+          <div class="mk-auth-headline" style="font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.2;color:#0f172a;font-style:italic;margin:0 0 10px 0;">Magic login link</div>
+          <div class="mk-auth-body" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.7;color:#334155;">
             This link stays valid for 15 minutes. If you did not request it, you can safely ignore this email.
           </div>
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 8px 0;">
             <tr>
               <td bgcolor="${accent}" style="border-radius:999px;">
-                <a href="${url}" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">Continue</a>
+                <a href="${url}" class="mk-btn" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;letter-spacing:0.6px;color:#ffffff;text-decoration:none;border-radius:999px;">Continue</a>
               </td>
             </tr>
           </table>
-          <div style="margin-top:12px;height:6px;background:${tertiary};border-radius:999px;font-size:0;line-height:0;">&nbsp;</div>
-          <div style="font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.7;color:${secondary};word-break:break-all;margin-top:12px;">${url}</div>
+          <div class="mk-auth-rule" style="margin-top:12px;height:6px;background:${tertiary};border-radius:999px;font-size:0;line-height:0;">&nbsp;</div>
+          <div class="mk-auth-link" style="font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.7;color:#0369a1;word-break:break-all;margin-top:12px;">${url}</div>
         </td>
       </tr>
     </table>

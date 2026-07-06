@@ -1,7 +1,7 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.20.0",
+  "version": "0.3.3",
   "description": "Markkët API, powered by strapi:postgres",
   "scripts": {
     "dev": "strapi develop",
@@ -17,10 +17,10 @@
   },
   "dependencies": {
     "@strapi-community/plugin-healthcheck": "^1.1.1",
-    "@strapi/plugin-users-permissions": "5.43.0",
-    "@strapi/provider-email-sendgrid": "5.43.0",
-    "@strapi/provider-upload-aws-s3": "5.43.0",
-    "@strapi/strapi": "5.43.0",
+    "@strapi/plugin-users-permissions": "5.50.0",
+    "@strapi/provider-email-sendgrid": "5.50.0",
+    "@strapi/provider-upload-aws-s3": "5.50.0",
+    "@strapi/strapi": "5.50.0",
     "esbuild": "0.28.0",
     "fast-xml-parser": "5.5.11",
     "get-strapi-schema": "^0.0.3",
@@ -40,7 +40,8 @@
     "markdown-it": "14.1.1",
     "sirv": "3.0.2",
     "is-localhost-ip": "3.0.1",
-    "codemirror": "6.0.0"
+    "codemirror": "6.0.0",
+    "nodemailer": "9.0.1"
   },
   "author": {
     "name": "calimania"

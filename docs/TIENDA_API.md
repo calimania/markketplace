@@ -21,6 +21,9 @@ The `:ref` param accepts either a **documentId** or a **slug** on all store-scop
 | `PUT` | `/api/tienda/stores/:ref` | `{ title?, slug?, … }` | Update store fields |
 | `GET` | `/api/tienda/stores/:ref/settings` | — | Get store settings |
 | `PUT` | `/api/tienda/stores/:ref/settings` | `{ … }` | Update store settings |
+| `POST` | `/api/tienda/stores/:ref/starter-content/generate` | `{ seed?, voice?, regenerate? }` | Generate store-specific starter pages (`home`, `newsletter`, `about`, `story`) with SEO via one OpenRouter call (or fallback templates), plus short owner congrats email copy in `generation.ownerEmail` |
+
+When `OPEN_ROUTER_API_KEY` is not configured, this endpoint uses the default static starter seed templates (deterministic copy) and returns `generation.warning` to indicate the fallback path.
 | `GET` | `/api/tienda/tendero/:ref` | — | Lightweight ownership check — returns `{ ok, store: { documentId, slug } }` |
 
 ---
@@ -114,6 +117,212 @@ Slugs are normalised automatically before saving:
 | `POST` | `/api/tienda/stores/:ref/events/:eventId/rsvps/sync` | Sync RSVPs to SendGrid |
 | `POST` | `/api/tienda/stores/:ref/invite` | Send a collaborator invite by email |
 | `GET` | `/api/tienda/stores/:ref/invites` | List all invites sent for the store |
+
+---
+
+## Inbox (User Scoped)
+
+Inbox routes are user-scoped and require JWT auth. They are not bound to a single store route.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/inbox` | List inbox threads for the authenticated user with filters/search/pagination |
+| `GET` | `/api/inbox/thread/:threadId` | Get one full thread by inbox documentId (no threadKey needed) |
+| `POST` | `/api/inbox/outbound` | Create outbound draft or send/publish message |
+| `POST` | `/api/inbox/thread/:threadId/outbound` | Reply to a thread by id (recipient inferred server-side) |
+| `POST` | `/api/inbox/thread/:threadKey/state` | Mark thread read/unread or archive |
+
+### List inbox threads query params
+
+`GET /api/inbox`
+
+Required store context (one of):
+- `store` or `storeSlug`: store slug.
+- `storeId` or `storeDocumentId`: store documentId.
+
+- `q` or `search`: free-text search across thread subject/store/threadKey/message body/message email.
+- `direction`: `incoming` or `outgoing`.
+- `estado`: filter by latest thread state (`new`, `read`, `draft`, `sent`, etc.).
+- `publication` or `publicationState`: filter by publication state (`draft` or `published`).
+- `archived`: `true|false` (default `false`; archived threads are hidden unless requested).
+- `read`: `true|false`.
+- `threadKey`: exact thread key match.
+- `includeMessages`: `true|false` (default `true`).
+- `populate`: optional controlled expansions. Comma-separated: `store,user,metadata,messages` or `*`.
+- `page`: default `1`.
+- `pageSize` or `limit`: default `20`, max `100`.
+- `sortBy`: `latestMessageAt | subject | store | direction | estado | publicationState`.
+- `sortOrder` or `order`: `asc | desc` (default `desc`).
+
+If both `store` and `storeId` are missing, the API returns `400 Bad Request`.
+If the authenticated user does not have access to that store, the API returns a resource-unavailable response.
+
+### Get one thread by id
+
+`GET /api/inbox/thread/:threadId`
+
+- Uses a single inbox `documentId` from any message in that thread.
+- Returns the full thread payload (same shape as one item from `GET /api/inbox`).
+- No `threadKey` needed in URL.
+- Optional query:
+  - `includeMessages=true|false` (default `true`)
+  - `populate=store,user,metadata,messages` or `*`
+
+Example:
+
+```http
+GET /api/inbox/thread/nhkocvfz19s8bc9lkelkuomb?includeMessages=true
+Authorization: Bearer {JWT}
+```
+
+Case-sensitive keys:
+- Internal Strapi attribute key is `Estado` (capital `E`) in the content type schema.
+- Inbox API query/response key is `estado` (lowercase) for `GET /api/inbox`.
+- Inbox API publication key is `publicationState` (`draft` or `published`), separate from `estado`.
+
+Thread grouping behavior:
+- First priority: explicit thread references (`threadKey`, `in-reply-to`, `references`, `parentMessageId`).
+- Fallback: grouped by participant pair + normalized subject.
+- If `message-id` exists and no thread references are present, it is used as a unique thread seed to avoid collapsing unrelated conversations from the same sender.
+
+**Example**
+
+```http
+GET /api/inbox?q=refund&store=my-store&archived=false&page=1&pageSize=25&sortBy=latestMessageAt&sortOrder=desc
+Authorization: Bearer {JWT}
+```
+
+```http
+GET /api/inbox?store=my-store&populate=store,user,metadata,messages
+Authorization: Bearer {JWT}
+```
+
+**Response shape (summary)**
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": "...",
+      "threadKey": "...",
+      "subject": "...",
+      "store": "my-store",
+      "storeId": "store_document_id",
+      "direction": "incoming",
+      "estado": "new",
+      "publicationState": "published",
+      "published": true,
+      "fromAddress": "buyer@example.com",
+      "fromName": "Jane Buyer",
+      "toAddress": "my-store@markket.place",
+      "toName": "My Store",
+      "contact": { "name": "Jane Buyer", "email": "buyer@example.com" },
+      "latestMessageId": "abc123@mail.example.com",
+      "replyHints": {
+        "inReplyTo": "abc123@mail.example.com",
+        "references": ["older-id@mail.example.com", "abc123@mail.example.com"]
+      },
+      "metadata": {},
+      "storeDetails": { "documentId": "...", "slug": "my-store", "title": "My Store" },
+      "user": { "id": 1, "username": "owner", "email": "owner@example.com" },
+      "isArchived": false,
+      "isRead": false,
+      "latestMessageAt": "2026-07-05T12:00:00.000Z",
+      "messages": [
+        {
+          "id": "...",
+          "subject": "...",
+          "body": "...",
+          "direction": "incoming",
+          "email": "buyer@example.com",
+          "fromName": "Jane Buyer",
+          "toName": "My Store",
+          "createdAt": "2026-07-05T12:00:00.000Z",
+          "metadata": {},
+          "estado": "new",
+          "publicationState": "published",
+          "published": true,
+          "isArchived": false,
+          "fromAddress": "buyer@example.com",
+          "toAddress": "my-store@markket.place",
+          "messageId": "<id@example.com>",
+          "bodyHtml": "<p>...</p>",
+          "routingKey": "my-store"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "pagination": { "page": 1, "pageSize": 25, "pageCount": 1, "total": 1 },
+    "filters": { "search": "refund", "store": "my-store", "storeId": null },
+    "sort": { "by": "latestMessageAt", "order": "desc" },
+    "includeMessages": false,
+    "populate": {
+      "requested": ["store", "user", "metadata", "messages"],
+      "store": true,
+      "user": true,
+      "metadata": true,
+      "messages": true
+    }
+  }
+}
+```
+
+### Outbound intent (no ambiguity)
+
+`POST /api/inbox/outbound`
+
+- `estado` accepts only `draft` or `sent`.
+- `draft` accepts boolean.
+- `published` accepts boolean.
+
+Rules:
+- Send + publish when none of the draft flags are set.
+- Save draft when any draft input is set (`draft=true`, `published=false`, or `estado=draft`).
+- Conflicting combinations are rejected with `400`:
+  - `draft=true` with `published=true`
+  - `estado=draft` with `published=true`
+  - `estado=sent` with draft inputs
+
+Thread continuity for outbound:
+- By default, outbound `from` is `${store.slug}@${MARKKET_EMAIL_DOMAIN}` (for example `my-store@markket.place`) when `from` is not provided.
+- Minimal client contract (recommended): send `to`, message content (`text` and/or `html`), and `threadKey` when this is a reply.
+- The API derives `In-Reply-To` and `References` from the stored thread automatically.
+- Client-provided threading headers are intentionally ignored to prevent broken threading.
+
+Routing contract (important):
+- `to` is the customer destination email.
+- Store routing is resolved in this order:
+  - `threadKey` (if provided, recommended)
+  - `from` local part as store slug (`my-store@markket.place` -> `my-store`)
+  - legacy fallback from `to` local part
+- If none can resolve a store slug, API returns `400`.
+
+Preferred reply endpoint (no client email leakage):
+- `POST /api/inbox/thread/:threadId/outbound`
+- Client sends only message content and optional draft flags.
+- Backend infers `to`, `threadKey`, and threading headers from stored thread records.
+
+Reply-by-id body example:
+
+```json
+{
+  "subject": "Re: Order #1234",
+  "text": "Thanks, we are on it."
+}
+```
+
+Reply body example:
+
+```json
+{
+  "to": "my-store@markket.place",
+  "subject": "Re: Order #1234",
+  "text": "Thanks, we are on it.",
+  "threadKey": "my-store::p::buyer@example.com|my-store@markket.place::s::order #1234"
+}
+```
 
 ---
 
