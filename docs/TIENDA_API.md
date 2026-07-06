@@ -117,6 +117,77 @@ Slugs are normalised automatically before saving:
 
 ---
 
+## Inbox (User Scoped)
+
+Inbox routes are user-scoped and require JWT auth. They are not bound to a single store route.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/inbox` | List inbox threads for the authenticated user with filters/search/pagination |
+| `POST` | `/api/inbox/outbound` | Create outbound draft or send/publish message |
+| `POST` | `/api/inbox/thread/:threadKey/state` | Mark thread read/unread or archive |
+
+### List inbox threads query params
+
+`GET /api/inbox`
+
+Required store context (one of):
+- `store` or `storeSlug`: store slug.
+- `storeId` or `storeDocumentId`: store documentId.
+
+- `q` or `search`: free-text search across thread subject/store/threadKey/message body/message email.
+- `direction`: `incoming` or `outgoing`.
+- `status`: filter by latest thread status (`new`, `read`, `draft`, `sent`, etc.).
+- `archived`: `true|false`.
+- `read`: `true|false`.
+- `threadKey`: exact thread key match.
+- `includeMessages`: `true|false` (default `true`).
+- `page`: default `1`.
+- `pageSize` or `limit`: default `20`, max `100`.
+- `sortBy`: `latestMessageAt | subject | store | direction | status`.
+- `sortOrder` or `order`: `asc | desc` (default `desc`).
+
+If both `store` and `storeId` are missing, the API returns `400 Bad Request`.
+If the authenticated user does not have access to that store, the API returns a resource-unavailable response.
+
+**Example**
+
+```http
+GET /api/inbox?q=refund&store=my-store&archived=false&page=1&pageSize=25&sortBy=latestMessageAt&sortOrder=desc
+Authorization: Bearer {JWT}
+```
+
+**Response shape (summary)**
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": "...",
+      "threadKey": "...",
+      "subject": "...",
+      "store": "my-store",
+      "storeId": "store_document_id",
+      "direction": "incoming",
+      "status": "new",
+      "isArchived": false,
+      "isRead": false,
+      "latestMessageAt": "2026-07-05T12:00:00.000Z",
+      "messages": []
+    }
+  ],
+  "meta": {
+    "pagination": { "page": 1, "pageSize": 25, "pageCount": 1, "total": 1 },
+    "filters": { "search": "refund", "store": "my-store", "storeId": null },
+    "sort": { "by": "latestMessageAt", "order": "desc" },
+    "includeMessages": false
+  }
+}
+```
+
+---
+
 ## Collaborator Invites
 
 Store members can invite collaborators by email. Invitees receive a one-time 24-hour magic link. On acceptance they are automatically authenticated and added to the store — no password needed.

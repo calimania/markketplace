@@ -333,9 +333,6 @@ export function buildInviteEmailHtml(input: BuildInviteEmailHtmlInput): string {
                 <p style="margin:0 0 10px 0;font-size:11px;color:#4338ca;letter-spacing:.1em;text-transform:uppercase;font-weight:700;">${inviteLabel}</p>
                 <h2 style="margin:0 0 10px 0;font-size:22px;line-height:1.3;color:#0f172a;">${inviteHeadline}</h2>
                 <p style="margin:0 0 10px 0;font-size:15px;line-height:1.7;color:#1e293b;">${inviteIntro}</p>
-                <p style="margin:0;display:inline-block;padding:6px 12px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:600;">
-                  Store: <strong>${safeStoreName}</strong>
-                </p>
               </td>
             </tr>
           </table>
@@ -377,7 +374,7 @@ export function buildInviteEmailHtml(input: BuildInviteEmailHtmlInput): string {
   `;
 
   return emailLayout({
-    title: isResend ? `New invite link for ${safeStoreName}` : `Editor invite for ${safeStoreName}`,
+    title: isResend ? 'New invite link' : 'Editor invite',
     content,
     store: {
       title: safeStoreName,
@@ -437,8 +434,6 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
         </td>
       </tr>
     </table>
-
-    ${safeStoreSlug ? `<p style="margin:0 0 10px 0;font-size:14px;color:#334155;">Store slug: <strong>${safeStoreSlug}</strong></p>` : ''}
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px 0;">
       <tr>
@@ -504,7 +499,7 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
   `;
 
   return emailLayout({
-    title: `Your store is live: ${safeStoreName}`,
+    title: 'Your store is live',
     content,
     store: {
       title: safeStoreName,

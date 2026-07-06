@@ -3,6 +3,8 @@ interface InboxContext {
   ctx: any;
 }
 
+import { checkStoreAccess } from '../../../services/api-auth';
+
 function normalizeEmailAddress(value?: string | null): string | null {
   if (!value) return null;
   return String(value).trim().toLowerCase();
@@ -158,6 +160,22 @@ async function resolveInboxUser(strapi: any, store: any, ctx: any) {
   return null;
 }
 
+function parseBooleanQuery(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'y'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'n'].includes(normalized)) return false;
+  return null;
+}
+
+function parsePositiveInt(value: unknown, fallback: number): number {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
 export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
   const payload = ctx.request?.body || {};
   const recipientEmail = normalizeEmailAddress(payload?.to);
@@ -193,7 +211,7 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
       Name: subject,
       Message: messageBody,
       email: senderEmail,
-      store: store?.id ? { connect: [{ id: store.id }] } : undefined,
+      store: store?.documentId ? { connect: [{ documentId: store.documentId }] } : undefined,
       user: inboxUserId ? { connect: [{ id: inboxUserId }] } : undefined,
       parentMessageId: existingThread?.documentId ? { connect: [{ documentId: existingThread.documentId }] } : undefined,
       Direction: 'incoming',
@@ -218,11 +236,19 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
     },
   });
 
-  const shouldPublishInbound = Boolean(store?.id);
+  const shouldPublishInbound = Boolean(store?.documentId);
   if (shouldPublishInbound && inboxRecord?.documentId) {
-    await strapi.documents('api::inbox.inbox').publish({
+    const publishedInbound = await strapi.documents('api::inbox.inbox').publish({
       documentId: inboxRecord.documentId,
     });
+
+    // Defensive fallback: ensure publishedAt is set even if publish result is unexpectedly empty.
+    if (!publishedInbound?.publishedAt) {
+      await strapi.documents('api::inbox.inbox').update({
+        documentId: inboxRecord.documentId,
+        data: { publishedAt: new Date().toISOString() },
+      });
+    }
   }
 
   return {
@@ -259,6 +285,18 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
     populate: ['owner', 'users'],
   });
 
+  if (!store?.documentId) {
+    throw new Error(`Store not found for routing key: ${routingKey}`);
+  }
+
+  const authenticatedUserId = ctx.state?.user?.id;
+  if (authenticatedUserId) {
+    const access = await checkStoreAccess(strapi, authenticatedUserId, store.documentId || routingKey);
+    if (!access?.store || !access?.hasAccess) {
+      throw new Error('Store not found or access denied');
+    }
+  }
+
   const inboxUserId = await resolveInboxUser(strapi, store, ctx);
   const existingThread = await resolveExistingThread(strapi, payload, routingKey);
   const fromEmail = payload?.from || `${routingKey}@${getMailDomain()}`;
@@ -291,7 +329,7 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
       Name: subject,
       Message: plainText,
       email: toAddress,
-      store: store?.id ? { connect: [{ id: store.id }] } : undefined,
+      store: store?.documentId ? { connect: [{ documentId: store.documentId }] } : undefined,
       user: inboxUserId ? { connect: [{ id: inboxUserId }] } : undefined,
       parentMessageId: existingThread?.documentId ? { connect: [{ documentId: existingThread.documentId }] } : undefined,
       Direction: 'outgoing',
@@ -316,9 +354,17 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
   });
 
   if (!isDraftRequest && outboundRecord?.documentId) {
-    await strapi.documents('api::inbox.inbox').publish({
+    const publishedOutbound = await strapi.documents('api::inbox.inbox').publish({
       documentId: outboundRecord.documentId,
     });
+
+    // Defensive fallback: ensure publishedAt is set even if publish result is unexpectedly empty.
+    if (!publishedOutbound?.publishedAt) {
+      await strapi.documents('api::inbox.inbox').update({
+        documentId: outboundRecord.documentId,
+        data: { publishedAt: new Date().toISOString() },
+      });
+    }
   }
 
   return {
@@ -342,9 +388,33 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
     return { status: 'unauthorized', data: [] };
   }
 
+  const query = ctx.request?.query || {};
+  const search = String(query.q || query.search || '').trim().toLowerCase();
+  const storeFilter = String(query.store || query.storeSlug || '').trim().toLowerCase();
+  const storeIdFilter = String(query.storeId || query.storeDocumentId || '').trim();
+  const directionFilter = String(query.direction || '').trim().toLowerCase();
+  const statusFilter = String(query.status || '').trim().toLowerCase();
+  const threadKeyFilter = String(query.threadKey || '').trim();
+  const archivedFilter = parseBooleanQuery(query.archived);
+  const readFilter = parseBooleanQuery(query.read);
+  const includeMessages = parseBooleanQuery(query.includeMessages) !== false;
+
+  const page = parsePositiveInt(query.page, 1);
+  const pageSize = Math.min(parsePositiveInt(query.pageSize || query.limit, 20), 100);
+  const sortByRaw = String(query.sortBy || query.sort || 'latestMessageAt').trim();
+  const sortOrderRaw = String(query.sortOrder || query.order || 'desc').trim().toLowerCase();
+  const sortOrder = sortOrderRaw === 'asc' ? 'asc' : 'desc';
+  const sortBy = ['latestMessageAt', 'subject', 'store', 'direction', 'status'].includes(sortByRaw)
+    ? sortByRaw
+    : 'latestMessageAt';
+
+  const scopedStore = ctx.state?.inboxStore;
+  const scopedStoreDocumentId = scopedStore?.documentId || null;
+
   const inboxRecords = await strapi.documents('api::inbox.inbox').findMany({
     filters: {
       user: { id: userId },
+      ...(scopedStoreDocumentId ? { store: { documentId: scopedStoreDocumentId } } : {}),
     },
     sort: { createdAt: 'desc' },
     populate: ['store', 'user'],
@@ -369,22 +439,119 @@ export async function listInboxThreadsForUser({ strapi, ctx }: InboxContext) {
       threadKey: latest?.ThreadKey || latest?.documentId,
       subject: latest?.Name || 'Conversation',
       store: latest?.store?.slug || null,
+      storeId: latest?.store?.documentId || null,
       direction: latest?.Direction || 'incoming',
+      status: latest?.Status || 'new',
       isArchived: Boolean(latest?.Archived),
       isRead: latest?.Status !== 'new',
       latestMessageAt: latest?.createdAt || null,
-      messages: sortedItems.map((item) => ({
+      messages: includeMessages ? sortedItems.map((item) => ({
         id: item.documentId,
         subject: item.Name,
         body: item.Message,
         direction: item.Direction,
         email: item.email,
         createdAt: item.createdAt,
-      })),
+      })) : [],
     };
   });
 
-  return { status: 'success', data: threads };
+  let filtered = threads;
+
+  if (threadKeyFilter) {
+    filtered = filtered.filter((thread) => thread.threadKey === threadKeyFilter);
+  }
+
+  if (storeFilter) {
+    filtered = filtered.filter((thread) => String(thread.store || '').toLowerCase() === storeFilter);
+  }
+
+  if (storeIdFilter) {
+    filtered = filtered.filter((thread) => String(thread.storeId || '') === storeIdFilter);
+  }
+
+  if (directionFilter) {
+    filtered = filtered.filter((thread) => String(thread.direction || '').toLowerCase() === directionFilter);
+  }
+
+  if (statusFilter) {
+    filtered = filtered.filter((thread) => String(thread.status || '').toLowerCase() === statusFilter);
+  }
+
+  if (typeof archivedFilter === 'boolean') {
+    filtered = filtered.filter((thread) => thread.isArchived === archivedFilter);
+  }
+
+  if (typeof readFilter === 'boolean') {
+    filtered = filtered.filter((thread) => thread.isRead === readFilter);
+  }
+
+  if (search) {
+    filtered = filtered.filter((thread) => {
+      const inSubject = String(thread.subject || '').toLowerCase().includes(search);
+      const inStore = String(thread.store || '').toLowerCase().includes(search);
+      const inStoreId = String(thread.storeId || '').toLowerCase().includes(search);
+      const inThreadKey = String(thread.threadKey || '').toLowerCase().includes(search);
+      const inMessages = thread.messages.some((message: any) => {
+        const body = String(message.body || '').toLowerCase();
+        const email = String(message.email || '').toLowerCase();
+        const subject = String(message.subject || '').toLowerCase();
+        return body.includes(search) || email.includes(search) || subject.includes(search);
+      });
+      return inSubject || inStore || inStoreId || inThreadKey || inMessages;
+    });
+  }
+
+  filtered.sort((a, b) => {
+    const direction = sortOrder === 'asc' ? 1 : -1;
+
+    if (sortBy === 'latestMessageAt') {
+      const aTime = new Date(a.latestMessageAt || 0).getTime();
+      const bTime = new Date(b.latestMessageAt || 0).getTime();
+      return (aTime - bTime) * direction;
+    }
+
+    const left = String((a as any)[sortBy] || '').toLowerCase();
+    const right = String((b as any)[sortBy] || '').toLowerCase();
+    if (left < right) return -1 * direction;
+    if (left > right) return 1 * direction;
+    return 0;
+  });
+
+  const total = filtered.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageData = filtered.slice(start, end);
+
+  return {
+    status: 'success',
+    data: pageData,
+    meta: {
+      pagination: {
+        page: currentPage,
+        pageSize,
+        pageCount,
+        total,
+      },
+      filters: {
+        search: search || null,
+        store: storeFilter || null,
+        storeId: storeIdFilter || null,
+        direction: directionFilter || null,
+        status: statusFilter || null,
+        archived: archivedFilter,
+        read: readFilter,
+        threadKey: threadKeyFilter || null,
+      },
+      sort: {
+        by: sortBy,
+        order: sortOrder,
+      },
+      includeMessages,
+    },
+  };
 }
 
 export async function updateInboxThreadState({ strapi, ctx }: InboxContext) {

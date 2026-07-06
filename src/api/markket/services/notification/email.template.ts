@@ -123,13 +123,13 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width,initial-scale=1.0">
-      <meta name="color-scheme" content="light">
-      <meta name="supported-color-schemes" content="light">
+      <meta name="color-scheme" content="light dark">
+      <meta name="supported-color-schemes" content="light dark">
       <title>${title} - ${storeName}</title>
       <style>
         :root {
-          color-scheme: light;
-          supported-color-schemes: light;
+          color-scheme: light dark;
+          supported-color-schemes: light dark;
         }
         body {
           -webkit-text-size-adjust: 100%;
@@ -164,16 +164,34 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
             font-size: 15px !important;
             text-align: center !important;
           }
+          .mk-title {
+            font-size: 32px !important;
+          }
         }
         @media (prefers-color-scheme: dark) {
           body,
           .mk-bg {
-            background-color: ${theme.shellBackground} !important;
-            color: ${theme.textColor} !important;
+            background-color: #0b1020 !important;
+            color: #e5e7eb !important;
           }
           .mk-card {
-            background-color: ${theme.cardBackground} !important;
-            border-color: ${theme.borderColor} !important;
+            background-color: #0f172a !important;
+            border-color: #334155 !important;
+            box-shadow: none !important;
+          }
+          .mk-header-dark {
+            background-color: #111827 !important;
+          }
+          .mk-eyebrow,
+          .mk-brand {
+            color: #f8fafc !important;
+          }
+          .mk-badge {
+            background: #1d4ed8 !important;
+            color: #eff6ff !important;
+          }
+          .mk-subtle {
+            color: #cbd5e1 !important;
           }
           .mk-title,
           .mk-content,
@@ -183,10 +201,14 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
           .mk-content div,
           .mk-content strong,
           .mk-content b {
-            color: ${theme.textColor} !important;
+            color: #e2e8f0 !important;
+          }
+          .mk-content a,
+          .mk-site-link {
+            color: #93c5fd !important;
           }
           .mk-footer-text {
-            color: ${theme.mutedTextColor} !important;
+            color: #94a3b8 !important;
           }
           .mk-force-white,
           .mk-force-white td,
@@ -201,12 +223,12 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
 
         [data-ogsc] .mk-bg,
         [data-ogsb] .mk-bg {
-          background-color: ${theme.shellBackground} !important;
+          background-color: #0b1020 !important;
         }
         [data-ogsc] .mk-card,
         [data-ogsb] .mk-card {
-          background-color: ${theme.cardBackground} !important;
-          border-color: ${theme.borderColor} !important;
+          background-color: #0f172a !important;
+          border-color: #334155 !important;
         }
         [data-ogsc] .mk-title,
         [data-ogsb] .mk-title,
@@ -214,13 +236,13 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
         [data-ogsb] .mk-content,
         [data-ogsc] .mk-footer-text,
         [data-ogsb] .mk-footer-text {
-          color: ${theme.textColor} !important;
+          color: #e2e8f0 !important;
         }
       </style>
     </head>
     <body style="margin:0;padding:0;background:${theme.shellBackground};color:${theme.textColor};font-family:Arial,Helvetica,sans-serif;">
       <span style="display:none;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}</span>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.shellBackground}" class="mk-bg" style="background:${theme.shellBackground};">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.shellBackground}" class="mk-bg" style="background:${theme.shellBackground};background-image:radial-gradient(circle at 12% 10%, rgba(255,255,255,0.5) 0, rgba(255,255,255,0) 35%),radial-gradient(circle at 88% 90%, rgba(255,255,255,0.35) 0, rgba(255,255,255,0) 28%);">
         <tr>
           <td align="center" class="mk-shell" style="padding:28px 12px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;margin:0 auto;">
@@ -230,8 +252,9 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                     <tr>
                       <td style="padding:0 2px 14px 2px;">
                               <div style="width:112px;height:8px;border-radius:999px;background:linear-gradient(90deg,${theme.primaryColor} 0%,${theme.secondaryColor} 52%,${theme.tertiaryColor} 100%);margin:0 0 12px 0;"></div>
-                        ${resolvedLabel !== null ? renderEyebrow(resolvedLabel, theme) : ''}
+                        ${resolvedLabel !== null ? renderEyebrow(resolvedLabel, theme).replace('<div style=', '<div class="mk-eyebrow" style=') : ''}
                         <div class="mk-brand" style="font-family:Georgia,'Times New Roman',serif;font-size:44px;line-height:0.95;color:${theme.textColor};font-weight:bold;letter-spacing:-1px;">${escapeHtml(storeName)}</div>
+                        <div class="mk-subtle" style="margin-top:6px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:${theme.mutedTextColor};">A little joy in your inbox.</div>
                       </td>
                     </tr>
                   </table>
@@ -239,17 +262,17 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
               </tr>
               <tr>
                 <td>
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.cardBackground}" class="mk-card mk-force-white" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:30px;box-shadow:0 18px 42px rgba(15,23,42,0.08);">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${theme.cardBackground}" class="mk-card mk-force-white" style="background:${theme.cardBackground};border:1px solid ${theme.borderColor};border-radius:32px;box-shadow:0 18px 42px rgba(15,23,42,0.08);">
                     <tr>
-                      <td bgcolor="${theme.inkBackground}" class="mk-header-pad" style="padding:26px 28px 18px 28px;border-radius:30px 30px 0 0;">
+                      <td bgcolor="${theme.inkBackground}" class="mk-header-pad mk-header-dark" style="padding:26px 28px 18px 28px;border-radius:32px 32px 0 0;">
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                           <tr>
                             <td valign="top" style="padding:0 12px 0 0;">
                               ${logoUrl ? `<img src="${logoUrl}" alt="${escapeHtml(storeName)} logo" style="display:block;height:48px;max-width:160px;border:0;outline:none;text-decoration:none;">` : ''}
                             </td>
                             <td align="right" valign="top">
-                              ${resolvedLabel !== null ? `<div style="display:inline-block;padding:7px 14px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.2;color:#ffffff;letter-spacing:1.2px;text-transform:uppercase;font-weight:bold;">${escapeHtml(resolvedLabel)}</div>` : ''}
-                              <div style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.softTertiaryBackground};letter-spacing:1.2px;text-transform:uppercase;">
+                              ${resolvedLabel !== null ? `<div class="mk-badge" style="display:inline-block;padding:7px 14px;background:${theme.primaryColor};border-radius:999px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.2;color:#ffffff;letter-spacing:1.2px;text-transform:uppercase;font-weight:bold;">${escapeHtml(resolvedLabel)}</div>` : ''}
+                              <div class="mk-subtle" style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.softTertiaryBackground};letter-spacing:1.2px;text-transform:uppercase;">
                                 ${escapeHtml(title)}
                               </div>
                             </td>
@@ -286,7 +309,7 @@ export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
                           </tr>
                           <tr>
                             <td class="mk-footer-text" style="padding-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;line-height:1.6;color:${theme.mutedTextColor};letter-spacing:1.2px;text-transform:uppercase;">
-                              <a href="${storeUrl}" style="color:${theme.secondaryColor};text-decoration:none;">${escapeHtml(storeUrl)}</a>
+                              <a href="${storeUrl}" class="mk-site-link" style="color:${theme.secondaryColor};text-decoration:none;">${escapeHtml(storeUrl)}</a>
                             </td>
                           </tr>
                         </table>

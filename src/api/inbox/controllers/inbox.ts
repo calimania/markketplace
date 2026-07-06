@@ -3,6 +3,7 @@
  */
 
 import { factories } from '@strapi/strapi';
+import { checkStoreAccess, requireUser, ERRORS } from '../../../services/api-auth';
 import {
   createInboxThreadRecord,
   listInboxThreadsForUser,
@@ -44,6 +45,25 @@ export default factories.createCoreController('api::inbox.inbox', ({ strapi }) =
 
   async listThreads(ctx: any) {
     try {
+      const user = requireUser(ctx);
+      if (!user) return;
+
+      const query = ctx.request?.query || {};
+      const storeSlug = String(query.store || query.storeSlug || '').trim();
+      const storeId = String(query.storeId || query.storeDocumentId || '').trim();
+      const storeRef = storeId || storeSlug;
+
+      if (!storeRef) {
+        return ctx.badRequest('Missing store context. Provide `store` (slug) or `storeId` (documentId).');
+      }
+
+      const access = await checkStoreAccess(strapi, user.id, storeRef);
+      if (!access?.store || !access?.hasAccess) {
+        return ctx.notFound(ERRORS.RESOURCE_UNAVAILABLE_MESSAGE);
+      }
+
+      ctx.state.inboxStore = access.store;
+
       const result = await listInboxThreadsForUser({ strapi, ctx });
       return ctx.send(result);
     } catch (error: any) {

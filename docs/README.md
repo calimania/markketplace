@@ -12,6 +12,7 @@ This folder contains operational and API documentation for Markketplace.
 
 ## API References
 - [TIENDA_CONTENT_ENDPOINTS.md](./TIENDA_CONTENT_ENDPOINTS.md)
+- [TIENDA_API.md](./TIENDA_API.md)
 - [BUYER_ENDPOINTS.md](./BUYER_ENDPOINTS.md)
 - [CRM_ENDPOINTS.md](./CRM_ENDPOINTS.md)
 
