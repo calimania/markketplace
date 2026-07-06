@@ -243,6 +243,7 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
   const subject = payload?.subject || 'New message';
   const plainText = payload?.text || payload?.body || 'No message body';
   const htmlBody = payload?.html || null;
+  const isDraftRequest = payload?.published === false || payload?.draft === true || payload?.status === 'draft';
 
   if (!toAddress) {
     throw new Error('Missing recipient address');
@@ -272,18 +273,20 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
     html: htmlBody || `<p>${plainText}</p>`,
   };
 
-  const sgMail = await import('@sendgrid/mail');
-  const mail = sgMail.default;
-  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!isDraftRequest) {
+    const sgMail = await import('@sendgrid/mail');
+    const mail = sgMail.default;
+    const apiKey = process.env.SENDGRID_API_KEY;
 
-  if (!apiKey) {
-    throw new Error('SendGrid API key is not configured');
+    if (!apiKey) {
+      throw new Error('SendGrid API key is not configured');
+    }
+
+    mail.setApiKey(apiKey);
+    await mail.send(emailData);
   }
 
-  mail.setApiKey(apiKey);
-  await mail.send(emailData);
-
-  await strapi.documents('api::inbox.inbox').create({
+  const outboundRecord = await strapi.documents('api::inbox.inbox').create({
     data: {
       Name: subject,
       Message: plainText,
@@ -298,28 +301,37 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
       ToAddress: toAddress,
       BodyHtml: htmlBody || null,
       Metadata: buildInboxMetadata({
-        source: 'sendgrid-outbound',
+        source: isDraftRequest ? 'sendgrid-outbound-draft' : 'sendgrid-outbound',
         threadKey,
         routingKey,
         messageId: null,
         subject,
         rawTo: toAddress,
         rawFrom: fromEmail,
-        sentAt: new Date().toISOString(),
+        sentAt: isDraftRequest ? undefined : new Date().toISOString(),
         envelope: { from: fromEmail, to: toAddress },
       }),
-      Status: 'sent',
+      Status: isDraftRequest ? 'draft' : 'sent',
     },
   });
+
+  if (!isDraftRequest && outboundRecord?.documentId) {
+    await strapi.documents('api::inbox.inbox').publish({
+      documentId: outboundRecord.documentId,
+    });
+  }
 
   return {
     status: 'success',
     data: {
+      id: outboundRecord.documentId,
       threadKey,
       routingKey,
       store: store?.slug || null,
       to: toAddress,
       from: fromEmail,
+      sent: !isDraftRequest,
+      published: !isDraftRequest,
     },
   };
 }
