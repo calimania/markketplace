@@ -5,9 +5,29 @@ interface InboxContext {
 
 import { checkStoreAccess } from '../../../services/api-auth';
 
-function normalizeEmailAddress(value?: string | null): string | null {
+function extractEmailAddress(value?: string | null): string | null {
   if (!value) return null;
-  return String(value).trim().toLowerCase();
+
+  const input = String(value).trim();
+  if (!input) return null;
+
+  // Prefer address inside angle brackets: "Name <email@domain.com>"
+  const angleMatch = input.match(/<\s*([^<>\s]+@[^<>\s]+)\s*>/);
+  if (angleMatch?.[1]) {
+    return angleMatch[1].trim().toLowerCase();
+  }
+
+  // Fallback: first email-like token found in the string
+  const plainMatch = input.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  if (plainMatch?.[0]) {
+    return plainMatch[0].trim().toLowerCase();
+  }
+
+  return null;
+}
+
+function normalizeEmailAddress(value?: string | null): string | null {
+  return extractEmailAddress(value);
 }
 
 function extractRoutingKey(recipientEmail?: string | null): string | null {
@@ -53,8 +73,8 @@ function buildInboxMetadata(params: {
   routingKey: string | null;
   messageId: string | null;
   subject: string;
-  rawTo: string | null;
-  rawFrom: string | null;
+  rawTo: unknown;
+  rawFrom: unknown;
   receivedAt?: string;
   sentAt?: string;
   envelope: any;
@@ -69,8 +89,8 @@ function buildInboxMetadata(params: {
     routingKey: params.routingKey,
     messageId: params.messageId,
     subject: params.subject,
-    rawTo: params.rawTo,
-    rawFrom: params.rawFrom,
+    rawTo: String(params.rawTo ?? ''),
+    rawFrom: String(params.rawFrom ?? ''),
     receivedAt: params.receivedAt || null,
     sentAt: params.sentAt || null,
     envelopeFrom,
@@ -227,8 +247,8 @@ export async function createInboxThreadRecord({ strapi, ctx }: InboxContext) {
         routingKey,
         messageId,
         subject,
-        rawTo: recipientEmail,
-        rawFrom: senderEmail,
+        rawTo: payload?.to ?? recipientEmail,
+        rawFrom: payload?.from ?? senderEmail,
         receivedAt: new Date().toISOString(),
         envelope,
       }),
@@ -344,8 +364,8 @@ export async function sendSendGridOutboundEmail({ strapi, ctx }: InboxContext) {
         routingKey,
         messageId: null,
         subject,
-        rawTo: toAddress,
-        rawFrom: fromEmail,
+        rawTo: payload?.to ?? toAddress,
+        rawFrom: payload?.from ?? fromEmail,
         sentAt: isDraftRequest ? undefined : new Date().toISOString(),
         envelope: { from: fromEmail, to: toAddress },
       }),

@@ -53,8 +53,8 @@ export interface CommonInboxMetadata extends Struct.ComponentSchema {
   attributes: {
     envelopeFrom: Schema.Attribute.Email;
     envelopeTo: Schema.Attribute.Email;
-    rawFrom: Schema.Attribute.Email;
-    rawTo: Schema.Attribute.Email;
+    rawFrom: Schema.Attribute.String;
+    rawTo: Schema.Attribute.String;
     receivedAt: Schema.Attribute.DateTime;
     routingKey: Schema.Attribute.String;
     sentAt: Schema.Attribute.DateTime;

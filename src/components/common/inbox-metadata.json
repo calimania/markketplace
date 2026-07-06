@@ -25,10 +25,10 @@
       "type": "string"
     },
     "rawTo": {
-      "type": "email"
+      "type": "string"
     },
     "rawFrom": {
-      "type": "email"
+      "type": "string"
     },
     "receivedAt": {
       "type": "datetime"
