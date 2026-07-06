@@ -1,3 +1,5 @@
+import { openRouterChatCompletion, parseJsonFromModelText } from './openrouter';
+
 type StarterPageTemplate = {
   Title: string;
   slug: 'home' | 'newsletter' | 'about' | 'story';
@@ -29,7 +31,6 @@ type GenerateStarterPagesResult = {
   warning?: string;
 };
 
-const OPEN_ROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const OPEN_ROUTER_MODEL_DEFAULT = 'openai/gpt-4o-mini';
 const PAGE_ORDER: Array<'home' | 'newsletter' | 'about' | 'story'> = ['home', 'newsletter', 'about', 'story'];
 
@@ -119,41 +120,6 @@ function fallbackOwnerEmail(storeName: string): StarterOwnerEmailTemplate {
   };
 }
 
-function extractJsonObject(raw: string): any {
-  const text = String(raw || '').trim();
-  if (!text) return null;
-
-  try {
-    return JSON.parse(text);
-  } catch (_error) {
-    // Continue and try to recover JSON from a wrapped response.
-  }
-
-  const firstArray = text.indexOf('[');
-  const lastArray = text.lastIndexOf(']');
-  if (firstArray >= 0 && lastArray > firstArray) {
-    const arrayCandidate = text.slice(firstArray, lastArray + 1);
-    try {
-      return JSON.parse(arrayCandidate);
-    } catch (_error) {
-      // Continue trying object extraction.
-    }
-  }
-
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
-  if (firstBrace < 0 || lastBrace < 0 || lastBrace <= firstBrace) {
-    return null;
-  }
-
-  const jsonCandidate = text.slice(firstBrace, lastBrace + 1);
-  try {
-    return JSON.parse(jsonCandidate);
-  } catch (_error) {
-    return null;
-  }
-}
-
 function normalizeParagraphs(paragraphs: unknown, fallback: string[]): string[] {
   if (!Array.isArray(paragraphs)) {
     return fallback;
@@ -207,25 +173,6 @@ function normalizeAiPages(input: unknown, storeName: string): StarterPageTemplat
   });
 }
 
-function normalizeAiOwnerEmail(input: unknown, storeName: string): StarterOwnerEmailTemplate {
-  const fallback = fallbackOwnerEmail(storeName);
-  const arrayInput = Array.isArray(input)
-    ? input
-    : (Array.isArray((input as any)?.pages) ? (input as any).pages : []);
-
-  const rawEmail = arrayInput.find((item: any) => {
-    const slug = String(item?.slug || '').trim().toLowerCase();
-    const kind = String(item?.kind || item?.type || '').trim().toLowerCase();
-    return slug === 'owner-email' || kind === 'owner_email';
-  }) || {};
-
-  return {
-    subject: clampText(rawEmail?.subject, fallback.subject, 100),
-    introLine: clampText(rawEmail?.introLine, fallback.introLine, 180),
-    adviceLine: clampText(rawEmail?.adviceLine, fallback.adviceLine, 180),
-  };
-}
-
 function buildPrompt(input: GenerateStarterPagesInput): string {
   const seedLine = input.seed?.trim() ? `Seed guidance: ${input.seed.trim()}` : 'Seed guidance: none';
   const voiceLine = input.voice?.trim() ? input.voice.trim() : 'Markket voice: modern, thoughtful, independent, useful, no hype.';
@@ -236,76 +183,49 @@ function buildPrompt(input: GenerateStarterPagesInput): string {
     `Store slug: ${input.storeSlug}`,
     `Voice: ${voiceLine}`,
     seedLine,
-    'Return valid JSON only as an array with exactly 5 objects in this order: home, newsletter, about, story, owner-email.',
+    'Return valid JSON only as an array with exactly 4 objects in this order: home, newsletter, about, story.',
     'Each object must have this exact shape:',
     '{"slug":"home|newsletter|about|story","title":"","heading":"","paragraphs":["",""],"seoTitle":"","seoDescription":""}',
-    '{"slug":"owner-email","kind":"owner_email","subject":"","introLine":"","adviceLine":""}',
     'Constraints:',
     '- Keep copy specific to this store and seed context.',
     '- No markdown, no HTML, no emojis.',
     '- Each paragraph should be 1 sentence.',
     '- Keep SEO description under 160 characters.',
-    '- owner-email introLine and adviceLine must each be 1-2 short sentences.',
   ].join('\n');
 }
 
 export async function generateStarterPagesWithVoice(input: GenerateStarterPagesInput): Promise<GenerateStarterPagesResult> {
   const storeName = String(input.storeName || '').trim() || 'My Store';
   const storeSlug = String(input.storeSlug || '').trim() || 'my-store';
-  const apiKey = String(process.env.OPEN_ROUTER_API_KEY || '').trim();
   const model = String(process.env.OPEN_ROUTER_MODEL || OPEN_ROUTER_MODEL_DEFAULT).trim() || OPEN_ROUTER_MODEL_DEFAULT;
 
-  if (!apiKey) {
-    return {
-      pages: fallbackStarterPages(storeName),
-      ownerEmail: fallbackOwnerEmail(storeName),
-      source: 'fallback',
-      model: null,
-      warning: 'OPEN_ROUTER_API_KEY is not configured; using fallback starter templates.',
-    };
-  }
-
   try {
-    const response = await fetch(OPEN_ROUTER_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.9,
-        max_tokens: 1000,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a brand copywriter. Return only strict JSON that matches the requested schema.',
-          },
-          {
-            role: 'user',
-            content: buildPrompt({
-              storeName,
-              storeSlug,
-              seed: input.seed,
-              voice: input.voice,
-            }),
-          },
-        ],
-      }),
+    const completion = await openRouterChatCompletion({
+      model,
+      temperature: 0.9,
+      maxTokens: 1000,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a brand copywriter. Return only strict JSON that matches the requested schema.',
+        },
+        {
+          role: 'user',
+          content: buildPrompt({
+            storeName,
+            storeSlug,
+            seed: input.seed,
+            voice: input.voice,
+          }),
+        },
+      ],
     });
 
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`OpenRouter request failed (${response.status}): ${detail.slice(0, 240)}`);
+    if (!completion.ok) {
+      throw new Error(completion.reason || 'OpenRouter generation unavailable');
     }
 
-    const payload = await response.json() as any;
-    const messageContent = payload?.choices?.[0]?.message?.content;
-    const rawText = Array.isArray(messageContent)
-      ? messageContent.map((part: any) => String(part?.text || part?.content || '')).join('\n')
-      : String(messageContent || '').trim();
-
-    const parsed = extractJsonObject(rawText);
+    const parsed = parseJsonFromModelText(completion.content);
     const parsedArray = Array.isArray(parsed)
       ? parsed
       : (Array.isArray((parsed as any)?.pages) ? (parsed as any).pages : null);
@@ -316,9 +236,9 @@ export async function generateStarterPagesWithVoice(input: GenerateStarterPagesI
 
     return {
       pages: normalizeAiPages(parsedArray || parsed, storeName),
-      ownerEmail: normalizeAiOwnerEmail(parsedArray || parsed, storeName),
+      ownerEmail: fallbackOwnerEmail(storeName),
       source: 'openrouter',
-      model,
+      model: completion.model,
     };
   } catch (error: any) {
     return {

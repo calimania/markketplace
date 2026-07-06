@@ -1228,11 +1228,10 @@ export default {
         });
 
         const isFirstAssociatedStore = associatedStoreCountBeforeCreate === 0;
-        const introLine = generatedStarter?.ownerEmail?.introLine || (isFirstAssociatedStore
-          ? 'This is your first store on Markketplace. Start by updating your homepage, adding one product, and setting your brand details.'
-          : 'Your new store is ready. Add content, products, and event details to make it discoverable quickly.');
-        const adviceLine = generatedStarter?.ownerEmail?.adviceLine
-          || 'Platform advice: keep your About page clear, use plain titles, and publish one update every week for momentum.';
+        const introLine = isFirstAssociatedStore
+          ? 'Your store is live. Start by publishing your homepage and one product this week.'
+          : 'Your new store is live. Keep momentum by publishing one meaningful update this week.';
+        const adviceLine = 'Keep copy short, clear, and useful. One steady update each week beats big sporadic drops.';
         const html = buildStoreOwnerCongratsEmailHtml({
           ownerName: user.firstname || user.username || undefined,
           storeName: String(data.title || ''),
@@ -1245,7 +1244,7 @@ export default {
         sendWelcomeEmail({
           credentials: { use_default: true, api_key: '' },
           toEmail: user.email,
-          subject: generatedStarter?.ownerEmail?.subject || (isFirstAssociatedStore
+          subject: (isFirstAssociatedStore
             ? `Welcome to Markketplace, ${user.firstname || user.username || 'store owner'}!`
             : `Congrats on your new store: ${data.title}`),
           htmlContent: html,
@@ -1398,7 +1397,11 @@ export default {
           model: generated.model,
           warning: generated.warning || null,
           regenerate,
-          ownerEmail: generated.ownerEmail,
+          ownerEmail: {
+            subject: `Congrats on your new store: ${storeName}`,
+            introLine: 'Your store is live. Start by publishing your homepage and one product this week.',
+            adviceLine: 'Keep copy short and clear, and publish one small update regularly.',
+          },
         },
         result: {
           created: result.created,
@@ -1844,7 +1847,7 @@ export default {
       const createDataWithUploadIds = await resolveUploadMediaIds(sanitizedCreateData, config);
 
       // Auto-fill SEO if title/content fields are present
-      const enrichedData = ensureGeneratedSlug(autoFillSEO(createDataWithUploadIds, config), config);
+      const enrichedData = ensureGeneratedSlug(await autoFillSEO(createDataWithUploadIds, config), config);
       const seoLengthError = validateSeoFieldLengths(enrichedData);
       if (seoLengthError) {
         return ctx.badRequest(seoLengthError);
@@ -2072,7 +2075,7 @@ export default {
 
         // Auto-fill SEO if title/content fields are present
         const sanitizedDataWithUploadIds = await resolveUploadMediaIds(sanitizedData, config);
-        const enrichedData = ensureGeneratedSlug(autoFillSEO(sanitizedDataWithUploadIds, config), config, item);
+        const enrichedData = ensureGeneratedSlug(await autoFillSEO(sanitizedDataWithUploadIds, config), config, item);
         const seoLengthError = validateSeoFieldLengths(enrichedData);
         if (seoLengthError) {
           return ctx.badRequest(seoLengthError);

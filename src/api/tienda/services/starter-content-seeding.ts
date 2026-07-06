@@ -182,7 +182,7 @@ export async function upsertStarterPagesForStore(strapiInstance: any, params: {
       store: { documentId: storeDocumentId },
       slug: { $in: templates.map(page => page.slug) },
     },
-    fields: ['documentId', 'slug'],
+    fields: ['documentId', 'slug', 'publishedAt'],
     limit: 20,
   }) as any[];
 
@@ -201,6 +201,13 @@ export async function upsertStarterPagesForStore(strapiInstance: any, params: {
     const existing = existingBySlug.get(template.slug);
 
     if (existing && !regenerate) {
+      // Keep deterministic content untouched but ensure it is published for storefront use.
+      if (existing?.documentId && !existing?.publishedAt) {
+        await strapiInstance.documents('api::page.page').publish({
+          documentId: existing.documentId,
+          locale: defaultLocale,
+        });
+      }
       skipped.push(template.slug);
       continue;
     }
