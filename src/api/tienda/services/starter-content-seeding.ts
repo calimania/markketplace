@@ -36,7 +36,7 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: `${storeName} is a curated storefront for thoughtful finds, fresh drops, and stories worth your attention.`,
+              text: `${storeName} is a focused space for useful ideas, practical resources, and updates that help people move forward.`,
             },
           ],
         },
@@ -45,14 +45,14 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: 'Browse the latest highlights, discover what is new this week, and check back often for upcoming releases.',
+              text: 'Start with the essentials, explore what is new, and check back for steady improvements each week.',
             },
           ],
         },
       ],
       SEO: {
         metaTitle: `${storeName} Home`,
-        metaDescription: `Discover ${storeName}: curated products, new arrivals, and stories from the studio.`,
+        metaDescription: `Explore ${storeName}: useful resources, fresh updates, and a clear path to get started.`,
       },
     },
     {
@@ -74,7 +74,7 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: `Sign up for launch notes, restock alerts, and occasional highlights from ${storeName}.`,
+              text: `Sign up for useful updates, new ideas, and occasional highlights from ${storeName}.`,
             },
           ],
         },
@@ -90,7 +90,7 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
       ],
       SEO: {
         metaTitle: `${storeName} Newsletter`,
-        metaDescription: `Subscribe to ${storeName} for launch notes, restocks, and occasional highlights.`,
+        metaDescription: `Subscribe to ${storeName} for clear updates, practical ideas, and occasional highlights.`,
       },
     },
     {
@@ -112,7 +112,7 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: `${storeName} curates independent products and small-batch releases for people who care about craft and detail.`,
+              text: `${storeName} exists to share thoughtful work, useful guidance, and a clear perspective on what matters.`,
             },
           ],
         },
@@ -121,14 +121,14 @@ function buildStarterPageTemplates(storeName: string): StarterPageTemplate[] {
           children: [
             {
               type: 'text',
-              text: 'From everyday staples to limited drops, every selection is chosen for quality, usefulness, and character.',
+              text: 'Everything here is designed to be practical, trustworthy, and easy to apply in real life.',
             },
           ],
         },
       ],
       SEO: {
         metaTitle: `About ${storeName}`,
-        metaDescription: `Learn the story behind ${storeName} and the values that shape each release.`,
+        metaDescription: `Learn the story behind ${storeName} and the values guiding its work and updates.`,
       },
     },
   ];
@@ -289,7 +289,7 @@ async function seedStarterArticle(strapiInstance: any, { storeDocumentId, storeN
           children: [
             {
               type: 'text',
-              text: 'Expect a curated mix of products, occasional stories, and timely updates whenever something new arrives.',
+              text: 'Expect useful ideas, occasional stories, and timely updates whenever something meaningful is ready.',
             },
           ],
         },

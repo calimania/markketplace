@@ -72,6 +72,12 @@
       "target": "api::shipment.shipment",
       "mappedBy": "order"
     },
+    "inbox_messages": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::inbox.inbox",
+      "mappedBy": "order"
+    },
     "extra": {
       "type": "json",
       "default": {}

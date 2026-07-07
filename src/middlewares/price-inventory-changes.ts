@@ -9,6 +9,8 @@
  *
  * @param strapi
  */
+import { ensureOrderInboxThreadRecord } from '../api/inbox/services/sendgrid-inbox';
+
 export function registerMiddleware({ strapi }: { strapi: any }) {
   console.log('[order.middleware]:register');
 
@@ -58,7 +60,7 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
             try {
               orderWithDetails = await strapi.documents('api::order.order').findOne({
                 documentId: ctx.documentId,
-                populate: ['Details', 'Details.product']
+                populate: ['Details', 'Details.product', 'Shipping_Address', 'store', 'store.owner', 'store.users']
               });
               if (orderWithDetails) {
                 details = Array.isArray(orderWithDetails.Details) ? orderWithDetails.Details : details;
@@ -76,7 +78,43 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
 
             // Act when order is currently paid and it has not been processed (idempotent)
             // This avoids relying on context.previous which can be undefined.
-            const currentExtra = (orderWithDetails && orderWithDetails.extra) || (result && result.extra) || {};
+            const currentExtra = {
+              ...((orderWithDetails && orderWithDetails.extra) || (result && result.extra) || {}),
+            };
+
+            if (newStatus === 'paid' && !currentExtra?.order_inbox_thread_created) {
+              try {
+                const orderForInbox = orderWithDetails || result;
+                const threadResult = await ensureOrderInboxThreadRecord({ strapi, order: orderForInbox });
+
+                if (threadResult?.created) {
+                  currentExtra.order_inbox_thread_created = true;
+                  currentExtra.order_inbox_thread_created_at = new Date().toISOString();
+                  if (threadResult.threadKey) {
+                    currentExtra.order_inbox_thread_key = threadResult.threadKey;
+                  }
+
+                  await strapi.documents('api::order.order').update({
+                    documentId: ctx.documentId,
+                    data: {
+                      extra: currentExtra,
+                    },
+                  });
+
+                  console.log('[order.middleware][async]:info:[order_inbox_thread.created]', {
+                    orderId: ctx.documentId,
+                    threadKey: threadResult.threadKey,
+                    inboxId: threadResult.recordId,
+                  });
+                }
+              } catch (inboxErr) {
+                console.warn('[order.middleware][async]:warn:[order_inbox_thread.failed]', {
+                  orderId: ctx.documentId,
+                  error: inboxErr?.message,
+                });
+              }
+            }
+
             if (newStatus === 'paid' && !currentExtra?.inventory_decremented) {
               console.log('[order.middleware][async]:info:[trigger]', {
                 orderId: ctx.documentId,

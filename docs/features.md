@@ -2,7 +2,6 @@
 
 ## Upcoming
 
-- [ ] storefront: Order,Purchase sends an email to slug@markket.place
 - [ ] tienda: changing slug affects links and emails, what do? (warn? backfill? redirect)
 - [ ] tienda: Digital Ocean - AI endpoints suggest content
 - [ ] config: clean up general config objects, urls, colors
@@ -17,6 +16,10 @@
 - [ ] tienda dashboard: adding/editing Product prices works end-to-end (draft -> save -> list -> detail)
 - [ ] tienda dashboard: validate forms for price/date fields and show clear error states
 - [ ] tienda: payouts: stripe dashboard connection: reconnect and verify account status sync in tienda
+- [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
+- [ ] tienda: inbox: order creates a thread with the buyer and seller
+- [ ] storefront: Order,Purchase sends an email to slug@markket.place
+- [ ] stripe: staging uses test keys
 
 ### May 2026
 
@@ -30,6 +33,7 @@
 - [x] dashboard stats cache is persisted and warmed after store create
 - [x] store create sends owner congrats email with first-store guidance
 - [x] visibility response includes client summary JSON for fast UI decisions
+- [x] api: ai: whatsapp bot conversation carries context
 
 
 Routes:

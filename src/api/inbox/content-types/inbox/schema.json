@@ -28,6 +28,12 @@
       "relation": "oneToOne",
       "target": "api::store.store"
     },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "inbox_messages"
+    },
     "Archived": {
       "type": "boolean"
     },

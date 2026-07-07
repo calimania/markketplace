@@ -272,6 +272,92 @@ async function resolveInboxUser(strapi: any, store: any, ctx: any) {
   return null;
 }
 
+export async function ensureOrderInboxThreadRecord(params: {
+  strapi: any;
+  order: any;
+}): Promise<{ created: boolean; threadKey: string | null; recordId?: string | null }> {
+  const { strapi, order } = params;
+  const orderDocumentId = String(order?.documentId || '').trim();
+  const store = order?.store || null;
+  const storeDocumentId = String(store?.documentId || '').trim();
+  const routingKey = String(store?.slug || '').trim() || null;
+  const customerEmail = normalizeEmailAddress(
+    order?.Shipping_Address?.email
+    || order?.extra?.stripe_customer_details?.email
+    || order?.extra?.stripe_customer?.email
+    || null,
+  );
+
+  if (!orderDocumentId || !storeDocumentId || !customerEmail) {
+    return { created: false, threadKey: null };
+  }
+
+  const threadKey = `order::${orderDocumentId}`;
+  const existing = await strapi.documents('api::inbox.inbox').findMany({
+    filters: {
+      ThreadKey: threadKey,
+      order: { documentId: orderDocumentId },
+    },
+    limit: 1,
+  });
+
+  if (existing?.[0]?.documentId) {
+    return { created: false, threadKey, recordId: existing[0].documentId };
+  }
+
+  const inboxUserId = await resolveInboxUser(strapi, store, { state: {} });
+  const storeMailbox = `${routingKey || 'store'}@${getMailDomain()}`;
+  const subject = `Order ${orderDocumentId.slice(0, 8)} created`;
+  const amount = order?.Amount;
+  const currency = String(order?.Currency || '').trim().toUpperCase() || 'USD';
+  const amountText = typeof amount === 'number' || typeof amount === 'string' ? `${amount} ${currency}` : currency;
+  const messageBody = [
+    `Customer ${customerEmail} placed order ${orderDocumentId}.`,
+    `Status: ${String(order?.Status || 'paid')}.`,
+    `Amount: ${amountText}.`,
+    'Reply from inbox to continue communication.',
+  ].join(' ');
+
+  const messageId = `order-${orderDocumentId}@${getMailDomain()}`;
+
+  const inboxRecord = await strapi.documents('api::inbox.inbox').create({
+    data: {
+      Name: subject,
+      Message: messageBody,
+      email: customerEmail,
+      store: { connect: [{ documentId: storeDocumentId }] },
+      order: { connect: [{ documentId: orderDocumentId }] },
+      user: inboxUserId ? { connect: [{ id: inboxUserId }] } : undefined,
+      Direction: 'incoming',
+      ThreadKey: threadKey,
+      RoutingKey: routingKey,
+      FromAddress: customerEmail,
+      ToAddress: storeMailbox,
+      MessageId: messageId,
+      Metadata: buildInboxMetadata({
+        source: 'order-system',
+        threadKey,
+        routingKey,
+        messageId,
+        subject,
+        rawTo: storeMailbox,
+        rawFrom: customerEmail,
+        receivedAt: new Date().toISOString(),
+        envelope: { from: customerEmail, to: storeMailbox },
+      }),
+      Estado: 'new',
+    },
+  });
+
+  if (inboxRecord?.documentId) {
+    await strapi.documents('api::inbox.inbox').publish({
+      documentId: inboxRecord.documentId,
+    });
+  }
+
+  return { created: true, threadKey, recordId: inboxRecord?.documentId || null };
+}
+
 function parseBooleanQuery(value: unknown): boolean | null {
   if (typeof value === 'boolean') return value;
   if (typeof value !== 'string') return null;
