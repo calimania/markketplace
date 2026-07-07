@@ -37,6 +37,7 @@ const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || '';
 const OPEN_ROUTER_MODEL_SMS = process.env.OPEN_ROUTER_MODEL_SMS || process.env.OPEN_ROUTER_MODEL || 'openai/gpt-4o-mini';
 const DEFAULT_STORE_SLUG = process.env.MARKKET_STORE_SLUG || 'next';
+const USER_CONTEXT_UID = 'api::user-context.user-context';
 const APPLE_APP_STORE_CONNECT_WEBHOOK_SECRET = process.env.APPLE_APP_STORE_CONNECT_WEBHOOK_SECRET || '';
 const APPLE_WEBHOOK_HEADER_ALLOWLIST = [
   'content-type',
@@ -153,13 +154,218 @@ const buildTwimlMessage = (message: string) => {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<Response>\n  <Message>${escapeXml(message)}</Message>\n</Response>`;
 };
 
-const generateMarkketOneSentenceReply = async (incomingMessage: string) => {
+const normalizeMessagingPhone = (value: string) => String(value || '').replace(/^whatsapp:/, '').trim();
+
+const compactText = (value: string, maxLength: number = 180) => String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+
+const getMessagingChannel = (value: string): 'sms' | 'whatsapp' => {
+  const normalized = String(value || '').toLowerCase();
+  return normalized.startsWith('whatsapp:') ? 'whatsapp' : 'sms';
+};
+
+type MessagingHistoryEntry = {
+  role: 'user' | 'assistant';
+  content: string;
+  at?: string | null;
+};
+
+const buildUserSnapshot = (user: any, channel: 'sms' | 'whatsapp', phone: string, existingSnapshot?: any) => {
+  if (!user && !existingSnapshot) {
+    return null;
+  }
+
+  const baseSnapshot = existingSnapshot && typeof existingSnapshot === 'object' ? existingSnapshot : {};
+
+  return {
+    ...baseSnapshot,
+    channel,
+    phone,
+    username: user?.username || baseSnapshot.username || null,
+    displayName: user?.displayName || baseSnapshot.displayName || null,
+    preferredChannel: user?.preferredChannel || baseSnapshot.preferredChannel || null,
+    lastChannelUsed: user?.lastChannelUsed || baseSnapshot.lastChannelUsed || null,
+    bio: compactText(user?.bio || baseSnapshot.bio || '', 180) || null,
+  };
+};
+
+const buildUserContextMessage = (snapshot: any, channel: 'sms' | 'whatsapp') => {
+  if (!snapshot) {
+    return '';
+  }
+
+  const parts = [
+    snapshot.displayName ? `name=${snapshot.displayName}` : '',
+    snapshot.username ? `username=${snapshot.username}` : '',
+    snapshot.preferredChannel ? `preferredChannel=${snapshot.preferredChannel}` : '',
+    snapshot.lastChannelUsed ? `lastChannelUsed=${snapshot.lastChannelUsed}` : '',
+    snapshot.bio ? `bio=${snapshot.bio}` : '',
+  ].filter(Boolean);
+
+  if (parts.length === 0) {
+    return `Known messaging user on ${channel}.`;
+  }
+
+  return `Known messaging user on ${channel}: ${parts.join('; ')}.`;
+};
+
+const normalizeRecentMessages = (value: any): MessagingHistoryEntry[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry: any): MessagingHistoryEntry => ({
+      role: entry?.role === 'assistant' ? 'assistant' : 'user',
+      content: compactText(entry?.content || '', 280),
+      at: entry?.at || null,
+    }))
+    .filter((entry: MessagingHistoryEntry) => entry.content)
+    .slice(-6);
+};
+
+const appendRecentMessages = (existingMessages: any[], additions: any[]): MessagingHistoryEntry[] => {
+  return [...normalizeRecentMessages(existingMessages), ...normalizeRecentMessages(additions)].slice(-6);
+};
+
+const buildConversationSummary = (channel: 'sms' | 'whatsapp', recentMessages: any[]) => {
+  const normalizedMessages = normalizeRecentMessages(recentMessages);
+  const recentUserInputs = normalizedMessages
+    .filter((entry) => entry.role === 'user')
+    .slice(-3)
+    .map((entry) => compactText(entry.content, 110));
+  const lastAssistantReply = normalizedMessages
+    .filter((entry) => entry.role === 'assistant')
+    .slice(-1)[0]?.content;
+
+  const parts = [
+    `channel=${channel}`,
+    recentUserInputs.length > 0 ? `recent_user_messages=${recentUserInputs.join(' | ')}` : '',
+    lastAssistantReply ? `last_assistant_reply=${compactText(lastAssistantReply, 140)}` : '',
+  ].filter(Boolean);
+
+  return parts.join('; ').slice(0, 480);
+};
+
+const getMessagingUserContext = async (strapi: any, from: string, storeDocumentId?: string) => {
+  const normalizedPhone = normalizeMessagingPhone(from);
+  const channel = getMessagingChannel(from);
+
+  if (!normalizedPhone) {
+    return {
+      normalizedPhone,
+      channel,
+      user: null,
+      userContext: '',
+      userSnapshot: null,
+      contextRecord: null,
+      conversationSummary: '',
+      conversationHistory: [],
+    };
+  }
+
+  const users = await strapi.documents('plugin::users-permissions.user').findMany({
+    filters: { phone: normalizedPhone },
+    fields: ['username', 'displayName', 'bio', 'preferredChannel', 'lastChannelUsed', 'phone', 'documentId'],
+    limit: 1,
+  });
+
+  const user = users && users.length > 0 ? users[0] : null;
+  const contextRows = await strapi.documents(USER_CONTEXT_UID).findMany({
+    filters: {
+      external_user_key: normalizedPhone,
+      channel,
+      ...(storeDocumentId ? { store: { documentId: storeDocumentId } } : {}),
+    },
+    limit: 1,
+  });
+  const contextRecord = contextRows && contextRows.length > 0 ? contextRows[0] : null;
+  const userSnapshot = buildUserSnapshot(user, channel, normalizedPhone, contextRecord?.user_snapshot);
+
+  return {
+    normalizedPhone,
+    channel,
+    user,
+    userSnapshot,
+    userContext: buildUserContextMessage(userSnapshot, channel),
+    contextRecord,
+    conversationSummary: compactText(contextRecord?.conversation_summary || '', 480),
+    conversationHistory: normalizeRecentMessages(contextRecord?.recent_messages),
+  };
+};
+
+const persistMessagingUserContext = async (
+  strapi: any,
+  input: {
+    contextRecord?: any;
+    storeDocumentId?: string;
+    normalizedPhone: string;
+    channel: 'sms' | 'whatsapp';
+    user?: any;
+    userSnapshot?: any;
+    recentMessages: MessagingHistoryEntry[];
+    conversationSummary: string;
+    lastInboundAt: string;
+    lastOutboundAt: string;
+  }
+) => {
+  if (!input.normalizedPhone) {
+    return null;
+  }
+
+  const data = {
+    external_user_key: input.normalizedPhone,
+    phone: input.normalizedPhone,
+    channel: input.channel,
+    ...(input.storeDocumentId ? { store: input.storeDocumentId } : {}),
+    ...(input.user?.documentId ? { user: input.user.documentId } : {}),
+    user_snapshot: input.userSnapshot || null,
+    recent_messages: normalizeRecentMessages(input.recentMessages),
+    conversation_summary: compactText(input.conversationSummary || '', 480),
+    working_memory: {
+      last_model: OPEN_ROUTER_MODEL_SMS,
+      last_updated_at: input.lastOutboundAt,
+    },
+    message_count: Number(input.contextRecord?.message_count || 0) + 1,
+    last_inbound_at: input.lastInboundAt,
+    last_outbound_at: input.lastOutboundAt,
+  };
+
+  if (input.contextRecord?.documentId) {
+    return strapi.documents(USER_CONTEXT_UID).update({
+      documentId: input.contextRecord.documentId,
+      data,
+    });
+  }
+
+  return strapi.documents(USER_CONTEXT_UID).create({ data });
+};
+
+const generateMarkketOneSentenceReply = async (
+  strapi: any,
+  incomingMessage: string,
+  options?: {
+    from?: string;
+    userContext?: string;
+    conversationSummary?: string;
+    conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  }
+) => {
   const fallback = 'Love that. Keep it simple today: publish one clear update and one product, then share the link.';
   const userMessage = String(incomingMessage || '').trim();
 
   if (!userMessage) {
     return fallback;
   }
+
+  const normalizedPhone = normalizeMessagingPhone(options?.from || '');
+  const history = (options?.conversationHistory || []).filter((entry) => entry.content).slice(-4);
+  const systemContext = [
+    'You are Markket, the nicest CMS for creators. Reply in exactly one short sentence, warm and useful, no emojis, no markdown, no links, and never mention buying/visiting.',
+    normalizedPhone ? `The sender is identified by phone ${normalizedPhone}.` : '',
+    options?.userContext ? `Known CRM context: ${options.userContext}` : 'No known CRM context for this sender.',
+    options?.conversationSummary ? `Conversation summary: ${options.conversationSummary}` : 'No stored conversation summary is available.',
+    history.length > 0 ? 'Use the recent conversation for continuity and avoid repeating yourself.' : 'No prior conversation context is available.',
+  ].filter(Boolean).join(' ');
 
   const completion = await openRouterChatCompletion({
     model: OPEN_ROUTER_MODEL_SMS,
@@ -168,8 +374,9 @@ const generateMarkketOneSentenceReply = async (incomingMessage: string) => {
     messages: [
       {
         role: 'system',
-        content: 'You are Markket, the nicest CMS for creators. Reply in exactly one short sentence, warm and useful, no emojis, no markdown, no links, and never mention buying/visiting.',
+        content: systemContext,
       },
+      ...history,
       {
         role: 'user',
         content: userMessage,
@@ -267,6 +474,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
     try {
       const body = ctx.request.body;
       const twilioSignature = ctx.request.headers['x-twilio-signature'];
+      const normalizedSender = normalizeMessagingPhone(body?.From || '') || body?.From || '';
 
       // Get the full URL for signature verification
       const protocol = ctx.request.header['x-forwarded-proto'] || ctx.protocol;
@@ -331,7 +539,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
               verified: !!TWILIO_AUTH_TOKEN,
               webhook_source: 'twilio_sms'
             },
-            user_key_or_id: body?.From || '',
+            user_key_or_id: normalizedSender,
           }
         });
 
@@ -344,6 +552,14 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           limit: 1
         });
         const store = stores && stores.length > 0 ? stores[0] : null;
+        const messagingContext = await getMessagingUserContext(strapi, body?.From || '', store?.documentId);
+
+        if (messagingContext.normalizedPhone && ['sms', 'whatsapp'].includes(messagingContext.channel)) {
+          await strapi.service('api::auth-magic.auth-magic').updateUserChannelPreference(
+            messagingContext.normalizedPhone,
+            messagingContext.channel as 'sms' | 'whatsapp'
+          );
+        }
 
         // Check for magic link keywords and generate TwiML response
         const autoReplyTwiML = await strapi.service('api::auth-magic.auth-magic').generateSmsAutoReplyTwiML(
@@ -355,6 +571,33 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         if (autoReplyTwiML) {
           console.info(`Twilio: Auto-replying with magic link to ${body?.From}`);
 
+          const autoReplyTimestamp = new Date().toISOString();
+          const autoReplyMessages = appendRecentMessages(messagingContext.conversationHistory, [
+            {
+              role: 'user',
+              content: body?.Body || '',
+              at: autoReplyTimestamp,
+            },
+            {
+              role: 'assistant',
+              content: 'Sent a magic login link.',
+              at: autoReplyTimestamp,
+            },
+          ]);
+
+          await persistMessagingUserContext(strapi, {
+            contextRecord: messagingContext.contextRecord,
+            storeDocumentId: store?.documentId,
+            normalizedPhone: messagingContext.normalizedPhone,
+            channel: messagingContext.channel,
+            user: messagingContext.user,
+            userSnapshot: messagingContext.userSnapshot,
+            recentMessages: autoReplyMessages,
+            conversationSummary: buildConversationSummary(messagingContext.channel, autoReplyMessages),
+            lastInboundAt: autoReplyTimestamp,
+            lastOutboundAt: autoReplyTimestamp,
+          });
+
           await strapi.service(modelId).create({
             locale: 'en',
             data: {
@@ -364,7 +607,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
                 trigger_message: body?.Body,
                 timestamp: new Date().toISOString()
               },
-              user_key_or_id: body?.From || '',
+              user_key_or_id: normalizedSender,
             }
           });
 
@@ -373,8 +616,39 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           return ctx.send(autoReplyTwiML);
         }
 
-        const assistantReply = await generateMarkketOneSentenceReply(body?.Body || '');
+        const assistantReply = await generateMarkketOneSentenceReply(strapi, body?.Body || '', {
+          from: body?.From || '',
+          userContext: messagingContext.userContext,
+          conversationSummary: messagingContext.conversationSummary,
+          conversationHistory: messagingContext.conversationHistory,
+        });
         const assistantReplyTwiml = buildTwimlMessage(assistantReply);
+        const assistantReplyTimestamp = new Date().toISOString();
+        const updatedMessages = appendRecentMessages(messagingContext.conversationHistory, [
+          {
+            role: 'user',
+            content: body?.Body || '',
+            at: assistantReplyTimestamp,
+          },
+          {
+            role: 'assistant',
+            content: assistantReply,
+            at: assistantReplyTimestamp,
+          },
+        ]);
+
+        await persistMessagingUserContext(strapi, {
+          contextRecord: messagingContext.contextRecord,
+          storeDocumentId: store?.documentId,
+          normalizedPhone: messagingContext.normalizedPhone,
+          channel: messagingContext.channel,
+          user: messagingContext.user,
+          userSnapshot: messagingContext.userSnapshot,
+          recentMessages: updatedMessages,
+          conversationSummary: buildConversationSummary(messagingContext.channel, updatedMessages),
+          lastInboundAt: assistantReplyTimestamp,
+          lastOutboundAt: assistantReplyTimestamp,
+        });
 
         await strapi.service(modelId).create({
           locale: 'en',
@@ -387,7 +661,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
               model: OPEN_ROUTER_MODEL_SMS,
               timestamp: new Date().toISOString(),
             },
-            user_key_or_id: body?.From || '',
+            user_key_or_id: normalizedSender,
           },
         });
 

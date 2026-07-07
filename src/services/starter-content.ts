@@ -19,6 +19,7 @@ type StarterOwnerEmailTemplate = {
 type GenerateStarterPagesInput = {
   storeName: string;
   storeSlug: string;
+  storeDescription?: string;
   seed?: string;
   voice?: string;
 };
@@ -62,12 +63,12 @@ function fallbackStarterPages(storeName: string): StarterPageTemplate[] {
       slug: 'home',
       Content: [
         toHeadingBlock(`Welcome to ${storeName}`),
-        toParagraphBlock(`${storeName} is a curated storefront for thoughtful finds, fresh drops, and stories worth your attention.`),
-        toParagraphBlock('Browse the latest highlights, discover what is new this week, and check back often for upcoming releases.'),
+        toParagraphBlock(`${storeName} is a focused space for useful ideas, practical resources, and updates that help people move forward.`),
+        toParagraphBlock('Start with the essentials, explore what is new, and check back for steady improvements each week.'),
       ],
       SEO: {
         metaTitle: `${storeName} Home`,
-        metaDescription: `Discover ${storeName}: curated products, new arrivals, and stories from the studio.`,
+        metaDescription: `Explore ${storeName}: useful resources, fresh updates, and a clear path to get started.`,
       },
     },
     {
@@ -75,12 +76,12 @@ function fallbackStarterPages(storeName: string): StarterPageTemplate[] {
       slug: 'newsletter',
       Content: [
         toHeadingBlock('Stay close to the story'),
-        toParagraphBlock(`Sign up for launch notes, restock alerts, and occasional highlights from ${storeName}.`),
+        toParagraphBlock(`Sign up for useful updates, new ideas, and occasional highlights from ${storeName}.`),
         toParagraphBlock('No noise, just meaningful updates when there is something genuinely worth sharing.'),
       ],
       SEO: {
         metaTitle: `${storeName} Newsletter`,
-        metaDescription: `Subscribe to ${storeName} for launch notes, restocks, and occasional highlights.`,
+        metaDescription: `Subscribe to ${storeName} for clear updates, practical ideas, and occasional highlights.`,
       },
     },
     {
@@ -88,12 +89,12 @@ function fallbackStarterPages(storeName: string): StarterPageTemplate[] {
       slug: 'about',
       Content: [
         toHeadingBlock('About'),
-        toParagraphBlock(`${storeName} curates independent products and small-batch releases for people who care about craft and detail.`),
-        toParagraphBlock('From everyday staples to limited drops, every selection is chosen for quality, usefulness, and character.'),
+        toParagraphBlock(`${storeName} exists to share thoughtful work, useful guidance, and a clear perspective on what matters.`),
+        toParagraphBlock('Everything here is designed to be practical, trustworthy, and easy to apply in real life.'),
       ],
       SEO: {
         metaTitle: `About ${storeName}`,
-        metaDescription: `Learn the story behind ${storeName} and the values that shape each release.`,
+        metaDescription: `Learn the story behind ${storeName} and the values guiding its work and updates.`,
       },
     },
     {
@@ -101,12 +102,12 @@ function fallbackStarterPages(storeName: string): StarterPageTemplate[] {
       slug: 'story',
       Content: [
         toHeadingBlock('Our Story'),
-        toParagraphBlock(`${storeName} started with a simple idea: useful products, clear taste, and no unnecessary noise.`),
-        toParagraphBlock('Every release is selected for quality, practicality, and lasting value.'),
+        toParagraphBlock(`${storeName} started with a simple idea: clear guidance, useful outcomes, and no unnecessary noise.`),
+        toParagraphBlock('Each update is built to be practical, human, and worth returning to.'),
       ],
       SEO: {
         metaTitle: `${storeName} Story`,
-        metaDescription: `Read the story of ${storeName} and what guides each collection and release.`,
+        metaDescription: `Read the story of ${storeName} and the principles behind its direction.`,
       },
     },
   ];
@@ -115,9 +116,34 @@ function fallbackStarterPages(storeName: string): StarterPageTemplate[] {
 function fallbackOwnerEmail(storeName: string): StarterOwnerEmailTemplate {
   return {
     subject: `Congrats on your new store: ${storeName}`,
-    introLine: 'Your store is live. Start by publishing your homepage and one product this week.',
-    adviceLine: 'Keep copy short and clear, and publish one small update regularly.',
+    introLine: 'Your space is live. Start by publishing your homepage and one core page this week.',
+    adviceLine: 'Keep copy short and clear, and publish one small improvement regularly.',
   };
+}
+
+function summarizeDomainSignals(input: GenerateStarterPagesInput): string {
+  const description = String(input.storeDescription || '').replace(/\s+/g, ' ').trim();
+  const seed = String(input.seed || '').replace(/\s+/g, ' ').trim();
+  const combined = `${input.storeName} ${input.storeSlug} ${description} ${seed}`.toLowerCase();
+
+  const domainMap: Array<{ label: string; keywords: string[] }> = [
+    { label: 'food-and-recipes', keywords: ['recipe', 'recipes', 'kitchen', 'cooking', 'food', 'chef', 'meal'] },
+    { label: 'coaching-and-education', keywords: ['coach', 'coaching', 'mentor', 'course', 'learn', 'teaching', 'training'] },
+    { label: 'pets-and-animal-care', keywords: ['dog', 'cat', 'pet', 'veterinary', 'grooming', 'animal'] },
+    { label: 'creative-portfolio', keywords: ['studio', 'design', 'photography', 'artist', 'portfolio', 'creative'] },
+    { label: 'community-and-events', keywords: ['community', 'event', 'workshop', 'club', 'meetup'] },
+    { label: 'commerce-and-products', keywords: ['shop', 'store', 'product', 'catalog', 'buy', 'sale', 'ecommerce'] },
+  ];
+
+  const inferred = domainMap
+    .filter((entry) => entry.keywords.some((keyword) => combined.includes(keyword)))
+    .map((entry) => entry.label)
+    .slice(0, 2);
+
+  const hints = inferred.length > 0 ? inferred.join(', ') : 'general website or service';
+  const descriptionSnippet = description ? `Store description: ${description.slice(0, 500)}` : 'Store description: none provided';
+
+  return `${descriptionSnippet}. Inferred domain hints: ${hints}.`;
 }
 
 function normalizeParagraphs(paragraphs: unknown, fallback: string[]): string[] {
@@ -176,18 +202,21 @@ function normalizeAiPages(input: unknown, storeName: string): StarterPageTemplat
 function buildPrompt(input: GenerateStarterPagesInput): string {
   const seedLine = input.seed?.trim() ? `Seed guidance: ${input.seed.trim()}` : 'Seed guidance: none';
   const voiceLine = input.voice?.trim() ? input.voice.trim() : 'Markket voice: modern, thoughtful, independent, useful, no hype.';
+  const domainLine = summarizeDomainSignals(input);
 
   return [
-    'You are writing concise launch content for a new store in the Markketplace ecosystem.',
+    'You are writing concise launch content for a new project in the Markketplace ecosystem.',
     `Store name: ${input.storeName}`,
     `Store slug: ${input.storeSlug}`,
+    domainLine,
     `Voice: ${voiceLine}`,
     seedLine,
     'Return valid JSON only as an array with exactly 4 objects in this order: home, newsletter, about, story.',
     'Each object must have this exact shape:',
     '{"slug":"home|newsletter|about|story","title":"","heading":"","paragraphs":["",""],"seoTitle":"","seoDescription":""}',
     'Constraints:',
-    '- Keep copy specific to this store and seed context.',
+    '- Adapt copy to the domain indicated by name, slug, description, and seed.',
+    '- Do not assume this is an online shop unless the context clearly indicates commerce.',
     '- No markdown, no HTML, no emojis.',
     '- Each paragraph should be 1 sentence.',
     '- Keep SEO description under 160 characters.',
@@ -214,6 +243,7 @@ export async function generateStarterPagesWithVoice(input: GenerateStarterPagesI
           content: buildPrompt({
             storeName,
             storeSlug,
+            storeDescription: input.storeDescription,
             seed: input.seed,
             voice: input.voice,
           }),

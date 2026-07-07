@@ -1202,6 +1202,10 @@ export default {
       const storeDocumentId = created.documentId;
       const storeName = (updated || created).title || data.title || 'My Store';
       const storeSlug = (updated || created).slug || data.slug || 'my-store';
+      const rawStoreDescription = (updated || created).Description || data.Description || '';
+      const storeDescription = typeof rawStoreDescription === 'string'
+        ? rawStoreDescription.trim().slice(0, 1200)
+        : JSON.stringify(rawStoreDescription || {}).slice(0, 1200);
       const hasOpenRouterApiKey = Boolean(String(process.env.OPEN_ROUTER_API_KEY || '').trim());
       let generatedStarter: Awaited<ReturnType<typeof generateStarterPagesWithVoice>> | null = null;
 
@@ -1209,6 +1213,7 @@ export default {
         generatedStarter = await generateStarterPagesWithVoice({
           storeName,
           storeSlug,
+          storeDescription,
         });
 
         if (generatedStarter?.warning) {
@@ -1229,9 +1234,9 @@ export default {
 
         const isFirstAssociatedStore = associatedStoreCountBeforeCreate === 0;
         const introLine = isFirstAssociatedStore
-          ? 'Your store is live. Start by publishing your homepage and one product this week.'
-          : 'Your new store is live. Keep momentum by publishing one meaningful update this week.';
-        const adviceLine = 'Keep copy short, clear, and useful. One steady update each week beats big sporadic drops.';
+          ? 'Your space is live. Start by publishing your homepage and one key page this week.'
+          : 'Your new space is live. Keep momentum by publishing one meaningful update this week.';
+        const adviceLine = 'Keep copy short, clear, and useful. One steady improvement each week beats big sporadic launches.';
         const html = buildStoreOwnerCongratsEmailHtml({
           ownerName: user.firstname || user.username || undefined,
           storeName: String(data.title || ''),
@@ -1333,6 +1338,10 @@ export default {
       const storeDocumentId = access.store.documentId;
       const storeName = String(access.store.title || access.store.slug || 'My Store');
       const storeSlug = String(access.store.slug || 'my-store');
+      const rawStoreDescription = access.store.Description || '';
+      const storeDescription = typeof rawStoreDescription === 'string'
+        ? rawStoreDescription.trim().slice(0, 1200)
+        : JSON.stringify(rawStoreDescription || {}).slice(0, 1200);
       const hasOpenRouterApiKey = Boolean(String(process.env.OPEN_ROUTER_API_KEY || '').trim());
 
       if (!hasOpenRouterApiKey) {
@@ -1358,8 +1367,8 @@ export default {
             regenerate,
             ownerEmail: {
               subject: `Congrats on your new store: ${storeName}`,
-              introLine: 'Your store is live. Start by publishing your homepage and one product this week.',
-              adviceLine: 'Keep copy short and clear, and publish one small update regularly.',
+              introLine: 'Your space is live. Start by publishing your homepage and one core page this week.',
+              adviceLine: 'Keep copy short and clear, and publish one small improvement regularly.',
             },
           },
           result: {
@@ -1373,6 +1382,7 @@ export default {
       const generated = await generateStarterPagesWithVoice({
         storeName,
         storeSlug,
+        storeDescription,
         seed,
         voice,
       });
@@ -1399,8 +1409,8 @@ export default {
           regenerate,
           ownerEmail: {
             subject: `Congrats on your new store: ${storeName}`,
-            introLine: 'Your store is live. Start by publishing your homepage and one product this week.',
-            adviceLine: 'Keep copy short and clear, and publish one small update regularly.',
+            introLine: 'Your space is live. Start by publishing your homepage and one core page this week.',
+            adviceLine: 'Keep copy short and clear, and publish one small improvement regularly.',
           },
         },
         result: {

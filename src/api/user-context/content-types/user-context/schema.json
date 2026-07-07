@@ -1,0 +1,63 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_contexts",
+  "info": {
+    "singularName": "user-context",
+    "pluralName": "user-contexts",
+    "displayName": "User Context",
+    "description": "Store-aware messaging context snapshots for SMS and WhatsApp users"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "store": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::store.store"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "external_user_key": {
+      "type": "string",
+      "required": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "sms",
+        "whatsapp"
+      ],
+      "default": "sms",
+      "required": true
+    },
+    "message_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "last_inbound_at": {
+      "type": "datetime"
+    },
+    "last_outbound_at": {
+      "type": "datetime"
+    },
+    "conversation_summary": {
+      "type": "text"
+    },
+    "user_snapshot": {
+      "type": "json"
+    },
+    "recent_messages": {
+      "type": "json"
+    },
+    "working_memory": {
+      "type": "json"
+    }
+  }
+}
