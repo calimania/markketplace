@@ -40,7 +40,7 @@ export const MagicLinkHTML = (email: string, url: string, store: any) => {
  */
 export const AccountCreatedHTML = (email: string, store: Store) => {
   const accent = store?.settings?.email_theme?.tertiaryColor || store?.settings?.branding?.tertiaryColor || '#eab308';
-  const dashboardUrl = store?.settings?.dashboard_url || new URL('/dashboard', store?.settings?.domain || 'https://de.markket.place/').toString();
+  const dashboardUrl = store?.settings?.dashboard_url || new URL('/dashboard', store?.settings?.domain || 'https://markket.place/').toString();
   const customWelcome = store?.settings?.welcome_email_text;
   const content = `
     <p style="margin:0 0 18px 0;font-size:20px;line-height:1.3;">🎉 You're in!</p>

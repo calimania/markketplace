@@ -3050,7 +3050,7 @@ export default {
 
       const storeDomain = typeof store?.settings?.domain === 'string' && store.settings.domain.trim()
         ? store.settings.domain.trim()
-        : 'https://de.markket.place';
+        : 'https://markket.place';
       const normalizedStoreDomain = /^https?:\/\//i.test(storeDomain)
         ? storeDomain
         : `https://${storeDomain}`;

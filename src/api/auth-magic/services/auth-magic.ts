@@ -508,7 +508,7 @@ export default ({ strapi }) => ({
    */
   async sendMagicLink(email: string, codeData: any, store: any) {
     const { code } = codeData;
-    const url = new URL(`/auth/magic?code=${code}`, store?.settings?.domain || 'https://de.markket.place')?.toString() || '';
+    const url = new URL(`/auth/magic?code=${code}`, store?.settings?.domain || 'https://markket.place')?.toString() || '';
     const subject = `${store?.title || 'Markkët'} Magic Login Link`
 
     await strapi.plugin('email').service('email').send({
@@ -786,7 +786,7 @@ export default ({ strapi }) => ({
         shortUrl = `${baseUrl}/s/${shortnerRecord.alias}`;
       } else {
         // Fallback to direct magic link using store settings
-        const baseUrl = resolvedStore?.settings?.domain || 'https://de.markket.place';
+        const baseUrl = resolvedStore?.settings?.domain || 'https://markket.place';
         shortUrl = `${baseUrl}/auth/magic?code=${codeData.code}`;
       }
 

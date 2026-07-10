@@ -1,7 +1,7 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.3.3",
+  "version": "0.4.20",
   "description": "Markkët API, powered by strapi:postgres",
   "scripts": {
     "dev": "strapi develop",
@@ -41,6 +41,7 @@
     "sirv": "3.0.2",
     "is-localhost-ip": "3.0.1",
     "codemirror": "6.0.0",
+    "@codemirror/state": "6.7.1",
     "nodemailer": "9.0.1"
   },
   "author": {

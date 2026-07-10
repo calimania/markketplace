@@ -10,7 +10,7 @@ Easy to use REST APIs, compatible with multiple free templates & hosting service
 
 ## Cloud
 
-[de.markket.place] create an account to access a store owner dashboard and access API features
+[markket.place] create an account to access a store owner dashboard and access API features
 
 ## Getting Started
 
@@ -31,7 +31,7 @@ npm run api:test
 Use this project to manage your own markket instance, provide your own credentials
 and exercise full control over your data and community experience
 
-To create a regular account visit [ de.markket.plac ](https://de.markket.place/auth/magic)
+To create a regular account visit [ markket.plac ](https://markket.place/auth/magic)
 
 For agencies or large communities with multiple initiatives, controlling your own instance makes it possible to
 customize roles, access and availability of features for distributed teams of any size
@@ -218,7 +218,7 @@ Markketplace now supports SMS webhooks through Twilio integration, enabling text
 
 3. Users texting your number receive:
    ```
-   markkët! 💜 Learn more https://de.markket.place
+   markkët! 💜 Learn more https://markket.place
    ```
 
 ### 🔮 Coming Soon: Text-to-Action Processing
