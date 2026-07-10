@@ -13,6 +13,11 @@
 - [x] Improve email templates
 - [x] Improve standard content (example content, SEO backfill)
 - [x] tienda: Open Router AI for backfilling seed data
+- [ ] buyer can easy reply to order email to send inbox message reply-to slug@markket.place (domain)
+- [ ] notify buyer of order change
+- [ ] tienda: api: generate keywords with the AI endpoint
+- [ ] tienda: api: send posthog events to track milestone (users, content posted)
+- [ ] tienda: api: review saving PRICES for products & events
 - [ ] tienda dashboard: adding/editing Product prices works end-to-end (draft -> save -> list -> detail)
 - [ ] tienda dashboard: validate forms for price/date fields and show clear error states
 - [ ] tienda: payouts: stripe dashboard connection: reconnect and verify account status sync in tienda
