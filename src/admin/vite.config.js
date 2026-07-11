@@ -1,13 +1,23 @@
 import { mergeConfig } from 'vite';
-import path from 'path';
 
 export default (config) => {
-  // Strapi's mergeConfig utility perfectly overrides the nested paths safely
+  // Force a single instance of CodeMirror/Lezer packages across admin bundles.
+  // Mixed instances break instanceof checks and trigger extension-set runtime errors.
   return mergeConfig(config, {
     resolve: {
-      alias: {
-        '@codemirror/state': path.resolve(__dirname, '../../node_modules/@codemirror/state'),
-      },
+      dedupe: [
+        '@codemirror/state',
+        '@codemirror/view',
+        '@codemirror/language',
+        '@codemirror/commands',
+        '@codemirror/search',
+        '@codemirror/autocomplete',
+        '@codemirror/lint',
+        '@codemirror/lang-markdown',
+        '@lezer/common',
+        '@lezer/highlight',
+        'style-mod',
+      ],
     },
   });
 };
