@@ -961,7 +961,7 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           Shipping_Address: {},
           uuid: generateRandomSlug(),
           STRIPE_PAYMENT_ID: response?.link?.id,
-          Details: response.details,
+          Details: response?.details,
           extra: {
             ...extraMeta,
             fees: response?.feeInfo,
