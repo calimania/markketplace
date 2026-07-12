@@ -9,6 +9,7 @@ export default {
   },
 
   bootstrap({ strapi }) {
+    console.log('[markket]:bootstrap:init');
     if (process.argv.includes('ts:generate-types')) {
       console.log('[markket]: Skipping bootstrap for type generation');
       return;

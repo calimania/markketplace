@@ -4,33 +4,44 @@ import type { Stripe as StripeClient } from 'stripe';
 // Stripe configuration
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_SECRET_TEST_KEY = process.env.STRIPE_SECRET_TEST_KEY;
-
-console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_KEY:', !!STRIPE_SECRET_KEY);
-console.log('[STRIPE_SERVICE] Loading - STRIPE_SECRET_TEST_KEY:', !!STRIPE_SECRET_TEST_KEY);
-
-// Fix: Add missing Stripe API version for initialization (required by Stripe SDK)
 export const STRIPE_API_VERSION = '2026-06-24.dahlia';
 
-// Initialize Stripe clients
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
-const stripeTest = STRIPE_SECRET_TEST_KEY ? new Stripe(STRIPE_SECRET_TEST_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
+const instances = {
+  stripe: null,
+  stripeTest: null,
+};
 
-console.log('[STRIPE_SERVICE] Stripe clients initialized - stripe:', !!stripe, 'stripeTest:', !!stripeTest);
+export const init = () => {
+  console.log('[STRIPE_SERVICE] Loading clients - STRIPE_SECRET_KEY:', !!STRIPE_SECRET_KEY);
+  console.log('[STRIPE_SERVICE] Loading clients - STRIPE_SECRET_TEST_KEY:', !!STRIPE_SECRET_TEST_KEY);
+
+  instances.stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
+  instances.stripeTest = STRIPE_SECRET_TEST_KEY ? new Stripe(STRIPE_SECRET_TEST_KEY, { apiVersion: STRIPE_API_VERSION }) : null;
+
+  console.log('[STRIPE_SERVICE] Stripe clients initialized - stripe:',
+    !!instances.stripe, 'stripeTest:', !!instances.stripeTest);
+};
+
 
 /**
- * Get the appropriate Stripe client (prod vs test) based on environment
+ * Get the appropriate Stripe client (prod vs test) based on environment,
+ * load instances if not present
  */
 export function getStripeClient(useTestMode: boolean = false): StripeClient | null {
   const defaultTestMode = process.env.NODE_ENV === 'development';
   const shouldUseTest = useTestMode || defaultTestMode;
 
-  if (shouldUseTest && stripeTest) {
-    return stripeTest;
-  } else if (stripe) {
-    return stripe;
-  } else if (stripeTest) {
+  if (!instances.stripe && !instances.stripeTest) {
+    init();
+  }
+
+  if (shouldUseTest && instances.stripeTest) {
+    return instances.stripeTest;
+  } else if (instances.stripe) {
+    return instances.stripe;
+  } else if (instances.stripeTest) {
     console.warn('[STRIPE_SERVICE] Live Stripe not available, falling back to test mode');
-    return stripeTest;
+    return instances.stripeTest;
   }
 
   return null;
@@ -40,7 +51,7 @@ export function getStripeClient(useTestMode: boolean = false): StripeClient | nu
  * Check if Stripe is configured
  */
 export function isStripeConfigured(): boolean {
-  return !!(stripe || stripeTest);
+  return !!(instances.stripe || instances.stripeTest);
 }
 
 /**
