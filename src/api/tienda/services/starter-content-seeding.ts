@@ -8,6 +8,16 @@ type StarterPageTemplate = {
   Content?: any[];
 };
 
+type StarterArticleTemplate = {
+  Title: string;
+  slug: string;
+  SEO: {
+    metaTitle: string;
+    metaDescription: string;
+  };
+  Content?: any[];
+};
+
 type StarterSeedContext = {
   defaultLocale: string;
   storeDocumentId: string;
@@ -167,6 +177,47 @@ async function seedAndPublishStarterPages(strapiInstance: any, params: {
   });
 }
 
+function buildStarterArticleTemplate(storeName: string, storeSlug: string): StarterArticleTemplate {
+  return {
+    Title: `A first note from ${storeName}`,
+    slug: `first-note-${storeSlug}`,
+    Content: [
+      {
+        type: 'heading',
+        level: 1,
+        children: [
+          {
+            type: 'text',
+            text: `Hello from ${storeName}`,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        children: [
+          {
+            type: 'text',
+            text: `${storeName} is now open, and this first note is our way of saying welcome.`,
+          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        children: [
+          {
+            type: 'text',
+            text: 'Expect useful ideas, occasional stories, and timely updates whenever something meaningful is ready.',
+          },
+        ],
+      },
+    ],
+    SEO: {
+      metaTitle: `A first note from ${storeName}`,
+      metaDescription: `Meet ${storeName} in this opening note and discover what is coming next.`,
+    },
+  };
+}
+
 export async function upsertStarterPagesForStore(strapiInstance: any, params: {
   defaultLocale: string;
   storeDocumentId: string;
@@ -257,51 +308,64 @@ export async function upsertStarterPagesForStore(strapiInstance: any, params: {
   return { created, updated, skipped };
 }
 
-async function seedStarterArticle(strapiInstance: any, { storeDocumentId, storeName, storeSlug }: StarterSeedContext) {
+export async function upsertStarterArticleForStore(strapiInstance: any, params: {
+  storeDocumentId: string;
+  template: StarterArticleTemplate;
+  regenerate: boolean;
+}) {
+  const { storeDocumentId, template, regenerate } = params;
+
+  const existingArticles = await strapiInstance.documents('api::article.article').findMany({
+    filters: {
+      store: { documentId: storeDocumentId },
+      slug: template.slug,
+    },
+    fields: ['documentId', 'slug', 'publishedAt'],
+    limit: 1,
+  }) as any[];
+
+  const existing = existingArticles?.[0] || null;
+
+  if (existing && !regenerate) {
+    if (existing?.documentId && !existing?.publishedAt) {
+      await strapiInstance.documents('api::article.article').publish({
+        documentId: existing.documentId,
+      });
+    }
+
+    return { status: 'skipped', slug: template.slug, documentId: existing.documentId };
+  }
+
+  if (existing?.documentId) {
+    await strapiInstance.documents('api::article.article').update({
+      documentId: existing.documentId,
+      data: {
+        Title: template.Title,
+        slug: template.slug,
+        store: storeDocumentId,
+        Content: template.Content,
+        SEO: template.SEO,
+      } as any,
+    });
+
+    await strapiInstance.documents('api::article.article').publish({ documentId: existing.documentId });
+
+    return { status: 'updated', slug: template.slug, documentId: existing.documentId };
+  }
+
   const starterArticle = await strapiInstance.documents('api::article.article').create({
     data: {
-      Title: `A first note from ${storeName}`,
-      slug: `first-note-${storeSlug}`,
+      Title: template.Title,
+      slug: template.slug,
       store: storeDocumentId,
-      description: `A short launch story to make ${storeName} feel alive on day one.`,
-      Content: [
-        {
-          type: 'heading',
-          level: 1,
-          children: [
-            {
-              type: 'text',
-              text: `Hello from ${storeName}`,
-            },
-          ],
-        },
-        {
-          type: 'paragraph',
-          children: [
-            {
-              type: 'text',
-              text: `${storeName} is now open, and this first note is our way of saying welcome.`,
-            },
-          ],
-        },
-        {
-          type: 'paragraph',
-          children: [
-            {
-              type: 'text',
-              text: 'Expect useful ideas, occasional stories, and timely updates whenever something meaningful is ready.',
-            },
-          ],
-        },
-      ],
-      SEO: {
-        metaTitle: `A first note from ${storeName}`,
-        metaDescription: `Meet ${storeName} in this opening note and discover what is coming next.`,
-      },
+      Content: template.Content,
+      SEO: template.SEO,
     } as any,
   });
 
   await strapiInstance.documents('api::article.article').publish({ documentId: starterArticle.documentId });
+
+  return { status: 'created', slug: template.slug, documentId: starterArticle.documentId };
 }
 
 export async function seedStarterContent(strapiInstance: any, context: StarterSeedContext & { ownerId: number | string }) {
@@ -312,5 +376,9 @@ export async function seedStarterContent(strapiInstance: any, context: StarterSe
     storeName: context.storeName,
   });
 
-  await seedStarterArticle(strapiInstance, context);
+  await upsertStarterArticleForStore(strapiInstance, {
+    storeDocumentId: context.storeDocumentId,
+    template: buildStarterArticleTemplate(context.storeName, context.storeSlug),
+    regenerate: false,
+  });
 }

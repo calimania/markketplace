@@ -2,7 +2,17 @@ import { openRouterChatCompletion, parseJsonFromModelText } from './openrouter';
 
 type StarterPageTemplate = {
   Title: string;
-  slug: 'home' | 'newsletter' | 'about' | 'story';
+  slug: 'home' | 'newsletter' | 'about';
+  SEO: {
+    metaTitle: string;
+    metaDescription: string;
+  };
+  Content?: any[];
+};
+
+type StarterArticleTemplate = {
+  Title: string;
+  slug: string;
   SEO: {
     metaTitle: string;
     metaDescription: string;
@@ -26,6 +36,7 @@ type GenerateStarterPagesInput = {
 
 type GenerateStarterPagesResult = {
   pages: StarterPageTemplate[];
+  article: StarterArticleTemplate;
   ownerEmail: StarterOwnerEmailTemplate;
   source: 'openrouter' | 'fallback';
   model: string | null;
@@ -33,7 +44,7 @@ type GenerateStarterPagesResult = {
 };
 
 const OPEN_ROUTER_MODEL_DEFAULT = 'openai/gpt-4o-mini';
-const PAGE_ORDER: Array<'home' | 'newsletter' | 'about' | 'story'> = ['home', 'newsletter', 'about', 'story'];
+const PAGE_ORDER: Array<'home' | 'newsletter' | 'about'> = ['home', 'newsletter', 'about'];
 
 function clampText(value: unknown, fallback: string, maxLength = 220): string {
   const text = String(value || '').trim();
@@ -97,20 +108,23 @@ function fallbackStarterPages(storeName: string): StarterPageTemplate[] {
         metaDescription: `Learn the story behind ${storeName} and the values guiding its work and updates.`,
       },
     },
-    {
-      Title: `${storeName} Story`,
-      slug: 'story',
-      Content: [
-        toHeadingBlock('Our Story'),
-        toParagraphBlock(`${storeName} started with a simple idea: clear guidance, useful outcomes, and no unnecessary noise.`),
-        toParagraphBlock('Each update is built to be practical, human, and worth returning to.'),
-      ],
-      SEO: {
-        metaTitle: `${storeName} Story`,
-        metaDescription: `Read the story of ${storeName} and the principles behind its direction.`,
-      },
-    },
   ];
+}
+
+function fallbackStarterArticle(storeName: string, storeSlug: string): StarterArticleTemplate {
+  return {
+    Title: `A first note from ${storeName}`,
+    slug: `first-note-${storeSlug}`,
+    Content: [
+      toHeadingBlock(`Hello from ${storeName}`),
+      toParagraphBlock(`${storeName} is now open, and this first note is our way of saying welcome.`),
+      toParagraphBlock('Expect useful ideas, occasional stories, and timely updates whenever something meaningful is ready.'),
+    ],
+    SEO: {
+      metaTitle: `A first note from ${storeName}`,
+      metaDescription: `Meet ${storeName} in this opening note and discover what is coming next.`,
+    },
+  };
 }
 
 function fallbackOwnerEmail(storeName: string): StarterOwnerEmailTemplate {
@@ -199,6 +213,31 @@ function normalizeAiPages(input: unknown, storeName: string): StarterPageTemplat
   });
 }
 
+function normalizeAiArticle(input: unknown, storeName: string, storeSlug: string): StarterArticleTemplate {
+  const fallback = fallbackStarterArticle(storeName, storeSlug);
+  const rawArticle = input && typeof input === 'object' && !Array.isArray(input)
+    ? ((input as any).article || input)
+    : {};
+
+  const title = clampText(rawArticle?.title, fallback.Title, 110);
+  const heading = clampText(rawArticle?.heading, title, 120);
+  const defaultParagraphs = (fallback.Content || [])
+    .filter((block: any) => block?.type === 'paragraph')
+    .map((block: any) => String(block?.children?.[0]?.text || '').trim())
+    .filter(Boolean);
+  const paragraphs = normalizeParagraphs(rawArticle?.paragraphs, defaultParagraphs);
+
+  return {
+    Title: title,
+    slug: clampText(rawArticle?.slug, fallback.slug, 120).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || fallback.slug,
+    Content: [toHeadingBlock(heading), ...paragraphs.map(toParagraphBlock)],
+    SEO: {
+      metaTitle: clampText(rawArticle?.seoTitle, fallback.SEO.metaTitle, 70),
+      metaDescription: clampText(rawArticle?.seoDescription, fallback.SEO.metaDescription, 160),
+    },
+  };
+}
+
 function buildPrompt(input: GenerateStarterPagesInput): string {
   const seedLine = input.seed?.trim() ? `Seed guidance: ${input.seed.trim()}` : 'Seed guidance: none';
   const voiceLine = input.voice?.trim() ? input.voice.trim() : 'Markket voice: modern, thoughtful, independent, useful, no hype.';
@@ -211,13 +250,14 @@ function buildPrompt(input: GenerateStarterPagesInput): string {
     domainLine,
     `Voice: ${voiceLine}`,
     seedLine,
-    'Return valid JSON only as an array with exactly 4 objects in this order: home, newsletter, about, story.',
-    'Each object must have this exact shape:',
-    '{"slug":"home|newsletter|about|story","title":"","heading":"","paragraphs":["",""],"seoTitle":"","seoDescription":""}',
+    'Return valid JSON only as one object with this exact shape:',
+    '{"pages":[{"slug":"home|newsletter|about","title":"","heading":"","paragraphs":["",""],"seoTitle":"","seoDescription":""}],"article":{"slug":"first-note-store-slug","title":"","heading":"","paragraphs":["",""],"seoTitle":"","seoDescription":""}}',
     'Constraints:',
     '- Adapt copy to the domain indicated by name, slug, description, and seed.',
     '- Do not assume this is an online shop unless the context clearly indicates commerce.',
     '- No markdown, no HTML, no emojis.',
+    '- Include exactly 3 pages in this order: home, newsletter, about.',
+    '- Include exactly 1 article that feels like a first post or launch note.',
     '- Each paragraph should be 1 sentence.',
     '- Keep SEO description under 160 characters.',
   ].join('\n');
@@ -266,6 +306,7 @@ export async function generateStarterPagesWithVoice(input: GenerateStarterPagesI
 
     return {
       pages: normalizeAiPages(parsedArray || parsed, storeName),
+      article: normalizeAiArticle(parsed, storeName, storeSlug),
       ownerEmail: fallbackOwnerEmail(storeName),
       source: 'openrouter',
       model: completion.model,
@@ -273,6 +314,7 @@ export async function generateStarterPagesWithVoice(input: GenerateStarterPagesI
   } catch (error: any) {
     return {
       pages: fallbackStarterPages(storeName),
+      article: fallbackStarterArticle(storeName, storeSlug),
       ownerEmail: fallbackOwnerEmail(storeName),
       source: 'fallback',
       model,

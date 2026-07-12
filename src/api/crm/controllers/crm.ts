@@ -1,9 +1,11 @@
 import { checkStoreAccess, ERRORS, requireUser } from '../../../services/api-auth';
 import {
+  createStripeConnectDashboardLink,
+  createStripeConnectLink,
   getIntegrationPlan,
-  placeholderCreateStripeConnectOnboardingLink,
   placeholderSendNewsletter,
   placeholderSyncSubscriber,
+  syncStripeConnectStatus,
 } from '../services/crm';
 
 function getStoreRef(ctx: any): string {
@@ -27,6 +29,34 @@ function getRelationStoreDocumentIds(resource: any, relationField: string): stri
   return values
     .map((entry: any) => String(entry?.documentId || entry?.id || '').trim())
     .filter(Boolean);
+}
+
+function summarizeOrderInboxThread(messages: any): any | null {
+  const rows = Array.isArray(messages) ? messages.filter(Boolean) : [];
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const sorted = [...rows].sort((left: any, right: any) => {
+    const leftTime = new Date(left?.createdAt || 0).getTime();
+    const rightTime = new Date(right?.createdAt || 0).getTime();
+    return rightTime - leftTime;
+  });
+
+  const latest = sorted[0];
+  const anchor = sorted.find((row: any) => row?.ThreadKey) || latest;
+
+  return {
+    documentId: anchor?.documentId || latest?.documentId || null,
+    threadKey: anchor?.ThreadKey || null,
+    messagesCount: rows.length,
+    customerEmail: latest?.email || null,
+    latestMessageAt: latest?.createdAt || null,
+    latestDirection: latest?.Direction || null,
+    latestSubject: latest?.Name || null,
+    latestEstado: latest?.Estado || null,
+    latestPreview: String(latest?.Message || '').trim().slice(0, 180) || null,
+  };
 }
 
 async function requireStoreScopedResource(
@@ -116,9 +146,10 @@ export default {
     }
 
     const [items, total] = await Promise.all([
+      // @TODO: include inboxMessages
       strapi.documents('api::order.order').findMany({
         filters,
-        populate: ['buyer', 'shipments'],
+        populate: ['buyer', 'shipments',],
         sort: ['createdAt:desc'],
         skip,
         limit,
@@ -127,8 +158,11 @@ export default {
     ]);
 
     const data = (items || []).map((item: any) => {
-      const { extensions, ...rest } = item;
-      return rest;
+      const { extensions, inboxMessages = [], ...rest } = item;
+      return {
+        ...rest,
+        inbox_thread: summarizeOrderInboxThread(inboxMessages),
+      };
     });
 
     return ctx.send({
@@ -417,30 +451,29 @@ export default {
       return;
     }
 
-    const settings = scope.store.settings || null;
-    const meta = settings?.meta || {};
+    const stripeTest =
+      String(ctx.query?.stripe_test || '').trim() === '1'
+      || String(ctx.query?.stripe_test || '').trim().toLowerCase() === 'true';
+
+    const statusResult = await syncStripeConnectStatus({
+      storeDocumentId: scope.store.documentId,
+      stripeTest,
+    });
 
     return ctx.send({
-      ok: true,
+      ok: statusResult.ok,
       data: {
         store: {
           documentId: scope.store.documentId,
           slug: scope.store.slug,
           title: scope.store.title,
         },
-        stripe_connect: {
-          account_id: meta?.stripe_connect_account_id || null,
-          onboarding_completed: !!meta?.stripe_connect_onboarding_completed,
-          charges_enabled: !!meta?.stripe_connect_charges_enabled,
-          payouts_enabled: !!meta?.stripe_connect_payouts_enabled,
-          requirements_due: meta?.stripe_connect_requirements_due || [],
-          status: meta?.stripe_connect_account_id ? 'connected' : 'not_connected',
-          source: meta?.stripe_connect_account_id ? 'store.settings.meta' : 'placeholder',
-        },
+        stripe_connect: statusResult.data,
       },
       integrations: {
         required: getIntegrationPlan().stripeConnect,
       },
+      reason: statusResult.reason || null,
     });
   },
 
@@ -457,10 +490,100 @@ export default {
     const body = ctx.request?.body || {};
     const payload = body.data && typeof body.data === 'object' ? body.data : body;
 
-    const result = await placeholderCreateStripeConnectOnboardingLink({
+    const stripeTest =
+      String(ctx.query?.stripe_test || '').trim() === '1'
+      || String(ctx.query?.stripe_test || '').trim().toLowerCase() === 'true';
+
+    const result = await createStripeConnectLink({
       storeDocumentId: scope.store.documentId,
       refreshUrl: payload.refreshUrl,
       returnUrl: payload.returnUrl,
+      country: payload.country,
+      stripeTest,
+      linkType: 'account_onboarding',
+    });
+
+    return ctx.send(result);
+  },
+
+  /**
+   * POST /api/pagos/connect/resume?storeRef=...
+   * Alias to create/recreate onboarding link for incomplete accounts.
+   */
+  async resumeStripeConnectOnboarding(ctx: any) {
+    const scope = await requireStoreScope(ctx);
+    if (!scope) {
+      return;
+    }
+
+    const body = ctx.request?.body || {};
+    const payload = body.data && typeof body.data === 'object' ? body.data : body;
+
+    const stripeTest =
+      String(ctx.query?.stripe_test || '').trim() === '1'
+      || String(ctx.query?.stripe_test || '').trim().toLowerCase() === 'true';
+
+    const result = await createStripeConnectLink({
+      storeDocumentId: scope.store.documentId,
+      refreshUrl: payload.refreshUrl,
+      returnUrl: payload.returnUrl,
+      country: payload.country,
+      stripeTest,
+      linkType: 'account_onboarding',
+    });
+
+    return ctx.send(result);
+  },
+
+  /**
+   * POST /api/pagos/connect/review-link?storeRef=...
+   * Create Stripe account_update link for requirements review.
+   */
+  async createStripeConnectReviewLink(ctx: any) {
+    const scope = await requireStoreScope(ctx);
+    if (!scope) {
+      return;
+    }
+
+    const body = ctx.request?.body || {};
+    const payload = body.data && typeof body.data === 'object' ? body.data : body;
+
+    const stripeTest =
+      String(ctx.query?.stripe_test || '').trim() === '1'
+      || String(ctx.query?.stripe_test || '').trim().toLowerCase() === 'true';
+
+    const result = await createStripeConnectLink({
+      storeDocumentId: scope.store.documentId,
+      refreshUrl: payload.refreshUrl,
+      returnUrl: payload.returnUrl,
+      stripeTest,
+      linkType: 'account_update',
+    });
+
+    return ctx.send(result);
+  },
+
+  /**
+   * POST /api/pagos/connect/dashboard-link?storeRef=...
+   * Create temporary Express dashboard login link.
+   */
+  async createStripeConnectDashboardLink(ctx: any) {
+    const scope = await requireStoreScope(ctx);
+    if (!scope) {
+      return;
+    }
+
+    const body = ctx.request?.body || {};
+    const payload = body.data && typeof body.data === 'object' ? body.data : body;
+
+    const stripeTest =
+      String(ctx.query?.stripe_test || '').trim() === '1'
+      || String(ctx.query?.stripe_test || '').trim().toLowerCase() === 'true';
+
+    const result = await createStripeConnectDashboardLink({
+      storeDocumentId: scope.store.documentId,
+      returnUrl: payload.returnUrl,
+      stripeTest,
     });
 
     return ctx.send(result);

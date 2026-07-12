@@ -54,6 +54,24 @@ export default {
       handler: 'crm.createStripeConnectOnboardingLink',
       config: { policies: [], middlewares: [] },
     },
+    {
+      method: 'POST',
+      path: '/pagos/connect/resume',
+      handler: 'crm.resumeStripeConnectOnboarding',
+      config: { policies: [], middlewares: [] },
+    },
+    {
+      method: 'POST',
+      path: '/pagos/connect/review-link',
+      handler: 'crm.createStripeConnectReviewLink',
+      config: { policies: [], middlewares: [] },
+    },
+    {
+      method: 'POST',
+      path: '/pagos/connect/dashboard-link',
+      handler: 'crm.createStripeConnectDashboardLink',
+      config: { policies: [], middlewares: [] },
+    },
   ],
 };
 

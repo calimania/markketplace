@@ -1,7 +1,7 @@
 {
   "name": "markketplace",
   "private": true,
-  "version": "0.4.20",
+  "version": "0.5.0",
   "description": "Markkët API, powered by strapi:postgres",
   "scripts": {
     "dev": "strapi develop",
@@ -11,6 +11,7 @@
     "build": "yarn run build:plugin && strapi build",
     "strapi": "strapi",
     "deploy": "strapi deploy",
+    "validate:schemas": "node scripts/validate-schemas.js",
     "api:docs": "node scripts/api-docs.js",
     "api:test": "node scripts/api-test.js",
     "events:verify-tz": "node scripts/verify-event-timezones.js"

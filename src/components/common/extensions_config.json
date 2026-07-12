@@ -1,7 +1,9 @@
 {
-  "collectionName": "components_common_extensions",
+  "collectionName": "components_common_extensions_config",
   "info": {
     "displayName": "Extension",
+    "singularName": "Extension",
+    "pluralName": "Extensions",
     "icon": "plug",
     "description": "Flexible extension system for integrations. Handlers live in markket-next. Use encryption service for credentials."
   },

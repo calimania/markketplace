@@ -675,5 +675,5 @@ export function getStripeClient(test: boolean = false): StripeClient | null {
 
 if (process.env.NODE_ENV !== 'test') {
   const config = validateStripeConfig();
-  console.log(`[STRIPE_SERVICE] Configuration status: ${config.configured ? '✅ Ready' : '⚠️ Degraded'}`);
+  console.log(`[MARKKET:STRIPE_SERVICE] Keys present: ${config.configured ? 'Ready' : 'Missing'}`);
 }

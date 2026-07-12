@@ -1,13 +1,24 @@
 # Features
 
-## Upcoming
+## 2026
 
 - [ ] tienda: changing slug affects links and emails, what do? (warn? backfill? redirect)
 - [ ] tienda: Digital Ocean - AI endpoints suggest content
 - [ ] config: clean up general config objects, urls, colors
 - [ ] AI: open router decides which action is needed { key: action, } for api to proceed
+- [ ] api: stripe, restrict redirect domains
+- [ ] bugfix: codemod in admin panel \ type generation errors (git bisect)
 
 ## July 2026
+
+- [ ] api: notify buyer of order change
+- [ ] tienda: api: send posthog events to track milestone (users, content posted)
+- [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
+- [ ] tienda: inbox: order creates a thread with the buyer and seller
+- [ ] storefront: Order,Purchase sends an email to slug@markket.place
+- [ ] stripe: staging uses test keys
+
+### v0.5.0
 
 - [x] Receive inbox by mail (slug@markket.place)
 - [x] Read inbox in /tienda
@@ -15,18 +26,15 @@
 - [x] Improve standard content (example content, SEO backfill)
 - [x] tienda: Open Router AI for backfilling seed data
 - [x] api: stripe, sync Event PRICES
-- [ ] buyer can easy reply to order email to send inbox message reply-to slug@markket.place (domain)
-- [ ] notify buyer of order change
-- [ ] tienda: api: generate keywords with the AI endpoint
-- [ ] tienda: api: send posthog events to track milestone (users, content posted)
-- [ ] tienda: api: review saving PRICES for products & events
-- [ ] tienda dashboard: adding/editing Product prices works end-to-end (draft -> save -> list -> detail)
-- [ ] tienda dashboard: validate forms for price/date fields and show clear error states
-- [ ] tienda: payouts: stripe dashboard connection: reconnect and verify account status sync in tienda
-- [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
-- [ ] tienda: inbox: order creates a thread with the buyer and seller
-- [ ] storefront: Order,Purchase sends an email to slug@markket.place
-- [ ] stripe: staging uses test keys
+- [x] tienda: api: generate keywords with the AI endpoint
+- [x] tienda: api: review saving PRICES for products & events
+- [x] tienda: payouts: stripe dashboard connection: reconnect and verify account status sync in tienda
+- [x] api: stripe, review connect integration
+- [x] api: stripe, confirm store relation before connect
+- [x] buyer receipt view remains public for checkout follow-up
+- [x] tienda and crm content/actions remain authenticated and store-scoped
+- [x] buyer can easy reply to order email to send inbox message reply-to slug@markket.place (domain)
+
 
 ### May 2026
 
@@ -61,6 +69,9 @@ Routes:
 - Email templates:
 	- subscriber welcome and store-owner congrats layouts were refreshed
 	- dynamic values are HTML-escaped for safety
+- Access policy:
+	- buyer receipt view is intentionally public to reduce post-checkout friction
+	- all tienda/crm content management and mutating actions require authenticated user context plus store access checks
 
 ### 3. Subscriber Public Endpoints handoff notes
 Status: ready for frontend
