@@ -2,6 +2,32 @@ const SENDGRID_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || '';
 const SENDGRID_REPLY_TO_EMAIL = process.env.SENDGRID_REPLY_TO_EMAIL || '';
 import { OrderNotificationHTml, RSVPNotificationHTml, OrderStoreNotificationEmailHTML } from './email.template';
 
+function getMailDomain(): string {
+  return process.env.MARKKET_EMAIL_DOMAIN
+    || process.env.MAIL_DOMAIN
+    || process.env.EMAIL_DOMAIN
+    || SENDGRID_REPLY_TO_EMAIL.split('@')[1]
+    || 'markket.place';
+}
+
+function getStoreMailbox(store: any): string | null {
+  const slug = String(store?.slug || '').trim();
+  if (!slug) {
+    return null;
+  }
+
+  const domain = String(getMailDomain() || '').trim();
+  if (!domain) {
+    return null;
+  }
+
+  return `${slug}@${domain}`;
+}
+
+function getOptionalCcRecipients(): string[] | undefined {
+  return SENDGRID_REPLY_TO_EMAIL ? [SENDGRID_REPLY_TO_EMAIL] : undefined;
+}
+
 
 export const sendRSVPNotification = async ({ strapi, rsvp, event, store: storeOverride = null }) => {
   console.info('notification::rsvp:created', {
@@ -80,10 +106,12 @@ export const notifyStoreOfPurchase = async ({ strapi, order, emails, store }: no
     return;
   }
 
+  const optionalCc = getOptionalCcRecipients();
+
   return await strapi.plugins['email'].services.email.send({
     to: emails,
     from: SENDGRID_FROM_EMAIL,
-    cc: SENDGRID_REPLY_TO_EMAIL,
+    cc: optionalCc,
     replyTo: SENDGRID_REPLY_TO_EMAIL,
     subject: `${store.title || 'Markkët'}: Order Notification`,
     text: 'New order in your store! - log in to view details',
@@ -123,16 +151,20 @@ export const sendOrderNotification = async ({
   store: {
     title: string,
     documentId: string,
+    slug?: string,
   }
 }) => {
+  const replyToEmail = getStoreMailbox(store) || SENDGRID_REPLY_TO_EMAIL;
+  const optionalCc = getOptionalCcRecipients();
+
   console.info('notification::stripe:checkout.session.completed', {
     order: order?.documentId,
     strapi: !!strapi,
     from: !!SENDGRID_FROM_EMAIL,
-    reply_to: !!SENDGRID_REPLY_TO_EMAIL,
+    reply_to: !!replyToEmail,
   });
 
-  if (!SENDGRID_FROM_EMAIL || !SENDGRID_REPLY_TO_EMAIL) {
+  if (!SENDGRID_FROM_EMAIL || !replyToEmail) {
     console.warn('notification:missing:platform_email');
     return;
   }
@@ -147,8 +179,8 @@ export const sendOrderNotification = async ({
   return await strapi.plugins['email'].services.email.send({
     to: customer_email,
     from: SENDGRID_FROM_EMAIL,
-    cc: SENDGRID_REPLY_TO_EMAIL,
-    replyTo: SENDGRID_REPLY_TO_EMAIL,
+    cc: optionalCc,
+    replyTo: replyToEmail,
     subject: `${store?.title || 'Markkët'}: Order Confirmation`,
     text: 'Thank you for your order!',
     html: OrderNotificationHTml(order),

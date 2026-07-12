@@ -9,13 +9,17 @@ export default {
   },
 
   bootstrap({ strapi }) {
+    if (process.argv.includes('ts:generate-types')) {
+      console.log('[markket]: Skipping bootstrap for type generation');
+      return;
+    }
+
     console.log('[markket]:bootstrap');
     registerMiddleware({ strapi });
     registerPriceInventoryChanges({ strapi });
     registerEventReminderMiddleware({ strapi });
     registerStoreVisibilityMiddleware({ strapi });
 
-    // Run every 15 minutes: send any pending event reminders that are now due.
     strapi.cron.add({
       '*/15 * * * *': async () => {
         try {

@@ -108,7 +108,7 @@ Use for: Repeatable components with credentials
   "extensions": {
     "type": "component",
     "repeatable": true,
-    "component": "common.extension"
+    "component": "common.extensions_config"
   }
 }
 

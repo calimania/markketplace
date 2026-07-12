@@ -37,7 +37,7 @@
     "extensions": {
       "type": "component",
       "repeatable": true,
-      "component": "common.extension"
+      "component": "common.extensions_config"
     },
     "ships_to": {
       "type": "json",

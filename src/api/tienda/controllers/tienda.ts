@@ -28,6 +28,7 @@ import { generateStarterPagesWithVoice } from '../../../services/starter-content
 import {
   seedStarterContent,
   upsertDefaultStarterPagesForStore,
+  upsertStarterArticleForStore,
   upsertStarterPagesForStore,
 } from '../services/starter-content-seeding';
 
@@ -1491,6 +1492,12 @@ export default {
             templates: generatedStarter.pages as any,
             regenerate: false,
           });
+
+          await upsertStarterArticleForStore(strapi, {
+            storeDocumentId,
+            template: generatedStarter.article as any,
+            regenerate: false,
+          });
         } else {
           await seedStarterContent(strapi, {
             defaultLocale,
@@ -1613,6 +1620,12 @@ export default {
         regenerate,
       });
 
+      const articleResult = await upsertStarterArticleForStore(strapi, {
+        storeDocumentId,
+        template: generated.article as any,
+        regenerate,
+      });
+
       return ctx.send({
         ok: true,
         store: {
@@ -1635,6 +1648,7 @@ export default {
           created: result.created,
           updated: result.updated,
           skipped: result.skipped,
+          article: articleResult,
         },
       });
     } catch (error: any) {

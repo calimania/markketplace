@@ -1,4 +1,4 @@
-# CRM Endpoints (Phase 2 Skeleton)
+# CRM Endpoints
 
 Separate CRM namespace to keep tienda focused on content management.
 
@@ -30,15 +30,34 @@ Auth:
 - Customer rollup (computed from orders + subscribers)
 - Includes: `email`, `ordersCount`, `totalSpent`, `lastOrderAt`, `subscriber` summary
 
-5. `GET /crm/stripe/connect?storeRef=<storeDocIdOrSlug>`
-- Returns Stripe Connect status from `store.settings.meta`
-- Also returns required integration config summary
+5. `GET /pagos/connect?storeRef=<storeDocIdOrSlug>&stripe_test=true|false`
+- Returns Stripe Connect status for the store
+- Tries live sync from Stripe first, then falls back to `store.settings.meta`
+- Includes account flags: `charges_enabled`, `payouts_enabled`, `requirements_due`, `requirements_past_due`, `disabled_reason`
 
-### Action Endpoints (Placeholders)
+### Action Endpoints
 
-6. `POST /crm/stripe/connect/onboarding?storeRef=<storeDocIdOrSlug>`
-- Placeholder for Stripe Connect onboarding link generation
-- Body (planned):
+6. `POST /pagos/connect/onboarding?storeRef=<storeDocIdOrSlug>&stripe_test=true|false`
+- Creates or reuses the connected account
+- Returns Stripe Account Link (`account_onboarding`)
+- Body:
+```json
+{
+  "data": {
+    "refreshUrl": "https://app.example.com/settings/payments",
+    "returnUrl": "https://app.example.com/settings/payments/success",
+    "country": "US"
+  }
+}
+```
+
+7. `POST /pagos/connect/resume?storeRef=<storeDocIdOrSlug>&stripe_test=true|false`
+- Alias for onboarding link regeneration (resume incomplete onboarding)
+- Same body as onboarding
+
+8. `POST /pagos/connect/review-link?storeRef=<storeDocIdOrSlug>&stripe_test=true|false`
+- Creates Stripe Account Link (`account_update`) for KYC/requirements review
+- Body (optional):
 ```json
 {
   "data": {
@@ -48,10 +67,21 @@ Auth:
 }
 ```
 
-7. `POST /crm/subscribers/:documentId/sync?storeRef=<storeDocIdOrSlug>`
+9. `POST /pagos/connect/dashboard-link?storeRef=<storeDocIdOrSlug>&stripe_test=true|false`
+- Creates temporary Stripe Express dashboard login link
+- Body (optional):
+```json
+{
+  "data": {
+    "returnUrl": "https://app.example.com/settings/payments"
+  }
+}
+```
+
+10. `POST /crm/subscribers/:documentId/sync?storeRef=<storeDocIdOrSlug>`
 - Placeholder for SendGrid subscriber sync
 
-8. `POST /crm/newsletters/:documentId/send?storeRef=<storeDocIdOrSlug>`
+11. `POST /crm/newsletters/:documentId/send?storeRef=<storeDocIdOrSlug>`
 - Placeholder for newsletter send orchestration
 - Body (optional):
 ```json
@@ -62,9 +92,17 @@ Auth:
 }
 ```
 
+## Stripe Connect Client Flow
+
+1. On "Connect Stripe" click, call onboarding endpoint.
+2. Redirect user to `data.url` from response.
+3. On return, call status endpoint and render requirements if present.
+4. If `status` is `pending` or `restricted`, show "Continue setup" using review-link or resume endpoint.
+5. If `status` is `active`, show "Open Stripe dashboard" using dashboard-link endpoint.
+
 ## Placeholder Response Shape
 
-Action routes currently return:
+SendGrid action routes currently return:
 ```json
 {
   "ok": false,
@@ -86,12 +124,15 @@ Action routes currently return:
 - SDK: `stripe`
 - Env:
   - `STRIPE_SECRET_KEY`
+  - `STRIPE_SECRET_TEST_KEY` (recommended for test mode)
 - API / Docs:
   - `https://docs.stripe.com/connect`
-- Planned operations:
-  - Create/retrieve connected account
+- Implemented operations:
+  - Create/reuse connected account (`STRIPE_CUSTOMER_ID`)
   - Create Account Link (`account_onboarding`)
-  - Store account status flags in `store.settings.meta`
+  - Create Account Link (`account_update`) for reviews
+  - Create Express dashboard login links
+  - Sync account status flags into `store.settings.meta`
 
 ### SendGrid Marketing
 - SDK: `@sendgrid/client`

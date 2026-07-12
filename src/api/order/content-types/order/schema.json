@@ -72,7 +72,7 @@
       "target": "api::shipment.shipment",
       "mappedBy": "order"
     },
-    "inbox_messages": {
+    "inboxMessages": {
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::inbox.inbox",
@@ -85,7 +85,7 @@
     "extensions": {
       "type": "component",
       "repeatable": true,
-      "component": "common.extension"
+      "component": "common.extensions_config"
     }
   }
 }

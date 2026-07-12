@@ -215,7 +215,7 @@
           "localized": false
         }
       },
-      "component": "common.extension"
+      "component": "common.extensions_config"
     }
     ,
     "meta": {

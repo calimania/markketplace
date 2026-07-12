@@ -107,7 +107,7 @@
     "extensions": {
       "type": "component",
       "repeatable": true,
-      "component": "common.extension"
+      "component": "common.extensions_config"
     },
     "last_synced_at": {
       "type": "datetime"

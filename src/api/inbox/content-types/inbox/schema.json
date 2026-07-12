@@ -32,7 +32,7 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::order.order",
-      "inversedBy": "inbox_messages"
+      "inversedBy": "inboxMessages"
     },
     "Archived": {
       "type": "boolean"

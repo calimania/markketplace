@@ -11,6 +11,7 @@
     "build": "yarn run build:plugin && strapi build",
     "strapi": "strapi",
     "deploy": "strapi deploy",
+    "validate:schemas": "node scripts/validate-schemas.js",
     "api:docs": "node scripts/api-docs.js",
     "api:test": "node scripts/api-test.js",
     "events:verify-tz": "node scripts/verify-event-timezones.js"
