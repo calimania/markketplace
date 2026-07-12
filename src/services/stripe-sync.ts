@@ -5,7 +5,7 @@ import { validateProductData, sanitizeForLogging } from './stripe-security';
 
 // Debouncing map to prevent rapid updates
 const updateDebounce = new Map<string, NodeJS.Timeout>();
-const DEBOUNCE_DELAY = 500; // 0.5 seconds - fast and responsive
+const DEBOUNCE_DELAY = 200; // 0.2 seconds - fast and responsive
 
 type SyncContext = {
   action?: 'create' | 'update' | string;
