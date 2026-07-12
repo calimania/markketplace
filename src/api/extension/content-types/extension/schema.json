@@ -24,7 +24,7 @@
       },
       "type": "json"
     },
-    "extensions": {
+    "extensions_config": {
       "type": "component",
       "repeatable": true,
       "pluginOptions": {
