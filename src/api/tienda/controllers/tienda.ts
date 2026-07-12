@@ -1047,6 +1047,224 @@ export default {
     return ctx.send(payload);
   },
 
+  async inboxSummary(ctx: any) {
+    const user = requireUser(ctx);
+    if (!user) {
+      return;
+    }
+
+    const pageRaw = Number.parseInt(String(ctx.query?.page || '1'), 10);
+    const page = Number.isFinite(pageRaw) ? Math.max(pageRaw, 1) : 1;
+
+    const pageSizeRaw = Number.parseInt(String(ctx.query?.pageSize || ctx.query?.limit || '20'), 10);
+    const pageSize = Number.isFinite(pageSizeRaw) ? Math.min(Math.max(pageSizeRaw, 1), 100) : 20;
+
+    const search = String(ctx.query?.search || '').trim().toLowerCase();
+    const scanLimit = Math.min(Math.max(pageSize * 25, 200), 2000);
+
+    try {
+      const storesFromUsers = await strapi.documents('api::store.store').findMany({
+        filters: { users: { id: user.id } },
+        fields: ['documentId', 'title', 'slug'],
+      }) as any[];
+
+      const storesFromAdmins = await strapi.documents('api::store.store').findMany({
+        filters: { admin_users: { id: user.id } },
+        fields: ['documentId', 'title', 'slug'],
+      }) as any[];
+
+      const storesById = new Map<string, any>();
+      for (const store of [...(storesFromUsers || []), ...(storesFromAdmins || [])]) {
+        if (store?.documentId) {
+          storesById.set(store.documentId, {
+            documentId: store.documentId,
+            title: store.title || null,
+            slug: store.slug || null,
+          });
+        }
+      }
+
+      const storeIds = Array.from(storesById.keys());
+      if (storeIds.length === 0) {
+        return ctx.send({
+          ok: true,
+          data: {
+            summary: {
+              storesCount: 0,
+              threadsTotal: 0,
+              unreadThreads: 0,
+              archivedThreads: 0,
+              incomingMessages: 0,
+              outgoingMessages: 0,
+            },
+            stores: [],
+            recentThreads: [],
+          },
+        });
+      }
+
+      const inboxRows = await strapi.documents('api::inbox.inbox').findMany({
+        filters: {
+          store: {
+            documentId: { $in: storeIds },
+          },
+        } as any,
+        populate: ['store'],
+        sort: { createdAt: 'desc' },
+        limit: scanLimit,
+      }) as any[];
+
+      const threads = new Map<string, any>();
+      const storesSummary = new Map<string, any>();
+      let incomingMessages = 0;
+      let outgoingMessages = 0;
+
+      for (const row of inboxRows || []) {
+        const store = row?.store || null;
+        const storeId = store?.documentId || null;
+        if (!storeId || !storesById.has(storeId)) {
+          continue;
+        }
+
+        const threadKey = String(row?.ThreadKey || row?.documentId || '').trim();
+        if (!threadKey) {
+          continue;
+        }
+
+        const groupedKey = `${storeId}:${threadKey}`;
+        const direction = String(row?.Direction || '').toLowerCase();
+        const estado = String(row?.Estado || '').toLowerCase();
+        const archived = Boolean(row?.Archived === true);
+        const isUnreadIncoming = !archived && direction === 'incoming' && ['new', 'unread'].includes(estado);
+
+        if (direction === 'incoming') {
+          incomingMessages += 1;
+        } else if (direction === 'outgoing') {
+          outgoingMessages += 1;
+        }
+
+        if (!storesSummary.has(storeId)) {
+          const storeMeta = storesById.get(storeId);
+          storesSummary.set(storeId, {
+            store: storeMeta,
+            threadsTotal: 0,
+            unreadThreads: 0,
+          });
+        }
+
+        if (!threads.has(groupedKey)) {
+          threads.set(groupedKey, {
+            key: groupedKey,
+            threadKey,
+            store: storesById.get(storeId),
+            subject: row?.Name || null,
+            latestMessage: row?.Message || null,
+            latestDirection: row?.Direction || null,
+            latestEstado: row?.Estado || null,
+            latestEmail: row?.email || null,
+            latestAt: row?.createdAt || row?.updatedAt || null,
+            archived,
+            unread: isUnreadIncoming,
+            messagesCount: 0,
+          });
+
+          const storeBucket = storesSummary.get(storeId);
+          storeBucket.threadsTotal += 1;
+          if (isUnreadIncoming) {
+            storeBucket.unreadThreads += 1;
+          }
+        }
+
+        const thread = threads.get(groupedKey);
+        thread.messagesCount += 1;
+      }
+
+      const allThreads = Array.from(threads.values()).sort(
+        (a, b) => new Date(b.latestAt || 0).getTime() - new Date(a.latestAt || 0).getTime(),
+      );
+
+      const filteredThreads = search
+        ? allThreads.filter((thread: any) => {
+          const storeTitle = String(thread?.store?.title || '').toLowerCase();
+          const storeSlug = String(thread?.store?.slug || '').toLowerCase();
+          const subject = String(thread?.subject || '').toLowerCase();
+          const message = String(thread?.latestMessage || '').toLowerCase();
+          const email = String(thread?.latestEmail || '').toLowerCase();
+          const threadKey = String(thread?.threadKey || '').toLowerCase();
+          return (
+            storeTitle.includes(search)
+            || storeSlug.includes(search)
+            || subject.includes(search)
+            || message.includes(search)
+            || email.includes(search)
+            || threadKey.includes(search)
+          );
+        })
+        : allThreads;
+
+      const start = (page - 1) * pageSize;
+      const paginatedThreads = filteredThreads.slice(start, start + pageSize);
+
+      const unreadThreads = allThreads.filter((thread: any) => thread.unread).length;
+      const archivedThreads = allThreads.filter((thread: any) => thread.archived).length;
+      const filteredUnreadThreads = filteredThreads.filter((thread: any) => thread.unread).length;
+      const filteredArchivedThreads = filteredThreads.filter((thread: any) => thread.archived).length;
+
+      const storesSummaryFiltered = new Map<string, any>();
+      for (const thread of filteredThreads) {
+        const storeId = String(thread?.store?.documentId || '');
+        if (!storeId) continue;
+
+        if (!storesSummaryFiltered.has(storeId)) {
+          storesSummaryFiltered.set(storeId, {
+            store: thread.store,
+            threadsTotal: 0,
+            unreadThreads: 0,
+          });
+        }
+
+        const bucket = storesSummaryFiltered.get(storeId);
+        bucket.threadsTotal += 1;
+        if (thread.unread) {
+          bucket.unreadThreads += 1;
+        }
+      }
+
+      return ctx.send({
+        ok: true,
+        data: {
+          summary: {
+            storesCount: storeIds.length,
+            threadsTotal: allThreads.length,
+            unreadThreads,
+            archivedThreads,
+            incomingMessages,
+            outgoingMessages,
+            filteredThreadsTotal: filteredThreads.length,
+            filteredUnreadThreads,
+            filteredArchivedThreads,
+          },
+          stores: Array.from(storesSummary.values()),
+          storesFiltered: Array.from(storesSummaryFiltered.values()),
+          recentThreads: paginatedThreads,
+          threads: {
+            data: paginatedThreads,
+            pagination: {
+              page,
+              pageSize,
+              total: filteredThreads.length,
+              pages: Math.max(1, Math.ceil(filteredThreads.length / pageSize)),
+            },
+            search: search || null,
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error('[TIENDA_INBOX_SUMMARY] Failed:', error?.message || error);
+      return ctx.internalServerError('Failed to load inbox summary');
+    }
+  },
+
   async listMembers(ctx: any) {
     const user = requireUser(ctx);
     if (!user) return;
@@ -3050,7 +3268,7 @@ export default {
 
       const storeDomain = typeof store?.settings?.domain === 'string' && store.settings.domain.trim()
         ? store.settings.domain.trim()
-        : 'https://de.markket.place';
+        : 'https://markket.place';
       const normalizedStoreDomain = /^https?:\/\//i.test(storeDomain)
         ? storeDomain
         : `https://${storeDomain}`;

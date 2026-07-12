@@ -588,8 +588,8 @@ export const OrderStoreNotificationEmailHTML = (order: {
   };
 
   const customer_email = order?.buyer?.email || order?.Shipping_Address?.email;
-  const receiptUrl = `https://de.markket.place/store/${store?.slug}/receipt?session_id=${order?.STRIPE_PAYMENT_ID || ''}`;
-  const dashboardUrl = `https://de.markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders`;
+  const receiptUrl = `https://markket.place/store/${store?.slug}/receipt?session_id=${order?.STRIPE_PAYMENT_ID || ''}`;
+  const dashboardUrl = `https://markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders`;
 
   const content = `
     <p style="margin:0 0 14px 0;">A new order just landed in <strong>${escapeHtml(store?.title || 'markket')}</strong>.</p>

@@ -373,7 +373,7 @@ export const createPaymentLinkWithPriceIds = async ({
     }
   }
 
-  const baseUrl = redirect_to_url || (store?.slug ? `https://de.markket.place/store/${store.slug}/receipt` : 'https://markket.place/receipt');
+  const baseUrl = redirect_to_url || (store?.slug ? `https://markket.place/store/${store.slug}/receipt` : 'https://markket.place/receipt');
   const redirectUrl = `${baseUrl}?session_id={CHECKOUT_SESSION_ID}`;
 
   let connectStatus: any = null;

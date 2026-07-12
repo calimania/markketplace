@@ -5,6 +5,7 @@
 - [ ] tienda: changing slug affects links and emails, what do? (warn? backfill? redirect)
 - [ ] tienda: Digital Ocean - AI endpoints suggest content
 - [ ] config: clean up general config objects, urls, colors
+- [ ] AI: open router decides which action is needed { key: action, } for api to proceed
 
 ## July 2026
 
@@ -13,6 +14,12 @@
 - [x] Improve email templates
 - [x] Improve standard content (example content, SEO backfill)
 - [x] tienda: Open Router AI for backfilling seed data
+- [x] api: stripe, sync Event PRICES
+- [ ] buyer can easy reply to order email to send inbox message reply-to slug@markket.place (domain)
+- [ ] notify buyer of order change
+- [ ] tienda: api: generate keywords with the AI endpoint
+- [ ] tienda: api: send posthog events to track milestone (users, content posted)
+- [ ] tienda: api: review saving PRICES for products & events
 - [ ] tienda dashboard: adding/editing Product prices works end-to-end (draft -> save -> list -> detail)
 - [ ] tienda dashboard: validate forms for price/date fields and show clear error states
 - [ ] tienda: payouts: stripe dashboard connection: reconnect and verify account status sync in tienda

@@ -23,6 +23,15 @@ export default {
       },
     },
     {
+      method: 'GET',
+      path: '/tienda/inbox/summary',
+      handler: 'tienda.inboxSummary',
+      config: {
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
       method: 'POST',
       path: '/tienda/stores',
       handler: 'tienda.createStore',

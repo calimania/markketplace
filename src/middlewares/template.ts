@@ -79,7 +79,7 @@ export const generateSEOHTML = (shortner: ShortnerData, store: StoreData | null)
 
   const keywords = store?.SEO?.metaKeywords || '';
   const siteName = escapeHtml(store?.title || 'Markkët');
-  const domain = store?.settings?.domain || 'https://de.markket.place';
+  const domain = store?.settings?.domain || 'https://markket.place';
   const favicon = store?.Favicon?.url || `${domain}/favicon.png`;
   const author = store?.SEO?.metaAuthor || siteName;
 

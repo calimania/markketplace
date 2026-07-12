@@ -76,7 +76,13 @@ const coreController = factories.createCoreController('api::product.product', ({
     }
 
     try {
-      const syncResult = await syncProductWithStripe(product, { strapi, ctx });
+      const syncResult = await syncProductWithStripe(product, {
+        strapi,
+        ctx,
+        action: 'update',
+        contentTypeUid: 'api::product.product',
+        stripeProductField: 'SKU',
+      });
       ctx.body = {
         success: true,
         message: 'Stripe sync completed.',
