@@ -149,7 +149,7 @@ export default {
       // @TODO: include inboxMessages
       strapi.documents('api::order.order').findMany({
         filters,
-        populate: ['buyer', 'shipments',],
+        populate: ['buyer', 'shipments', 'Shipping_Address'],
         sort: ['createdAt:desc'],
         skip,
         limit,

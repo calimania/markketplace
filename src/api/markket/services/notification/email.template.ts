@@ -568,6 +568,9 @@ export const OrderStoreNotificationEmailHTML = (order: {
     country?: string,
     zipcode?: string,
   },
+  extra?: {
+    stripe_session_id?: string,
+  },
   Details?: Array<{
     Name?: string,
     Quantity?: number
@@ -588,8 +591,9 @@ export const OrderStoreNotificationEmailHTML = (order: {
   };
 
   const customer_email = order?.buyer?.email || order?.Shipping_Address?.email;
-  const receiptUrl = `https://markket.place/store/${store?.slug}/receipt?session_id=${order?.STRIPE_PAYMENT_ID || ''}`;
-  const dashboardUrl = `https://markket.place/dashboard/crm?store=${store?.documentId}&order_id=${order?.documentId}#orders`;
+  const sessionId = order?.extra?.stripe_session_id;
+  const receiptUrl = `https://markket.place/store/${store?.slug}/receipt?session_id=${sessionId || ''}`;
+  const dashboardUrl = `https://markket.place/tienda/${store.slug}/crm?order_id=${order?.documentId}#crm-orders`;
 
   const content = `
     <p style="margin:0 0 14px 0;">A new order just landed in <strong>${escapeHtml(store?.title || 'markket')}</strong>.</p>
@@ -614,7 +618,7 @@ export const OrderStoreNotificationEmailHTML = (order: {
     `, theme)}
     ${renderButton('View receipt', receiptUrl, theme)}
     ${renderButton('Open dashboard', dashboardUrl, theme, 'secondary')}
-    <p style="margin:14px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Session ID: ${escapeHtml(order?.STRIPE_PAYMENT_ID || 'N/A')}</p>
+    <p style="margin:14px 0 0 0;font-size:13px;line-height:1.7;color:${theme.mutedTextColor};">Session ID: ${escapeHtml(order?.extra?.stripe_session_id || 'N/A')}</p>
   `;
 
   const title = 'Markkët: Order notification';
