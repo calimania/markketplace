@@ -157,6 +157,13 @@ interface LineItemInput {
   Name?: string;
 }
 
+export type ProductForPaymentLink = {
+  documentId: string;
+  Name: string;
+  PRICES: [any];
+  SKU: string;
+};
+
 /**
  * Payment link creation parameters
  * @typedef {Object} PaymentLinkOptions
@@ -175,12 +182,7 @@ type PaymentLinkOptions = {
   store_id?: string;
   redirect_to_url?: string;
   total?: number;
-  product?: {
-    documentId: string;
-    Name: string;
-    PRICES: [any];
-    SKU: string;
-  };
+  product?: ProductForPaymentLink;
   countries?: DefaultCountries,
 };
 

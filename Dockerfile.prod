@@ -1,29 +1,64 @@
-# Creating multi-stage build for production
-FROM node:24-alpine as build
-RUN apk update && apk add --no-cache build-base gcc autoconf automake zlib-dev libpng-dev vips-dev > /dev/null 2>&1
-ARG NODE_ENV=production
+# ==========================================
+# 1. BUILD STAGE (Install everything & Build)
+# ==========================================
+FROM node:24-alpine AS build
+
+# Install build dependencies required by node-gyp and sharp
+RUN apk update && apk add --no-cache \
+  build-base \
+  gcc \
+  autoconf \
+  automake \
+  libpng-dev \
+  vips-dev \
+  git \
+  g++
+
+ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}
 
 WORKDIR /opt/
 COPY package.json yarn.lock ./
-RUN yarn config set network-timeout 600000 -g && yarn install --production
-ENV PATH /opt/node_modules/.bin:$PATH
+
+# Increase network timeout for large native binaries
+RUN yarn config set network-timeout 600000 -g
+
+# Install ALL dependencies so Strapi can build the admin panel
+RUN yarn install --frozen-lockfile --ignore-platform
+
 WORKDIR /opt/app
 COPY . .
 RUN yarn build
 
-# Creating final production image
+# Clean up development dependencies to keep the image lean
+RUN rm -rf node_modules && yarn install --production --frozen-lockfile --ignore-platform
+
+# ==========================================
+# 2. FINAL PRODUCTION STAGE (Super Lean)
+# ==========================================
 FROM node:24-alpine
 RUN apk add --no-cache vips-dev
+
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
-WORKDIR /opt/
-COPY --from=build /opt/node_modules ./node_modules
-WORKDIR /opt/app
-COPY --from=build /opt/app ./
-ENV PATH /opt/node_modules/.bin:$PATH
 
-RUN chown -R node:node /opt/app
+# 1. Set up directories and ownership BEFORE copying anything
+RUN mkdir -p /opt/node_modules /opt/app && chown -R node:node /opt
+
+# Switch to the non-root user early
 USER node
+
+# 2. Copy the pruned, production-ready node_modules from the build layer as the node user
+WORKDIR /opt/
+COPY --from=build --chown=node:node /opt/node_modules ./node_modules
+
+# 3. Copy the built application code and production assets as the node user
+WORKDIR /opt/app
+COPY --from=build --chown=node:node /opt/app ./
+
+ENV PATH /opt/node_modules/.bin:/opt/app/node_modules/.bin:$PATH
+
 EXPOSE 1337
-CMD ["yarn", "start"]
+
+# No final 'yarn install' needed; everything is already baked and pruned!
+CMD ["node", "run-strapi.js", "start"]
