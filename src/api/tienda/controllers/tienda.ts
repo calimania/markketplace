@@ -1167,6 +1167,7 @@ export default {
             archived,
             unread: isUnreadIncoming,
             messagesCount: 0,
+            documentId: row?.documentId,
           });
 
           const storeBucket = storesSummary.get(storeId);
