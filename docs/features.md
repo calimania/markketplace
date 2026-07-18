@@ -7,16 +7,25 @@
 - [ ] config: clean up general config objects, urls, colors
 - [ ] AI: open router decides which action is needed { key: action, } for api to proceed
 - [ ] api: stripe, restrict redirect domains
-- [ ] bugfix: codemod in admin panel \ type generation errors (git bisect)
 
 ## July 2026
 
-- [ ] api: notify buyer of order change
+
 - [ ] tienda: api: send posthog events to track milestone (users, content posted)
-- [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
+
 - [ ] tienda: inbox: order creates a thread with the buyer and seller
-- [ ] storefront: Order,Purchase sends an email to slug@markket.place
 - [ ] stripe: staging uses test keys
+
+- [ ] api: notify buyer of order change
+- [ ] storefront: Order,Purchase sends an email to slug@markket.place
+- [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
+
+### v0.6.7
+- [x] hotfix: documentId in inbox thread
+
+### v0.6.66
+- [x] stripe webhooks cleanup
+- [x] bugfix: codemod in admin panel - updated latest strapi
 
 ### v0.5.0
 
