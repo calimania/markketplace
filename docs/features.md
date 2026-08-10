@@ -20,6 +20,10 @@
 - [ ] storefront: Order,Purchase sends an email to slug@markket.place
 - [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
 
+### v0.7.7
+- [ ] upgraded Strapi
+- [ ] store Schema change
+
 ### v0.6.7
 - [x] hotfix: documentId in inbox thread
 
