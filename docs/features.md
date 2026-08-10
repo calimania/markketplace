@@ -21,7 +21,7 @@
 - [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
 
 ### v0.7.7
-- [ ] upgraded Strapi
+- [x] upgraded Strapi to 5.51.2
 - [ ] store Schema change
 
 ### v0.6.7
