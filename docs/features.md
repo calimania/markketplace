@@ -22,6 +22,10 @@
 - [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
 
 ### v0.7.7
+- [x] common.prices schema supports stripe.price.recurring options
+- [x] order schema supports stripe.price.recurring options
+
+### v0.7.7
 - [x] upgraded Strapi to 5.51.2
 - [x] store Schema change
 

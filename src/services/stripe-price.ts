@@ -90,6 +90,12 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
         currency: (price.Currency || 'usd').toLowerCase(),
         product: product.SKU,
         nickname: price.Name || `${product.Name} - Price ${i + 1}`,
+        ...(price.billing_type === 'recurring' && {
+          recurring: {
+            interval: price.billing_interval,
+            interval_count: price.billing_interval_count || 1
+          }
+        }),
         metadata: {
           strapiProductId: product.documentId || product.id || '',
           priceIndex: i.toString(),

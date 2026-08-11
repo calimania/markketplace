@@ -45,6 +45,27 @@
       "repeatable": false,
       "component": "common.address"
     },
+    "billing_type": {
+      "type": "enumeration",
+      "enum": [
+        "one_time",
+        "recurring"
+      ],
+      "default": "one_time"
+    },
+    "billing_interval": {
+      "type": "enumeration",
+      "enum": [
+        "day",
+        "week",
+        "month",
+        "year"
+      ]
+    },
+    "billing_interval_count": {
+      "type": "integer",
+      "default": 0
+    },
     "Details": {
       "displayName": "Product Snapshot",
       "type": "component",

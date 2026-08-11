@@ -82,10 +82,22 @@ const createAction = async (ctx: any) => {
         return ctx.badRequest(`Product with ID "${product}" could not be found.`);
       }
 
+      const recurring = {
+        billing_type: 'one_time',
+        billing_interval: undefined,
+        billing_interval_count: 0,
+      }
+
       // Inventory check validation
       if (Array.isArray(productData.PRICES)) {
         for (const orderPrice of prices) {
-          const matchedPrice = productData.PRICES.find((p: any) => p.STRIPE_ID === orderPrice.price);
+          const matchedPrice = productData.PRICES.find((p: any) => p.STRIPE_ID === orderPrice.price) as any;
+
+          if (matchedPrice.billing_type !== 'one_time') {
+            recurring.billing_type = matchedPrice.billing_type;
+            recurring.billing_interval = matchedPrice.billing_interval;
+            recurring.billing_interval_count = matchedPrice.billing_interval_count;
+          }
 
           if (matchedPrice && typeof matchedPrice.inventory === 'number') {
             const requestedQty = orderPrice.quantity || 1;
@@ -125,6 +137,8 @@ const createAction = async (ctx: any) => {
             uuid: generateRandomSlug(),
             STRIPE_PAYMENT_ID: response.link.id,
             Details: response.details,
+            ...recurring,
+            prices_snapshot: [prices],
             extra: {
               ...extraMeta,
               fees: response.feeInfo,
