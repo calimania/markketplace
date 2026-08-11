@@ -8,21 +8,22 @@
 - [ ] AI: open router decides which action is needed { key: action, } for api to proceed
 - [ ] api: stripe, restrict redirect domains
 
-## July 2026
+## Aug 2026
 
 
 - [ ] tienda: api: send posthog events to track milestone (users, content posted)
-
+- [ ] tienda: read openSEO data
 - [ ] tienda: inbox: order creates a thread with the buyer and seller
 - [ ] stripe: staging uses test keys
+- [ ] tienda: notify of shipment tracking change
 
 - [ ] api: notify buyer of order change
-- [ ] storefront: Order,Purchase sends an email to slug@markket.place
+- [x] storefront: Order,Purchase sends an email to slug@markket.place
 - [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
 
 ### v0.7.7
 - [x] upgraded Strapi to 5.51.2
-- [ ] store Schema change
+- [x] store Schema change
 
 ### v0.6.7
 - [x] hotfix: documentId in inbox thread

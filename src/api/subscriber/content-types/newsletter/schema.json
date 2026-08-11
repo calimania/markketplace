@@ -55,7 +55,7 @@
       "type": "string",
       "default": "View in browser"
     },
-    "status": {
+    "sending_status": {
       "type": "enumeration",
       "enum": ["draft", "scheduled", "sending", "sent", "paused", "cancelled", "failed"],
       "default": "draft"
