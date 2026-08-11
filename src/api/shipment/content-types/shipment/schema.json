@@ -24,7 +24,7 @@
     "TrackingCode": {
       "type": "string"
     },
-    "Status": {
+    "shipment_status": {
       "type": "string"
     },
     "Carrier": {

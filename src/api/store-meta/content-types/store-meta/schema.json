@@ -28,6 +28,9 @@
     "magic_pages_detected": { "type": "json" },
     "settings_overrides": { "type": "json" },
     "summary": { "type": "json" },
+    "is_headless": {
+      "type": "boolean"
+    },
     "_debug": { "type": "json" }
   }
 }
