@@ -58,7 +58,7 @@
     },
     "billing_interval_count": {
       "type": "integer",
-      "default": 1
+      "default": 0
     },
     "ships_to": {
       "type": "json",
