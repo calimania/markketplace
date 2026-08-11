@@ -23,7 +23,7 @@
 
 ### v0.7.7
 - [x] common.prices schema supports stripe.price.recurring options
-- [ ] order schema supports stripe.price.recurring options
+- [x] order schema supports stripe.price.recurring options
 
 ### v0.7.7
 - [x] upgraded Strapi to 5.51.2

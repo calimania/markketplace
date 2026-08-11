@@ -62,9 +62,7 @@
     },
     "ships_to": {
       "type": "json",
-      "default": [
-        "US"
-      ]
+      "default": []
     }
   }
 }
