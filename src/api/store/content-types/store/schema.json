@@ -229,6 +229,10 @@
       "target": "api::store.store",
       "inversedBy": "referred"
     },
+    "is_headless": {
+      "type": "boolean",
+      "default": false
+    },
     "meta": {
       "type": "relation",
       "relation": "oneToOne",
