@@ -88,7 +88,7 @@
       },
       "type": "boolean"
     },
-    "STRIPE_PRODUCT_ID": {
+    "stripe_product_id": {
       "pluginOptions": {
         "i18n": {
           "localized": true

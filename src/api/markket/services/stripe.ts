@@ -326,7 +326,7 @@ export const createPaymentLinkWithPriceIds = async ({
       Unit_Price: parseFloat(_price?.Price || price.unit_amount || '0'),
       Total_Price: parseFloat(_price?.Price || price.unit_amount || '0') * parseFloat(price.quantity || '0'),
       Description: _price?.Description || price?.Name || product?.Name || 'created with stripe link',
-      Stripe_price_id: _price?.STRIPE_ID || '',
+      Stripe_price_id: _price?.stripe_id || '',
       Stripe_product_id: product.sku || '',
       Currency: price.Currency || 'USD',
     };

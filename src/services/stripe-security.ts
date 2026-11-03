@@ -21,8 +21,6 @@ export const VALIDATION = {
 // Security logging configuration
 export const SECURITY_CONFIG = {
   LOG_SENSITIVE_DATA: process.env.NODE_ENV === 'development',
-  REDACT_STRIPE_IDS: process.env.NODE_ENV === 'production',
-  ENABLE_DETAILED_LOGGING: process.env.STRIPE_DEBUG === 'true',
 };
 
 /**
@@ -57,31 +55,32 @@ export function validateProductData(product: any): { valid: boolean; errors: str
     errors.push('Product documentId is required');
   }
 
-  if (!product.Name || typeof product.Name !== 'string') {
+  if (!product.name || typeof product.name !== 'string') {
     errors.push('Product name is required and must be a string');
-  } else if (product.Name.length > RATE_LIMITS.MAX_PRODUCT_NAME_LENGTH) {
+  } else if (product.name.length > RATE_LIMITS.MAX_PRODUCT_NAME_LENGTH) {
     errors.push(`Product name too long (max ${RATE_LIMITS.MAX_PRODUCT_NAME_LENGTH} characters)`);
   }
 
-  if (product.Description && typeof product.Description === 'string' && product.Description.length > RATE_LIMITS.MAX_DESCRIPTION_LENGTH) {
+  if (product.description && typeof product.description === 'string' && product.description.length > RATE_LIMITS.MAX_DESCRIPTION_LENGTH) {
     errors.push(`Product description too long (max ${RATE_LIMITS.MAX_DESCRIPTION_LENGTH} characters)`);
   }
 
-  if (Array.isArray(product.PRICES)) {
-    product.PRICES.forEach((price: any, index: number) => {
-      if (price.Price !== undefined) {
-        if (typeof price.Price !== 'number' || price.Price < 0) {
+  if (Array.isArray(product.prices)) {
+    product.prices.forEach((price: any, index: number) => {
+      if (price.price !== undefined) {
+        if (typeof price.price !== 'number' || price.price < 0) {
           errors.push(`Invalid price at index ${index}: must be a positive number`);
+
         } else {
-          const cents = Math.round(price.Price * 100);
+          const cents = Math.round(price.price * 100);
           if (cents < VALIDATION.MIN_PRICE_CENTS || cents > VALIDATION.MAX_PRICE_CENTS) {
             errors.push(`Price at index ${index} out of valid range ($0.50 - $999,999.99)`);
           }
         }
       }
 
-      if (price.Currency && !VALIDATION.ALLOWED_CURRENCIES.includes(price.Currency.toLowerCase())) {
-        errors.push(`Invalid currency at index ${index}: ${price.Currency}`);
+      if (price.currency && !VALIDATION.ALLOWED_CURRENCIES.includes(price.currency.toLowerCase())) {
+        errors.push(`Invalid currency at index ${index}: ${price.currency}`);
       }
     });
   }

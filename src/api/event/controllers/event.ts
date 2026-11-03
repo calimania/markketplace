@@ -47,7 +47,7 @@ export default factories.createCoreController('api::event.event', ({ strapi }) =
 
     const event = await strapi.documents('api::event.event').findOne({
       documentId,
-      populate: ['PRICES', 'Thumbnail', 'Slides', 'stores', 'stores.users', 'stores.admin_users']
+      populate: ['prices', 'thumbail', 'slides', 'stores', 'stores.users', 'stores.admin_users']
     });
 
     if (!event) {

@@ -139,7 +139,7 @@
       },
       "component": "common.urls"
     },
-    "STRIPE_CUSTOMER_ID": {
+    "stripe_customer_id": {
       "pluginOptions": {
         "i18n": {
           "localized": true

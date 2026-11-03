@@ -96,14 +96,14 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     contentField: 'Description',
     hasDraftAndPublish: true,
     mutableFields: [
-      'Name', 'Description', 'attributes', 'usd_price', 'quantity', 'active',
-      'Thumbnail', 'slides', 'seo', 'tag', 'PRICES', 'keywords', 'description'
+      'name', 'description', 'attributes', 'usd_price', 'quantity', 'active',
+      'thumbnail', 'slides', 'seo', 'tag', 'prices', 'keywords', 'description'
     ],
     readOnlyFields: ['SKU', 'slug'], // SKU is auto-synced with Stripe, slug is UID field
     autoSetCreator: 'creator',
-    defaultPopulate: ['Thumbnail', 'slides', 'seo', 'seo.socialImage', 'tag', 'PRICES', 'stores', 'creator'],
+    defaultPopulate: ['Thumbnail', 'slides', 'seo', 'seo.socialImage', 'tag', 'prices', 'stores', 'creator'],
     mediaFields: ['Thumbnail', 'slides'],
-    componentFields: ['tag', 'PRICES'],
+    componentFields: ['tag', 'prices'],
     nestedMediaFields: ['seo.socialImage'],
   },
   event: {
@@ -114,14 +114,14 @@ export const CONTENT_TYPES: Record<string, ContentTypeConfig> = {
     contentField: 'Description',
     hasDraftAndPublish: true,
     mutableFields: [
-      'Name', 'Description', 'usd_price', 'startDate', 'endDate', 'maxCapacity',
-      'active', 'Thumbnail', 'slides', 'seo', 'tag', 'PRICES', 'keywords', 'description', 'timezone', 'locations'
+      'name', 'description', 'usd_price', 'startDate', 'endDate', 'maxCapacity',
+      'active', 'thumbnail', 'slides', 'seo', 'tag', 'prices', 'keywords', 'description', 'timezone', 'locations'
     ],
     readOnlyFields: ['STRIPE_PRODUCT_ID', 'slug', 'amountSold'],
     autoSetCreator: 'creator',
     defaultPopulate: ['Thumbnail', 'slides', 'seo', 'seo.socialImage', 'tag', 'PRICES', 'stores', 'creator', 'locations'],
     mediaFields: ['Thumbnail', 'slides'],
-    componentFields: ['tag', 'PRICES', 'locations'],
+    componentFields: ['tag', 'prices', 'locations'],
     nestedMediaFields: ['seo.socialImage'],
   },
   shortner: {

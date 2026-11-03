@@ -47,7 +47,7 @@ const coreController = factories.createCoreController('api::product.product', ({
 
     const product = await strapi.documents('api::product.product').findOne({
       documentId,
-      populate: ['PRICES', 'Thumbnail', 'Slides', 'stores', 'stores.users', 'stores.admin_users']
+      populate: ['prices', 'thumbnail', 'slides', 'stores', 'stores.users', 'stores.admin_users']
     });
 
     if (!product) {

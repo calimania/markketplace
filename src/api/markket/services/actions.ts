@@ -75,7 +75,7 @@ const createAction = async (ctx: any) => {
       const { product, prices = [], includes_shipping, stripe_test, store_id, redirect_to_url, total, countries } = body;
 
       const productData = product
-        ? await strapi.documents('api::product.product').findOne({ documentId: product, populate: ['PRICES'] })
+        ? await strapi.documents('api::product.product').findOne({ documentId: product, populate: ['prices'] })
         : null;
 
       if (!productData) {
@@ -89,11 +89,11 @@ const createAction = async (ctx: any) => {
       }
 
       // Inventory check validation
-      if (Array.isArray(productData.PRICES)) {
+      if (Array.isArray(productData.prices)) {
         for (const orderPrice of prices) {
-          const matchedPrice = productData.PRICES.find((p: any) => p.STRIPE_ID === orderPrice.price) as any;
+          const matchedPrice = productData.prices.find((p: any) => p.stripe_id === orderPrice.price) as any;
 
-          if (matchedPrice.billing_type !== 'one_time') {
+          if (matchedPrice?.billing_type !== 'one_time') {
             recurring.billing_type = matchedPrice.billing_type;
             recurring.billing_interval = matchedPrice.billing_interval;
             recurring.billing_interval_count = matchedPrice.billing_interval_count;
@@ -104,6 +104,7 @@ const createAction = async (ctx: any) => {
             if (matchedPrice.inventory === 0) {
               return ctx.badRequest(`Product/price "${matchedPrice.Name}" is out of stock`);
             }
+
             if (requestedQty > matchedPrice.inventory) {
               return ctx.badRequest(`Product/price "${matchedPrice.Name}" requested quantity (${requestedQty}) exceeds available inventory:[(${matchedPrice.inventory})]`);
             }
