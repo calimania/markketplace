@@ -60,7 +60,7 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
             try {
               orderWithDetails = await strapi.documents('api::order.order').findOne({
                 documentId: ctx.documentId,
-                populate: ['Details', 'Details.product', 'Shipping_Address', 'store', 'store.owner', 'store.users']
+                populate: ['details', 'details.product', 'shipping_address', 'store', 'store.owner', 'store.users']
               });
 
               if (orderWithDetails) {

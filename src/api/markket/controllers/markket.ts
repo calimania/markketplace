@@ -414,14 +414,14 @@ const createWebhookAuditRecord = async (strapi: any, key: string, ctx: any, body
     await strapi.service(modelId).create({
       locale: 'en',
       data: {
-        Key: key,
-        Source: 'apple',
-        Webhook: key.replace(/^apple\./, ''),
-        EventType: summary.webhookEvent || null,
-        EventSubType: summary.webhookSubEvent || null,
-        RequestPath: ctx.request?.path || '',
-        ReceivedAt: receivedAt,
-        Content: {
+        key: key,
+        source: 'apple',
+        webhook: key.replace(/^apple\./, ''),
+        eventType: summary.webhookEvent || null,
+        eventSubType: summary.webhookSubEvent || null,
+        requestPath: ctx.request?.path || '',
+        receivedAt: receivedAt,
+        content: {
           received_at: receivedAt,
           method: ctx.request?.method || 'POST',
           path: ctx.request?.path || '',
@@ -492,8 +492,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           await strapi.service(modelId).create({
             locale: 'en',
             data: {
-              Key: 'twilio.security.invalid_signature',
-              Content: {
+              key: 'twilio.security.invalid_signature',
+              content: {
                 attempted_from: body?.From || 'unknown',
                 attempted_message: body?.Body || '',
                 signature_provided: !!twilioSignature,
@@ -523,8 +523,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         await strapi.service(modelId).create({
           locale: 'en',
           data: {
-            Key: 'twilio.incoming.sms',
-            Content: {
+            key: 'twilio.incoming.sms',
+            content: {
               from: body?.From || 'unknown',
               to: body?.To || 'unknown',
               message: body?.Body || '',
@@ -596,8 +596,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
           await strapi.service(modelId).create({
             locale: 'en',
             data: {
-              Key: 'twilio.auto_reply.magic_link',
-              Content: {
+              key: 'twilio.auto_reply.magic_link',
+              content: {
                 to: body?.From,
                 trigger_message: body?.Body,
                 timestamp: new Date().toISOString()
@@ -648,8 +648,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         await strapi.service(modelId).create({
           locale: 'en',
           data: {
-            Key: 'twilio.auto_reply.assistant',
-            Content: {
+            key: 'twilio.auto_reply.assistant',
+            content: {
               to: body?.From || null,
               trigger_message: body?.Body || '',
               assistant_reply: assistantReply,
@@ -673,8 +673,8 @@ module.exports = createCoreController(modelId, ({ strapi }) => ({
         await strapi.service(modelId).create({
           locale: 'en',
           data: {
-            Key: 'twilio.webhook.error',
-            Content: {
+            key: 'twilio.webhook.error',
+            content: {
               error: error.message,
               timestamp: new Date().toISOString(),
               verified: isVerifiedWebhook

@@ -37,7 +37,7 @@
         "refuted"
       ]
     },
-    "STRIPE_PAYMENT_ID": {
+    "stripe_payment_id": {
       "type": "string"
     },
     "shippingAddress": {

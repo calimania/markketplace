@@ -320,15 +320,15 @@ export const createPaymentLinkWithPriceIds = async ({
     const _price = product.prices?.find((p: { Name: string, }) => (p.Name === price.Name));
 
     return {
-      Name: `${product?.Name} - ${_price?.Name || price?.Name}`,
+      name: `${product?.Name} - ${_price?.Name || price?.Name}`,
       product: product.documentId,
-      Quantity: parseInt(price.quantity || '0', 10),
-      Unit_Price: parseFloat(_price?.Price || price.unit_amount || '0'),
-      Total_Price: parseFloat(_price?.Price || price.unit_amount || '0') * parseFloat(price.quantity || '0'),
-      Description: _price?.Description || price?.Name || product?.Name || 'created with stripe link',
-      Stripe_price_id: _price?.stripe_id || '',
-      Stripe_product_id: product.sku || '',
-      Currency: price.Currency || 'USD',
+      quantity: parseInt(price.quantity || '0', 10),
+      unit_Price: parseFloat(_price?.Price || price.unit_amount || '0'),
+      total_Price: parseFloat(_price?.Price || price.unit_amount || '0') * parseFloat(price.quantity || '0'),
+      description: _price?.Description || price?.Name || product?.Name || 'created with stripe link',
+      stripe_price_id: _price?.stripe_id || '',
+      stripe_product_id: product.sku || '',
+      currency: price.Currency || 'USD',
     };
   });
 

@@ -293,8 +293,8 @@ const createAction = async (ctx: any) => {
       await strapi.service(modelId).create({
         locale: 'en',
         data: {
-          Key: 'stripe.charge.failed',
-          Content: {
+          key: 'stripe.charge.failed',
+          content: {
             chargeId: charge?.id,
             amount: (charge?.amount / 100).toFixed(2),
             failureCode: charge?.failure_code,
@@ -322,8 +322,8 @@ const createAction = async (ctx: any) => {
   await strapi.service(modelId).create({
     locale: 'en',
     data: {
-      Key: `markket.create.${action}`,
-      Content: {
+      key: `markket.create.${action}`,
+      content: {
         executionSummary: logPayload,
         product: body?.product || null,
         total: body?.total || null,

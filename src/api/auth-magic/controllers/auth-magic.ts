@@ -313,13 +313,13 @@ export default ({ strapi }) => ({
 
             strapi.documents('api::markket.markket').create({
               data: {
-                Key: 'invite.accepted',
-                EventType: 'invite',
-                EventSubType: 'accepted',
-                Source: 'auth-magic.verify',
-                ReceivedAt: new Date().toISOString(),
+                key: 'invite.accepted',
+                eventType: 'invite',
+                eventSubType: 'accepted',
+                source: 'auth-magic.verify',
+                receivedAt: new Date().toISOString(),
                 user_key_or_id: String(user.id),
-                Content: {
+                content: {
                   storeDocumentId,
                   storeSlug: store.slug,
                   inviteeEmail: magic.email || null,
