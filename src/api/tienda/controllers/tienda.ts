@@ -3314,13 +3314,13 @@ export default {
 
       strapi.documents('api::markket.markket').create({
         data: {
-          Key: isResend ? 'invite.resent' : 'invite.sent',
-          EventType: 'invite',
-          EventSubType: isResend ? 'resent' : 'sent',
-          Source: 'tienda.inviteUser',
-          ReceivedAt: new Date().toISOString(),
+          key: isResend ? 'invite.resent' : 'invite.sent',
+          eventType: 'invite',
+          eventSubType: isResend ? 'resent' : 'sent',
+          source: 'tienda.inviteUser',
+          receivedAt: new Date().toISOString(),
           user_key_or_id: String(user.id),
-          Content: {
+          content: {
             storeDocumentId: store.documentId,
             storeSlug: store.slug,
             inviteeEmail: safeEmail,
