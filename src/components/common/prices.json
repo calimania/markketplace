@@ -6,20 +6,29 @@
     "description": ""
   },
   "options": {},
+
   "attributes": {
-    "Name": {
+    "pictures": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "name": {
       "type": "string"
     },
-    "Price": {
+    "price": {
       "type": "decimal"
     },
-    "STRIPE_ID": {
+    "stripe_id": {
       "type": "string"
     },
-    "Currency": {
+    "currency": {
       "type": "string"
     },
-    "Description": {
+    "description": {
       "type": "text"
     },
     "hidden": {
