@@ -62,6 +62,7 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
                 documentId: ctx.documentId,
                 populate: ['Details', 'Details.product', 'Shipping_Address', 'store', 'store.owner', 'store.users']
               });
+
               if (orderWithDetails) {
                 details = Array.isArray(orderWithDetails.Details) ? orderWithDetails.Details : details;
                 // prefer the canonical previous status from the fetched order when available
@@ -69,6 +70,7 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
                 // recompute newStatus from the canonical order when available
                 newStatus = orderWithDetails?.Status ?? newStatus;
               }
+
               console.log('[order.middleware][async]:details', { orderId: ctx.documentId, count: details.length });
               // Log canonical statuses for debugging transition detection
               console.log('[order.middleware][async]:info:[status.canonical]', { orderId: ctx.documentId, prevStatus, newStatus });
@@ -143,7 +145,6 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
                 pricesToUpdate[productId].push(item);
               }
 
-              // Batch update PRICES per product
               for (const [productId, items] of Object.entries(pricesToUpdate)) {
                 try {
                   const product = await strapi.documents('api::product.product').findOne({
@@ -161,9 +162,7 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
 
                   for (const item of items) {
                     const qty = item.Quantity || 1;
-
-                    // match by STRIPE_ID on the prices component
-                    const matchedPriceIndex = updatedPrices.findIndex((p: any) => p.STRIPE_ID === item.Stripe_price_id);
+                    const matchedPriceIndex = updatedPrices.findIndex((p: any) => p.stripe_id === item.Stripe_price_id);
 
                     if (matchedPriceIndex === -1) {
                       console.warn('[order.middleware][async]:warn:[price.not_found]', { productId, itemStripePriceId: item.Stripe_price_id, itemName: item.Name });
@@ -212,12 +211,13 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
                           documentId: productId,
                           populate: ['prices']
                         });
+
                         console.log('[order.middleware][async]:info:[prices.verify]', {
                           productId,
                           persistedPricesCount: Array.isArray(verify?.prices) ? verify.prices.length : 0,
-                          persistedSample: Array.isArray(verify?.prices) ? verify.prices.slice(0, 3).map((p: any) => ({ STRIPE_ID: p.STRIPE_ID, inventory: p.inventory })) : []
+                          persistedSample: Array.isArray(verify?.prices) ? verify.prices.slice(0, 3).map((p: any) => ({ stripe_id: p.stripe_id, inventory: p.inventory })) : []
                         });
-                        // mark that we persisted something (used later to decide idempotency mark)
+
                         (ctx as any)._processedAny = true;
                       } catch (vErr) {
                         console.warn('[order.middleware][async]:warn:[prices.verify_failed]', { productId, error: vErr?.message });

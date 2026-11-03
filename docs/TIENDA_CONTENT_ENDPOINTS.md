@@ -137,8 +137,8 @@ Create a new content item in the store.
 | album | title, slug, description, content, SEO, cover, tracks, keywords |
 | track | title, slug, description, content, SEO, media, urls, keywords |
 | category | Name, slug, Description, SEO, Active, keywords |
-| product | Name, Description, attributes, usd_price, quantity, active, Thumbnail, Slides, SEO, Tag, PRICES, keywords, description |
-| event | Name, Description, usd_price, startDate, endDate, maxCapacity, active, Thumbnail, Slides, SEO, Tag, PRICES, keywords, description |
+| product | name, description, attributes, usd_price, quantity, active, Thumbnail, Slides, SEO, Tag, prices, keywords, description |
+| event | name, description, usd_price, startDate, endDate, maxCapacity, active, thumbnail, slides, seo, Tag, prices, keywords, description |
 | shortner | title, url, description, image, keywords |
 
 **Auto-Populated Fields:**

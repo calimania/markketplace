@@ -71,28 +71,29 @@ export async function syncProductWithStripe(product: any, context: any): Promise
   }
 
   // Step 2: Handle Stripe Prices (robust, tolerant of missing fields)
-  if (Array.isArray(workingProduct.PRICES) && workingProduct.SKU) {
+  if (Array.isArray(workingProduct.prices) && workingProduct.sku) {
     // Accept prices with just Name, Price, Currency for creation
-    const validPrices = workingProduct.PRICES.filter(p => p && (p.Name && p.Price !== undefined && p.Currency));
+    const validPrices = workingProduct.prices.filter(p => p && (p.name && p.price !== undefined && p.currency));
     if (validPrices.length > 0) {
       await syncPricesWithStripe({
         ...workingProduct,
-        PRICES: validPrices
+        prices: validPrices
       });
       // After sync, ensure STRIPE_ID is updated for all prices
-      workingProduct.PRICES = workingProduct.PRICES.map((p: any, idx: number) => ({
+      workingProduct.prices = workingProduct.prices.map((p: any, idx: number) => ({
         ...p,
-        STRIPE_ID: validPrices[idx]?.STRIPE_ID || p.STRIPE_ID || ''
+        stripe_id: validPrices[idx]?.stripe_id || p.stripe_id || ''
       }));
-      product.PRICES = workingProduct.PRICES;
+      product.prices = workingProduct.prices;
+
     } else {
       console.warn('[STRIPE_SYNC_SERVICE] No valid prices found for sync. Each price should have Name, Price, and Currency.');
     }
   }
 
   // Step 3: Persist Stripe IDs back to database if new ones were created
-  const hasNewSKU = workingProduct.SKU && !originalSKU;
-  const hasNewPriceIds = workingProduct.PRICES?.some((p: any) => p.STRIPE_ID);
+  const hasNewSKU = workingProduct.sku && !originalSKU;
+  const hasNewPriceIds = workingProduct.prices?.some((p: any) => p.stripe_id);
 
   if (hasNewSKU || hasNewPriceIds) {
     console.log('[STRIPE_SYNC_SERVICE] Scheduling persistence of new Stripe IDs...');
@@ -113,11 +114,11 @@ export async function syncProductWithStripe(product: any, context: any): Promise
         const updateData: any = {};
 
         if (hasNewSKU) {
-          updateData[stripeProductField] = workingProduct.SKU;
+          updateData[stripeProductField] = workingProduct.sku;
         }
 
         if (hasNewPriceIds) {
-          updateData.PRICES = workingProduct.PRICES;
+          updateData.prices = workingProduct.prices;
         }
 
         console.log('[STRIPE_SYNC_SERVICE] Persisting Stripe IDs to database...');
@@ -140,8 +141,8 @@ export async function syncProductWithStripe(product: any, context: any): Promise
           console.log(`[STRIPE_SYNC_SERVICE] - Set ${stripeProductField} field to: [NEW_STRIPE_PRODUCT_ID]`);
         }
         if (hasNewPriceIds) {
-          const priceCount = workingProduct.PRICES.filter((p: any) => p.STRIPE_ID).length;
-          console.log('[STRIPE_SYNC_SERVICE] - Update PRICES with new Stripe IDs (', priceCount, 'prices)');
+          const priceCount = workingProduct.prices.filter((p: any) => p.stripe_id).length;
+          console.log('[STRIPE_SYNC_SERVICE] - Update prices with new stripe_id (', priceCount, 'prices)');
         }
         console.log('[STRIPE_SYNC_SERVICE] Please update these fields manually in the Strapi admin panel');
       }
@@ -155,8 +156,9 @@ export async function syncProductWithStripe(product: any, context: any): Promise
   if (workingProduct.SKU) {
     console.log('[STRIPE_SYNC_SERVICE] Product has Stripe product ID');
   }
-  if (workingProduct.PRICES?.some((p: any) => p.STRIPE_ID)) {
-    const syncedCount = workingProduct.PRICES.filter((p: any) => p.STRIPE_ID).length;
+
+  if (workingProduct.prices?.some((p: any) => p.stripe_id)) {
+    const syncedCount = workingProduct.prices.filter((p: any) => p.stripe_id).length;
     console.log('[STRIPE_SYNC_SERVICE] Synced prices count:', syncedCount);
   }
 }

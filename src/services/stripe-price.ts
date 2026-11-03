@@ -34,12 +34,12 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
     console.log(`[STRIPE_PRICE_SERVICE] Processing price ${i + 1}:`, {
       Name: price.Name,
       Price: price.Price,
-      STRIPE_ID: price.STRIPE_ID,
+      stripe_id: price.stripe_id,
       Currency: price.Currency
     });
 
     // Safety check: don't process if this looks like incomplete data
-    if (price.STRIPE_ID && !price.Name && price.Price === 0) {
+    if (price.stripe_id && !price.name && price.price === 0) {
       console.log(`[STRIPE_PRICE_SERVICE] Skipping price ${i + 1}: appears to be incomplete data`);
       skippedPrices.push({ index: i, reason: 'Incomplete data', price });
       continue;
@@ -48,15 +48,15 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
     let needsNewPrice = false;
     let oldPriceId = null;
 
-    if (!price.STRIPE_ID) {
+    if (!price.stripe_id) {
       // No Stripe price exists, create new one
       needsNewPrice = true;
       console.log(`[STRIPE_PRICE_SERVICE] Creating new Stripe price: ${price.Name || 'Price ' + (i + 1)}`);
     } else {
       // Check if price value has changed by comparing with existing Stripe price
-      console.log(`[STRIPE_PRICE_SERVICE] Checking existing price ${price.STRIPE_ID} for changes...`);
+      console.log(`[STRIPE_PRICE_SERVICE] Checking existing price ${price.stripe_id} for changes...`);
       try {
-        const existingPrice = await stripeClient.prices.retrieve(price.STRIPE_ID);
+        const existingPrice = await stripeClient.prices.retrieve(price.stripe_id);
         const currentAmount = Math.round(Number(price.Price) * 100);
 
         console.log(`[STRIPE_PRICE_SERVICE] Price comparison:`, {
@@ -67,7 +67,7 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
 
         if (existingPrice.unit_amount !== currentAmount) {
           needsNewPrice = true;
-          oldPriceId = price.STRIPE_ID;
+          oldPriceId = price.stripe_id;
           console.log(`[STRIPE_PRICE_SERVICE] Price value changed (${existingPrice.unit_amount} -> ${currentAmount}), creating new price: ${price.Name || 'Price ' + (i + 1)}`);
         } else {
           console.log(`[STRIPE_PRICE_SERVICE] Price unchanged, skipping: ${price.Name || 'Price ' + (i + 1)}`);
@@ -75,9 +75,9 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
         }
       } catch (error) {
         // If we can't retrieve the existing price, create a new one
-        console.warn(`[STRIPE_PRICE_SERVICE] Could not retrieve existing price ${price.STRIPE_ID}, creating new one:`, error.message);
+        console.warn(`[STRIPE_PRICE_SERVICE] Could not retrieve existing price ${price.stripe_id}, creating new one:`, error.message);
         needsNewPrice = true;
-        oldPriceId = price.STRIPE_ID;
+        oldPriceId = price.stripe_id;
       }
     }
 
@@ -133,7 +133,8 @@ export async function syncPricesWithStripe(product: any): Promise<void> {
           }
         }
 
-        product.PRICES[i].STRIPE_ID = stripePrice.id;
+        product.prices[i].stripe_id = stripePrice.id;
+
       } catch (error) {
         console.error('[STRIPE_PRICE_SERVICE] Failed to create price:', error);
         skippedPrices.push({ index: i, reason: 'Stripe error', error, price });
