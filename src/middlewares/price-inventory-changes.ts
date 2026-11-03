@@ -62,6 +62,7 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
                 documentId: ctx.documentId,
                 populate: ['Details', 'Details.product', 'Shipping_Address', 'store', 'store.owner', 'store.users']
               });
+
               if (orderWithDetails) {
                 details = Array.isArray(orderWithDetails.Details) ? orderWithDetails.Details : details;
                 // prefer the canonical previous status from the fetched order when available
@@ -69,6 +70,7 @@ export function registerMiddleware({ strapi }: { strapi: any }) {
                 // recompute newStatus from the canonical order when available
                 newStatus = orderWithDetails?.Status ?? newStatus;
               }
+
               console.log('[order.middleware][async]:details', { orderId: ctx.documentId, count: details.length });
               // Log canonical statuses for debugging transition detection
               console.log('[order.middleware][async]:info:[status.canonical]', { orderId: ctx.documentId, prevStatus, newStatus });

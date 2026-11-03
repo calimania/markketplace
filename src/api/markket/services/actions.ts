@@ -71,7 +71,7 @@ const createAction = async (ctx: any) => {
       });
     }
 
-    case ACTION_KEYS.stripeLink: {
+    case 'stripe.link': {
       const { product, prices = [], includes_shipping, stripe_test, store_id, redirect_to_url, total, countries } = body;
 
       const productData = product
