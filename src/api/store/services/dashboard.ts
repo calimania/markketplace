@@ -158,7 +158,7 @@ export async function getSalesSummary(storeId: string, daysBack: number = 30): P
       store: { documentId: storeId },
       createdAt: { $gte: since.toISOString() },
     },
-    select: ['Amount', 'Status', 'extra'],
+    select: ['amount', 'status', 'extra'],
   });
 
   let totalRevenue = 0;
@@ -171,8 +171,8 @@ export async function getSalesSummary(storeId: string, daysBack: number = 30): P
     const amountCents = Math.round(order.Amount * 100);
     totalRevenue += amountCents;
 
-    if (order.Status === 'pending') pending++;
-    if (order.Status === 'completed' || order.Status === 'paid') completed++;
+    if (order.status === 'pending') pending++;
+    if (order.status === 'completed' || order.status === 'paid') completed++;
 
     const extra = order.extra as Record<string, any>;
     if (extra?.stripe_estimated_fees) {
@@ -208,7 +208,7 @@ export async function getRecentOrders(storeId: string, limit: number = 10): Prom
     where: { store: { documentId: storeId } },
     orderBy: { createdAt: 'desc' },
     limit,
-    select: ['documentId', 'Amount', 'Status', 'createdAt'],
+    select: ['documentId', 'amount', 'status', 'createdAt'],
   });
 
   return orders.map(order => ({
@@ -232,35 +232,35 @@ export function calculateOnboardingProgress(store: any, counts: ContentCounts, s
   // Debug logging to see what we actually get
   console.log('[Dashboard] Image debug', {
     store: store?.id,
-    Logo: store?.Logo ? { id: store.Logo.id, url: store.Logo.url } : null,
-    Cover: store?.Cover ? { id: store.Cover.id, url: store.Cover.url } : null,
-    Favicon: store?.Favicon ? { id: store.Favicon.id, url: store.Favicon.url } : null,
-    SEO_socialImage: store?.seo?.socialImage ? { id: store.seo.socialImage.id } : null,
+    logo: store?.logo ? { id: store.logo.id, url: store.logo.url } : null,
+    cover: store?.cover ? { id: store.cover.id, url: store.cover.url } : null,
+    favicon: store?.favicon ? { id: store.favicon.id, url: store.favicon.url } : null,
+    seo_socialImage: store?.seo?.socialImage ? { id: store.seo.socialImage.id } : null,
   });
 
   // Count images - populated media have .id and .url
   const imageCount = [
-    store?.Logo?.id,
-    store?.Cover?.id,
-    store?.Favicon?.id,
+    store?.logo?.id,
+    store?.cover?.id,
+    store?.favicon?.id,
     store?.seo?.socialImage?.id,
   ].filter(Boolean).length;
 
   const checks = {
     // Required (critical path)
-    has_description: !!(store?.Description && store.Description.length > 20),
-    has_logo: !!store?.Logo?.id,
-    has_stripe: !!store?.STRIPE_CUSTOMER_ID,
+    has_description: !!(store?.description && store.description.length > 20),
+    has_logo: !!store?.logo?.id,
+    has_stripe: !!store?.stripe_customer_id,
 
     // Content (growth indicators)
     has_content: (counts.articles + counts.pages) > 0,
     has_products: counts.products > 0,
 
     // Optional (nice-to-have)
-    has_cover: !!store?.Cover?.id,
-    has_social: !!(store?.URLS && store.URLS.length > 0),
+    has_cover: !!store?.cover?.id,
+    has_social: !!(store?.urls && store.urls.length > 0),
     has_settings: !!store?.settings,
-    has_favicon: !!store?.Favicon?.id,
+    has_favicon: !!store?.favicon?.id,
 
     // SEO sophistication
     has_seo_basics: hasSEOComplete,

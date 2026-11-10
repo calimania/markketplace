@@ -6,7 +6,7 @@
   },
   "options": {},
   "attributes": {
-    "Name": {
+    "name": {
       "type": "string"
     },
     "product": {
@@ -14,31 +14,31 @@
       "relation": "oneToOne",
       "target": "api::product.product"
     },
-    "Quantity": {
+    "quantity": {
       "type": "integer"
     },
-    "Unit_Price": {
+    "unit_price": {
       "label": "Unit Price",
       "type": "decimal"
     },
-    "Total_Price": {
+    "total_price": {
       "label": "Total Price",
       "type": "decimal"
     },
-    "Short_description": {
+    "short_description": {
       "type": "string"
     },
-    "Stripe_price_id": {
+    "stripe_price_id": {
       "type": "string",
       "required": false,
       "unique": false,
       "configurable": false,
       "description": "External Stripe price ID, optional for Stripe reconciliation, should be equal to Price_document_id.Stripe_id"
     },
-    "Stripe_product_id": {
+    "stripe_product_id": {
       "type": "string"
     },
-    "Currency": {
+    "currency": {
       "type": "string"
     }
   }

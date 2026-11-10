@@ -6,7 +6,7 @@
   },
   "options": {},
   "attributes": {
-    "Timestampt": {
+    "timestamp": {
       "type": "datetime"
     },
     "session_id": {
@@ -15,7 +15,7 @@
     "buyer_email": {
       "type": "string"
     },
-    "Status": {
+    "status": {
       "type": "enumeration",
       "enum": [
         "Succeeded",

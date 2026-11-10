@@ -23,7 +23,7 @@ async function findStoreByRef(strapi: any, ref: string): Promise<any | null> {
 
   const byDocumentId = await strapi.documents('api::store.store').findOne({
     documentId: normalizedRef,
-    populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'SEO', 'SEO.socialImage'],
+    populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'],
   }) as any;
 
   if (byDocumentId) {
@@ -32,7 +32,7 @@ async function findStoreByRef(strapi: any, ref: string): Promise<any | null> {
 
   const bySlug = await strapi.documents('api::store.store').findMany({
     filters: { slug: normalizedRef },
-    populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'SEO', 'SEO.socialImage'],
+    populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'],
     limit: 1,
   }) as any[];
 
