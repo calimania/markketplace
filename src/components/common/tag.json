@@ -6,10 +6,10 @@
   },
   "options": {},
   "attributes": {
-    "Label": {
+    "label": {
       "type": "string"
     },
-    "Color": {
+    "color": {
       "type": "enumeration",
       "enum": [
         "Tangerine",
