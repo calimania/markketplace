@@ -23,7 +23,7 @@ interface ShortnerData {
 interface StoreData {
   id: number;
   title?: string;
-  SEO?: {
+  seo?: {
     metaTitle?: string;
     metaDescription?: string;
     metaKeywords?: string;
@@ -42,7 +42,7 @@ interface StoreData {
     domain?: string;
     [key: string]: any;
   };
-  Favicon?: {
+  favicon?: {
     url: string;
     alternativeText?: string;
   };
@@ -80,7 +80,7 @@ export const generateSEOHTML = (shortner: ShortnerData, store: StoreData | null)
   const keywords = store?.SEO?.metaKeywords || '';
   const siteName = escapeHtml(store?.title || 'Markkët');
   const domain = store?.settings?.domain || 'https://markket.place';
-  const favicon = store?.Favicon?.url || `${domain}/favicon.png`;
+  const favicon = store?.favicon?.url || `${domain}/favicon.png`;
   const author = store?.SEO?.metaAuthor || siteName;
 
   // Use socialImage from store SEO or shortner image

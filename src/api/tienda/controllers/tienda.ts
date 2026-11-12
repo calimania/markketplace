@@ -46,13 +46,13 @@ const LOCAL_DATETIME_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(\
 const STORE_MUTABLE_FIELDS = [
   'title',
   'slug',
-  'Description',
-  'Logo',
-  'Cover',
+  'description',
+  'logo',
+  'cover',
   'slides',
-  'Favicon',
-  'URLS',
-  'SEO',
+  'favicon',
+  'urls',
+  'seo',
   'addresses',
 ];
 

@@ -55,7 +55,7 @@ export default {
 
     const rsvp = await strapi.documents('api::rsvp.rsvp').findOne({
       documentId,
-      populate: ['event', 'event.stores', 'store', 'store.Favicon'] as any,
+      populate: ['event', 'event.stores', 'store', 'store.favicon'] as any,
     }) as any;
 
     if (!rsvp) {

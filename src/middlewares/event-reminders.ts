@@ -322,7 +322,7 @@ export async function sendDueEventReminders(strapi: any): Promise<void> {
         try {
           fullStore = await (strapi.documents as any)('api::store.store').findOne({
             documentId: storeDocumentId,
-            populate: ['Favicon', 'settings'],
+            populate: ['favicon', 'settings'],
           });
         } catch { /* use partial store */ }
       }

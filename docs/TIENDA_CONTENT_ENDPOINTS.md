@@ -373,7 +373,7 @@ Upload one or more files for a store using Strapi Upload plugin.
 
 - `contentType`: one of `store`, `article`, `album`, `track`, `product`, `event`, `shortner`
 - `field`: allowed media fields by type
-  - `store.Logo`, `store.Cover`, `store.Slides`, `store.Favicon`
+  - `store.logo`, `store.cover`, `store.slides`, `store.favicon`
   - `article.cover`
   - `album.cover`
   - `track.media`

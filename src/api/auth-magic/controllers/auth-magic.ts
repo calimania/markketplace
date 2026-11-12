@@ -77,7 +77,7 @@ export default ({ strapi }) => ({
       );
 
       const store = await strapi.service('api::store.store').findOne(store_id, {
-        populate: ['Favicon', 'settings']
+        populate: ['favicon', 'settings']
       });
 
       if (finalChannel === 'email') {

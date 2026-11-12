@@ -282,7 +282,7 @@ export function buildWelcomeEmailHtml(input: BuildWelcomeEmailHtmlInput): string
       title: safeStoreName,
       slug: 'newsletter',
       documentId: 'newsletter',
-      Favicon: {
+      favicon: {
         url: storeLogoUrl || ''
       },
       settings: {
@@ -380,7 +380,7 @@ export function buildInviteEmailHtml(input: BuildInviteEmailHtmlInput): string {
       title: safeStoreName,
       slug: safeStoreSlug || 'invite',
       documentId: 'store-invite',
-      Favicon: { url: '' },
+      favicon: { url: '' },
       settings: {
         email_header_message: isResend
           ? 'Your refreshed invite link'
@@ -505,7 +505,7 @@ export function buildStoreOwnerCongratsEmailHtml(input: BuildStoreOwnerCongratsE
       title: safeStoreName,
       slug: safeStoreSlug || 'store',
       documentId: 'store-owner-onboarding',
-      Favicon: {
+      favicon: {
         url: ''
       },
       settings: {
@@ -605,7 +605,7 @@ export function buildInviteAcceptedEmailHtml(input: BuildInviteAcceptedEmailHtml
       title: safeStoreName,
       slug: safeStoreSlug || 'store',
       documentId: 'store-invite-accepted',
-      Favicon: { url: '' },
+      favicon: { url: '' },
       settings: {
         email_header_message: `Welcome to the team`,
         store_name_override: safeStoreName,
