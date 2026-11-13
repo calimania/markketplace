@@ -1307,12 +1307,12 @@ export default {
     try {
       const storesFromUsers = await strapi.documents('api::store.store').findMany({
         filters: { users: { id: user.id } },
-        populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'seo', 'seo.socialImage'] as any,
+        populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'] as any,
       }) as any[];
 
       const storesFromAdmins = await strapi.documents('api::store.store').findMany({
         filters: { admin_users: { id: user.id } },
-        populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'seo', 'seo.socialImage'] as any,
+        populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'] as any,
       }) as any[];
 
       const uniqueByDocumentId = new Map<string, any>();
@@ -1379,7 +1379,7 @@ export default {
           ...(data as any),
           owner: user.id,
         },
-        populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'seo', 'seo.socialImage'],
+        populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'],
       }) as any;
 
       const updated = await storeDocuments.update({
@@ -1391,7 +1391,7 @@ export default {
             connect: [user.id],
           },
         },
-        populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'seo', 'seo.socialImage'],
+        populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'],
       }) as any;
 
       const existingOwnerMembership = await membershipDocuments.findMany({
@@ -1696,7 +1696,7 @@ export default {
       const updated = await strapi.documents('api::store.store').update({
         documentId: access.store.documentId,
         data,
-        populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'seo', 'seo.socialImage'] as any,
+        populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'] as any,
       }) as any;
 
       await strapi.documents('api::store.store').publish({
@@ -1744,7 +1744,7 @@ export default {
 
       const refreshed = await strapi.documents('api::store.store').findOne({
         documentId: access.store.documentId,
-        populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'seo', 'seo.socialImage'] as any,
+        populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'] as any,
         ...(requestedLocale ? { locale: requestedLocale, status: 'published' as const } : { status: 'published' as const }),
       }) as any;
 
@@ -1786,7 +1786,7 @@ export default {
 
       const refreshed = await strapi.documents('api::store.store').findOne({
         documentId: access.store.documentId,
-        populate: ['settings', 'users', 'admin_users', 'owner', 'URLS', 'seo', 'seo.socialImage'] as any,
+        populate: ['settings', 'users', 'admin_users', 'owner', 'urls', 'seo', 'seo.socialImage'] as any,
         ...(requestedLocale ? { locale: requestedLocale } : {}),
       }) as any;
 
