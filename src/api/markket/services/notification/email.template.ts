@@ -2,7 +2,7 @@ export type Store = {
   title: string;
   slug: string;
   documentId: string;
-  Favicon: {
+  favicon: {
     url: string;
   },
   settings: {
@@ -108,7 +108,7 @@ function renderInfoPanel(title: string, body: string, theme: EmailTheme): string
  * @returns
  */
 export const emailLayout = ({ content, title, store, label }: EmailLayout) => {
-  const logoUrl = store?.Favicon?.url;
+  const logoUrl = store?.favicon?.url;
   const preheader = store?.settings?.email_header_message || `Thank you for using ${store?.title || 'Markkët'}!`;
   const storeName = store?.settings?.store_name_override || store?.title || 'Markkët';
   const storeUrl = store?.settings?.domain || 'https://markket.place';

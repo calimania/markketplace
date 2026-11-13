@@ -19,10 +19,10 @@ export const MEDIA_TARGETS: Record<string, MediaTargetConfig> = {
   store: {
     uid: 'api::store.store',
     fields: {
-      Logo: { mode: 'single', allowedTypes: ['images'] },
-      Cover: { mode: 'single', allowedTypes: ['images'] },
+      logo: { mode: 'single', allowedTypes: ['images'] },
+      cover: { mode: 'single', allowedTypes: ['images'] },
       slides: { mode: 'multiple', allowedTypes: ['images'] },
-      Favicon: { mode: 'single', allowedTypes: ['images'] },
+      favicon: { mode: 'single', allowedTypes: ['images'] },
       'SEO.socialImage': { mode: 'single', allowedTypes: ['images',] },
     },
   },

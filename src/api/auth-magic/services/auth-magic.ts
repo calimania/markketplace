@@ -285,7 +285,7 @@ export default ({ strapi }) => ({
       filters: { code },
       sort: { createdAt: 'desc' },
       limit: 1,
-      populate: ['store.settings', 'store', 'store.Favicon', 'shortner']
+      populate: ['store.settings', 'store', 'store.favicon', 'shortner']
     });
 
     return record?.[0] || null;

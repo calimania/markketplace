@@ -323,9 +323,9 @@ export function calculateOnboardingProgress(store: any, counts: ContentCounts, s
     // Image usage breakdown (for UI decisions)
     media_usage: {
       total_images: imageCount,
-      has_logo: !!store?.Logo?.id,
-      has_cover: !!store?.Cover?.id,
-      has_favicon: !!store?.Favicon?.id,
+      has_logo: !!store?.logo?.id,
+      has_cover: !!store?.cover?.id,
+      has_favicon: !!store?.favicon?.id,
       has_seo_image: hasSEOImage,
     },
 
@@ -350,11 +350,11 @@ export async function getDashboardData(storeId: string) {
     strapi.documents('api::store.store').findOne({
       documentId: storeId,
       populate: {
-        Logo: true,
-        Cover: true,
-        Favicon: true,
+        logo: true,
+        cover: true,
+        favicon: true,
         settings: true,
-        URLS: true,
+        urls: true,
         seo: {
           populate: {
             socialImage: true
@@ -371,7 +371,7 @@ export async function getDashboardData(storeId: string) {
     hasStore: !!store,
     hasLogo: !!store?.Logo,
     hasCover: !!store?.Cover,
-    hasFavicon: !!store?.Favicon,
+    hasFavicon: !!store?.favicon,
     hasSEO: !!store?.SEO,
     Logo_structure: store?.Logo ? Object.keys(store.Logo) : null,
   });
@@ -403,12 +403,12 @@ export async function getDashboardData(storeId: string) {
     },
 
     store_metadata: {
-      has_logo: !!store?.Logo?.id,
-      has_cover: !!store?.Cover?.id,
-      has_favicon: !!store?.Favicon?.id,
-      logo_url: store?.Logo?.url || null,
-      cover_url: store?.Cover?.url || null,
-      favicon_url: store?.Favicon?.url || null,
+      has_logo: !!store?.logo?.id,
+      has_cover: !!store?.cover?.id,
+      has_favicon: !!store?.favicon?.id,
+      logo_url: store?.logo?.url || null,
+      cover_url: store?.cover?.url || null,
+      favicon_url: store?.favicon?.url || null,
       store_name: store?.title || '/Untitled/',
       store_slug: store?.slug,
     },

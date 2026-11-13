@@ -55,7 +55,7 @@ export default (config: any, { strapi }: any) => {
           populate: {
             image: true,
             store: {
-              populate: ['seo', 'settings', 'Favicon']
+              populate: ['seo', 'settings', 'favicon']
             }
           }
         });
@@ -72,7 +72,7 @@ export default (config: any, { strapi }: any) => {
           // Fallback to default store
           const stores = await strapi.documents('api::store.store').findMany({
             filters: { slug: DEFAULT_STORE_SLUG },
-            populate: ['seo', 'settings', 'Favicon'],
+            populate: ['seo', 'settings', 'favicon'],
             limit: 1
           });
           store = stores && stores.length > 0 ? stores[0] : null;

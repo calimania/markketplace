@@ -404,7 +404,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
 
     const store = await (strapi.documents('api::store.store') as any).findOne({
       documentId: storeDocumentId,
-      populate: ['Favicon', 'settings']
+      populate: ['favicon', 'settings']
     });
 
     const sendTransactionalWelcome = async () => {
@@ -432,7 +432,7 @@ export default factories.createCoreService('api::subscriber.subscriber', ({ stra
       const welcomeHtml = buildWelcomeEmailHtml({
         storeName: store?.title || 'Markkët',
         storeDomain: store?.settings?.domain || 'https://markket.place',
-        storeLogoUrl: store?.Favicon?.url,
+        storeLogoUrl: store?.favicon?.url,
         welcomeMessage: store?.settings?.welcome_email_text || 'Thanks for subscribing.',
         supportEmail,
         unsubscribeUrl: `https://markket.place/${store?.slug || ''}/subscription?code=${subscriberDocumentId}`,

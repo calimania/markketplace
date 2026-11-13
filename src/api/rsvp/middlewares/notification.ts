@@ -13,7 +13,7 @@ export default (config, { strapi }) => {
 
     const rsvp = await strapi.documents('api::rsvp.rsvp').findOne({
       documentId: rsvpDocumentId,
-      populate: ['event', 'event.stores', 'store', 'store.settings', 'store.Favicon', 'user'],
+      populate: ['event', 'event.stores', 'store', 'store.settings', 'store.favicon', 'user'],
     });
 
     if (!rsvp?.email || !rsvp?.event) {

@@ -251,7 +251,7 @@ export default factories.createCoreController('api::store.store', ({ strapi }) =
 
       const stores = await strapi.documents('api::store.store').findMany({
         filters: { slug: slug },
-        populate: ['settings', 'SEO.socialImage', 'Logo', 'URLS', 'Favicon', 'Cover',],
+        populate: ['settings', 'seo.socialImage', 'logo', 'urls', 'favicon', 'cover',],
       }) as any;
 
       if (!stores?.length) {

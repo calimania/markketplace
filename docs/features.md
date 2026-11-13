@@ -1,24 +1,23 @@
 # Features
 
-## 2026
+## Q4 2026
 - [ ] tienda: changing slug affects links and emails, what do? (warn? backfill? redirect)
 - [ ] tienda: Digital Ocean - AI endpoints suggest content
 - [ ] config: clean up general config objects, urls, colors
 - [ ] AI: open router decides which action is needed { key: action, } for api to proceed
 - [ ] api: stripe, restrict redirect domains
-
-## Nov 2026
+- [ ] api: twilio, whatsapp, inbound email with laravel cloud review
 - [ ] tienda: api: send posthog events to track milestone (users, content posted)
 - [ ] tienda: read openSEO data
 - [ ] tienda: inbox: order creates a thread with the buyer and seller
 - [ ] stripe: staging uses test keys
 - [ ] tienda: notify of shipment tracking change
 - [ ] api: notify buyer of order change
+- [ ] api: process inbout markket.place
 - [x] storefront: Order,Purchase sends an email to slug@markket.place
 - [ ] api: forward email to store owner / notify them, so they could reply directly from their inbox - iphone when ready
-
-## Oct 2026
 - [ ] api: receive form data and send an email to store owner
+- [ ] api: review role names
 
 ### v0.9.9
 - [x] media attribute in albums for collections
