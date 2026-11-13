@@ -161,7 +161,7 @@ export default ({ strapi }) => ({
 
       // Create user if doesn't exist
       if (!user && cleanIdentifier) {
-        const preferredRoleName = 'Store Owners';
+        const preferredRoleName = 'Authenticated';
         let role = await strapi.db.query('plugin::users-permissions.role').findOne({
           where: { name: preferredRoleName },
         });
@@ -208,9 +208,10 @@ export default ({ strapi }) => ({
         }
       }
 
+      // @TODO: use authenticated role instead
       if (user && magic.purpose === 'store_invite') {
         const storeOwnersRole = await strapi.db.query('plugin::users-permissions.role').findOne({
-          where: { name: 'Store Owners' },
+          where: { name: 'Authenticated' },
         });
 
         const currentRoleRaw = (user as any)?.role;
@@ -222,12 +223,13 @@ export default ({ strapi }) => ({
             where: { id: user.id },
             data: { role: storeOwnersRole.id },
           });
+
           console.info('[AUTH_MAGIC] user role corrected for store invite', {
             userId: user.id,
             previousRoleId: currentRoleId || null,
             previousRoleName: currentRoleName || null,
             roleId: storeOwnersRole.id,
-            roleName: storeOwnersRole.name || 'Store Owners',
+            roleName: storeOwnersRole.name || 'Authenticated',
           });
         }
       }
