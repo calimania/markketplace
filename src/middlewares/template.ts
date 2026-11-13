@@ -67,27 +67,27 @@ export const generateSEOHTML = (shortner: ShortnerData, store: StoreData | null)
   // Use common SEO schema field names
   const title = escapeHtml(
     shortner.title ||
-    store?.SEO?.metaTitle ||
+    store?.seo?.metaTitle ||
     `${store?.title || 'Markkët'} - Link`
   );
 
   const description = escapeHtml(
     shortner.description ||
-    store?.SEO?.metaDescription ||
+    store?.seo?.metaDescription ||
     `Check out this link from ${store?.title || 'Markkët'}`
   );
 
-  const keywords = store?.SEO?.metaKeywords || '';
+  const keywords = store?.seo?.metaKeywords || '';
   const siteName = escapeHtml(store?.title || 'Markkët');
   const domain = store?.settings?.domain || 'https://markket.place';
   const favicon = store?.favicon?.url || `${domain}/favicon.png`;
-  const author = store?.SEO?.metaAuthor || siteName;
+  const author = store?.seo?.metaAuthor || siteName;
 
   // Use socialImage from store SEO or shortner image
-  const socialImage = shortner.image?.url || store?.SEO?.socialImage?.url;
+  const socialImage = shortner.image?.url || store?.seo?.socialImage?.url;
   const imageAlt = escapeHtml(
     shortner.image?.alternativeText ||
-    store?.SEO?.socialImage?.alternativeText ||
+    store?.seo?.socialImage?.alternativeText ||
     title
   );  return `<!DOCTYPE html>
 <html lang="en">
@@ -98,7 +98,7 @@ export const generateSEOHTML = (shortner: ShortnerData, store: StoreData | null)
   <meta name="description" content="${description}">
   ${keywords ? `<meta name="keywords" content="${escapeHtml(keywords)}">` : ''}
   <meta name="author" content="${author}">
-  <meta name="robots" content="${store?.SEO?.excludeFromSearch ? 'noindex, nofollow' : 'index, follow'}">
+  <meta name="robots" content="${store?.seo?.excludeFromSearch ? 'noindex, nofollow' : 'index, follow'}">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">

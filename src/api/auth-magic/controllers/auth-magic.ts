@@ -4,6 +4,7 @@
  * Uses store.settings records for customization and shortener for SMS-friendly links
  */
 import { enrollStoreOwnerContact } from '../../../services/sendgrid-marketing';
+const preferredRoleName = 'Authenticated';
 
 export default ({ strapi }) => ({
   async preview(ctx) {
@@ -161,20 +162,12 @@ export default ({ strapi }) => ({
 
       // Create user if doesn't exist
       if (!user && cleanIdentifier) {
-        const preferredRoleName = 'Authenticated';
         let role = await strapi.db.query('plugin::users-permissions.role').findOne({
           where: { name: preferredRoleName },
         });
 
         if (!role) {
-          const fallbackRoleName = 'Authenticated';
-          role = await strapi.db.query('plugin::users-permissions.role').findOne({
-            where: { name: fallbackRoleName },
-          });
-        }
-
-        if (!role) {
-          throw new Error('No users-permissions role found for magic-auth user');
+          throw new Error(`Missing Role: ${preferredRoleName} in db`);
         }
 
         const userData = {
@@ -211,7 +204,7 @@ export default ({ strapi }) => ({
       // @TODO: use authenticated role instead
       if (user && magic.purpose === 'store_invite') {
         const storeOwnersRole = await strapi.db.query('plugin::users-permissions.role').findOne({
-          where: { name: 'Authenticated' },
+          where: { name: preferredRoleName },
         });
 
         const currentRoleRaw = (user as any)?.role;

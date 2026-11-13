@@ -6,7 +6,7 @@
 - [ ] config: clean up general config objects, urls, colors
 - [ ] AI: open router decides which action is needed { key: action, } for api to proceed
 - [ ] api: stripe, restrict redirect domains
-
+- [ ] api: twilio, whatsapp, inbound email with laravel cloud review
 - [ ] tienda: api: send posthog events to track milestone (users, content posted)
 - [ ] tienda: read openSEO data
 - [ ] tienda: inbox: order creates a thread with the buyer and seller
